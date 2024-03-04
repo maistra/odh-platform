@@ -1,0 +1,36 @@
+name: linters
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+jobs:
+  go-lint:
+    name: golangci-lint
+    runs-on: ubuntu-20.04
+    env:
+      REPOSITORY: ${{ github.repository }}
+    steps:
+      - name: Set up Go env
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.19
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          path: go/src/github.com/${{ env.REPOSITORY }}
+      - name: Set $GOPATH
+        run: |
+          echo "GOPATH=${{ github.workspace }}/go" >> $GITHUB_ENV
+          echo "${{ github.workspace }}/go/bin" >> $GITHUB_PATH
+        shell: bash
+      - name: Prepare codebase for linter (generates deps, stubs)
+        run: |
+          cd go/src/github.com/${{ env.REPOSITORY }}
+          make deps generate
+        shell: bash
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.53
+          working-directory: go/src/github.com/${{ env.REPOSITORY }}

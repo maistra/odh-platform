@@ -1,0 +1,45 @@
+apiVersion: authorino.kuadrant.io/v1beta1
+kind: AuthConfig
+metadata:
+  labels:
+    authorino/topic: odh
+  name: meshified-and-authorized-ns-protection
+spec:
+  hosts:
+    - istio.io
+  identity:
+    - name: kubernetes-users
+      kubernetes:
+        audiences:
+          - https://kubernetes.default.svc
+  authorization:
+    - name: k8s-rbac
+      kubernetes:
+        resourceAttributes:
+          group:
+            value: kubeflow.org
+          name:
+            value: nb
+          namespace:
+            value: test-mesh-001
+          resource:
+            value: notebooks
+          verb:
+            value: get
+        user:
+          valueFrom:
+            authJSON: auth.identity.username
+  response:
+    - name: x-auth-data
+      json:
+        properties:
+          - name: username
+            valueFrom:
+              authJSON: auth.identity.username
+  denyWith:
+    unauthenticated:
+      message:
+        value: Access denied
+    unauthorized:
+      message:
+        value: Unauthorized

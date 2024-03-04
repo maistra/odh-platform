@@ -1,0 +1,52 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: odh-platform-ktunnel
+  labels:
+    app: odh-platform
+    app.kubernetes.io/part-of: odh-platform
+    kustomize.component: odh-platform
+    component.opendatahub.io/name: odh-platform
+    opendatahub.io/component: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: odh-platform
+      app.kubernetes.io/part-of: odh-platform
+      kustomize.component: odh-platform
+      component.opendatahub.io/name: odh-platform
+      opendatahub.io/component: "true"
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: ktunnel
+      labels:
+        app: odh-platform
+        app.kubernetes.io/part-of: odh-platform
+        kustomize.component: odh-platform
+        component.opendatahub.io/name: odh-platform
+        opendatahub.io/component: "true"
+    spec:
+      containers:
+        - name: ktunnel
+          image: quay.io/omrikiei/ktunnel:v1.4.8
+          imagePullPolicy: IfNotPresent
+          command:
+            - /ktunnel/ktunnel
+          args:
+            - server
+            - -p
+            - "28688"
+          ports:
+            - containerPort: 8443
+              name: webhook
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 500m
+              memory: 256Mi
+            requests:
+              cpu: 500m
+              memory: 256Mi

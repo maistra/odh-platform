@@ -1,0 +1,60 @@
+# Test results
+*ginkgo-test-results.xml
+
+# Temporary Files
+bin/
+testbin/
+
+### Go ###
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, build with 'go test -c'
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+### CI build folders ###
+.circleci/cache
+
+### Operator SDK ###
+bundle/
+bundle-*/
+
+### Vim ###
+# swap
+.sw[a-p]
+.*.sw[a-p]
+# session
+Session.vim
+# temporary
+.netrwhist
+# auto-generated tag files
+tags
+
+### VisualStudioCode ###
+.vscode
+.history
+
+### JetBrains IDEs (Goland) ###
+.idea/
+*.iws
+*.ipr
+out/
+
+# mpeltonen/sbt-idea plugin
+.idea_modules/
+
+# JIRA plugin
+atlassian-ide-plugin.xml
+
+# Crashlytics plugin (for Android Studio and IntelliJ)
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties

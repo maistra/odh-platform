@@ -1,0 +1,112 @@
+linters-settings:
+  govet:
+    check-shadowing: true
+  golint:
+    min-confidence: 0
+  gocyclo:
+    min-complexity: 16
+  cyclop:
+    max-complexity: 16
+  dupl:
+    threshold: 128
+  funlen:
+    lines: 128
+    statements: 64
+  goconst:
+    min-len: 4
+    min-occurrences: 3
+  depguard:
+    list-type: blacklist
+    packages:
+      - github.com/sirupsen/logrus
+      - sigs.k8s.io/controller-runtime/pkg/log
+      - sigs.k8s.io/controller-runtime/pkg/log/zap
+      - sigs.k8s.io/controller-runtime/pkg/runtime/log
+  misspell:
+    locale: US
+    ignore-words:
+      - istio
+      - k8s
+  lll:
+    line-length: 180
+  goimports:
+    local-prefixes: github.com/maistra/odh-platform
+  gocritic:
+    enabled-tags:
+      - performance
+      - style
+      - experimental
+    disabled-checks:
+      - wrapperFunc
+      - commentFormatting # https://github.com/go-critic/go-critic/issues/755
+      - hugeParam # seems to be premature optimization based on https://github.com/Maistra/istio-workspace/pull/378#discussion_r392208906
+  nestif:
+    min-complexity: 8
+  unused:
+    check-exported: true
+  gocognit:
+    min-complexity: 20
+  wrapcheck:
+    ignoreSigs:
+      - .Errorf(
+      - errors.New(
+      - errors.Unwrap(
+      - .Wrap(
+      - .Wrapf(
+      - .WithMessage(
+      - errors.WrapIfWithDetails
+      - errors.WithDetails(
+      - errors.WrapWithDetails(
+      - errors.WrapIf(
+      - errors.NewWithDetails(
+
+linters:
+  enable-all: true
+  disable:
+    - depguard
+    - exhaustruct
+    - exhaustivestruct
+    - forbidigo
+    - gofmt # We use goimports and when using them both leads to contradicting errors
+    - gofumpt
+    - gomnd
+    - paralleltest
+    - prealloc
+
+run:
+  deadline: 10m
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-rules:
+    - path: test/
+      linters:
+        - goconst
+        - gocyclo
+        - golint
+        - errcheck
+        - dupl
+        - gosec
+        - revive
+        - stylecheck
+        - wrapcheck
+    # Exclude particular linters for tests files.
+    - path: _test\.go
+      linters:
+        - gochecknoglobals
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - revive
+        - wrapcheck
+    - path: _suite_test\.go
+      linters:
+        - revive
+        - unused
