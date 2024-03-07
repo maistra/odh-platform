@@ -89,8 +89,10 @@ func createAuthConfig(service *v1.Service) (*authorinov1beta2.AuthConfig, error)
 			Namespace:   service.Namespace,
 			Labels:      labels,              // TODO: Where to fetch lables from
 			Annotations: map[string]string{}, // TODO: where to fetch annotations from? part-of "service comp" or "platform?"
+			OwnerReferences: []metav1.OwnerReference{
+				serviceToOwnerRef(service),
+			},
 		},
-		// TODO: Impl OwnerRef:  Assume Service for now
 		Spec: authorinov1beta2.AuthConfigSpec{
 			Hosts: []string{
 				service.Name,
@@ -99,6 +101,7 @@ func createAuthConfig(service *v1.Service) (*authorinov1beta2.AuthConfig, error)
 			},
 		},
 	}
+
 	if strings.ToLower(service.Labels[AnnotationAuthEnabled]) != "true" {
 		config.Spec.Authentication = map[string]authorinov1beta2.AuthenticationSpec{
 			"anonymous": {

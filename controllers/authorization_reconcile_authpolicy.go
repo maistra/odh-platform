@@ -74,8 +74,10 @@ func createAuthorizationPolicy(service *v1.Service) *istiosecv1beta1.Authorizati
 			Namespace:   service.Namespace,
 			Labels:      service.Labels,      // TODO: Where to fetch lables from
 			Annotations: map[string]string{}, // TODO: where to fetch annotations from? part-of "service comp" or "platform?"
+			OwnerReferences: []metav1.OwnerReference{
+				serviceToOwnerRef(service),
+			},
 		},
-		// TODO: Impl OwnerRef:  Assume Service for now
 		Spec: v1beta1.AuthorizationPolicy{
 			Selector: &istiotypev1beta1.WorkloadSelector{
 				MatchLabels: service.Spec.Selector,

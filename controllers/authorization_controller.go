@@ -86,13 +86,13 @@ func (r *PlatformAuthorizationReconciler) SetupWithManager(mgr ctrl.Manager) err
 		Complete(r)
 }
 
-func serviceToOwnerRef(service *v1.Service) metav1.OwnerReference {
+func serviceToOwnerRef(obj *v1.Service) metav1.OwnerReference {
+	controller := false
 	return metav1.OwnerReference{
-		APIVersion:         service.APIVersion,
-		Kind:               service.Kind,
-		Name:               service.Name,
-		UID:                service.UID,
-		Controller:         false,
-		BlockOwnerDeletion: *true,
+		APIVersion: obj.APIVersion,
+		Kind:       obj.Kind,
+		Name:       obj.Name,
+		UID:        obj.UID,
+		Controller: &controller,
 	}
 }
