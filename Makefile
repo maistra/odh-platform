@@ -22,7 +22,7 @@ help: ## Display this help.
 generate: tools ## Generates required resources for the controller to work properly (see config/ folder)
 	$(LOCALBIN)/controller-gen rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	$(call fetch-external-crds,github.com/kuadrant/authorino,api/v1beta1)
-	$(call fetch-external-crds,github.com/openshift/api,route/v1)
+#	$(call fetch-external-crds,github.com/openshift/api,route/v1)
 
 SRC_DIRS:=./controllers ./test
 SRCS:=$(shell find ${SRC_DIRS} -name "*.go")

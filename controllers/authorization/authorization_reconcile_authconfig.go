@@ -1,24 +1,33 @@
-package controllers
+package authorization
 
 import (
 	"context"
 	"encoding/json"
 	"reflect"
-	"strings"
 
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
+	"github.com/opendatahub-io/odh-platform/pkg/env"
 	"github.com/pkg/errors"
-	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 )
 
-func (r *PlatformAuthorizationReconciler) reconcileAuthConfig(ctx context.Context, service *v1.Service) error {
+func (r *PlatformAuthorizationReconciler) reconcileAuthConfig(ctx context.Context, target *unstructured.Unstructured) error {
+	authType, err := r.typeDetector.Detect(ctx, target)
+	if err != nil {
+		return err
+	}
+	templ, err := r.templateLoader.Load(ctx, authType, types.NamespacedName{Namespace: target.GetNamespace(), Name: target.GetName()})
+	if err != nil {
+		return err
+	}
+	hosts := r.hostExtractor.Extract(target)
 
-	desired, err := createAuthConfig(service)
+	desired, err := createAuthConfig(templ, hosts, target)
 	if err != nil {
 		return errors.Wrap(err, "could not create destired AuthConfig")
 	}
@@ -32,16 +41,13 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthConfig(ctx context.Contex
 	}, found)
 	if err != nil {
 		if apierrs.IsNotFound(err) {
-
 			err = r.Create(ctx, desired)
 			if err != nil && !apierrs.IsAlreadyExists(err) {
-
 				return errors.Wrap(err, "unable to create AuthConfig")
 			}
 
 			justCreated = true
 		} else {
-
 			return errors.Wrap(err, "unable to fetch AuthConfig")
 		}
 	}
@@ -63,7 +69,6 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthConfig(ctx context.Contex
 
 			return errors.Wrap(r.Update(ctx, found), "failed updating AuthConfig")
 		}); err != nil {
-
 			return errors.Wrap(err, "unable to reconcile the Authorino AuthConfig")
 		}
 	}
@@ -71,74 +76,28 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthConfig(ctx context.Contex
 	return nil
 }
 
-func createAuthConfig(service *v1.Service) (*authorinov1beta2.AuthConfig, error) {
-	keyVal, err := getAuthorinoLabel()
+func createAuthConfig(templ authorinov1beta2.AuthConfig, hosts []string, target *unstructured.Unstructured) (*authorinov1beta2.AuthConfig, error) {
+	authKey, authVal, err := env.GetAuthorinoLabel()
 	if err != nil {
 		return &authorinov1beta2.AuthConfig{}, errors.Wrap(err, "could not get authorino label selcetor")
 	}
 
-	labels := service.Labels
+	labels := target.GetLabels()
 	if labels == nil {
 		labels = map[string]string{}
 	}
-	labels[keyVal[0]] = keyVal[1]
+	labels[authKey] = authVal
 
-	config := &authorinov1beta2.AuthConfig{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        service.Name,
-			Namespace:   service.Namespace,
-			Labels:      labels,              // TODO: Where to fetch lables from
-			Annotations: map[string]string{}, // TODO: where to fetch annotations from? part-of "service comp" or "platform?"
-			OwnerReferences: []metav1.OwnerReference{
-				serviceToOwnerRef(service),
-			},
-		},
-		Spec: authorinov1beta2.AuthConfigSpec{
-			Hosts: []string{
-				service.Name,
-				service.Name + ".svc",
-				service.Name + ".svc.cluster.local",
-			},
-		},
+	templ.Name = target.GetName()
+	templ.Namespace = target.GetNamespace()
+	templ.Labels = labels                   // TODO: Where to fetch lables from
+	templ.Annotations = map[string]string{} // TODO: where to fetch annotations from? part-of "service comp" or "platform?"
+	templ.OwnerReferences = []metav1.OwnerReference{
+		targetToOwnerRef(target),
 	}
+	templ.Spec.Hosts = hosts
 
-	if strings.ToLower(service.Labels[AnnotationAuthEnabled]) != "true" {
-		config.Spec.Authentication = map[string]authorinov1beta2.AuthenticationSpec{
-			"anonymous": {
-				AuthenticationMethodSpec: authorinov1beta2.AuthenticationMethodSpec{
-					AnonymousAccess: &authorinov1beta2.AnonymousAccessSpec{},
-				},
-			},
-		}
-	} else {
-		config.Spec.Authentication = map[string]authorinov1beta2.AuthenticationSpec{
-			"kubernetes": {
-				AuthenticationMethodSpec: authorinov1beta2.AuthenticationMethodSpec{
-					KubernetesTokenReview: &authorinov1beta2.KubernetesTokenReviewSpec{
-						Audiences: getAuthAudience(),
-					},
-				},
-			},
-		}
-		config.Spec.Authorization = map[string]authorinov1beta2.AuthorizationSpec{
-			"kubernetes": {
-				AuthorizationMethodSpec: authorinov1beta2.AuthorizationMethodSpec{
-					KubernetesSubjectAccessReview: &authorinov1beta2.KubernetesSubjectAccessReviewAuthorizationSpec{
-						ResourceAttributes: &authorinov1beta2.KubernetesSubjectAccessReviewResourceAttributesSpec{ // TODO: Lookup AuthRule
-							Verb:        toValue("get"),
-							Group:       toValue(""),
-							Resource:    toValue("services"),
-							Namespace:   toValue(service.Namespace),
-							SubResource: toValue(""),
-							Name:        toValue(service.Name),
-						},
-						User: toSelector("auth.identity.user.username"),
-					},
-				},
-			},
-		}
-	}
-	return config, nil
+	return &templ, nil
 }
 
 // TODO: We have multiple Controllers adding Spec.Hosts. Compare specifically that the ones we need are in the list, if more assume equal?

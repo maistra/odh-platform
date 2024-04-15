@@ -55,6 +55,12 @@ spec:
                   name: auth-refs
                   key: AUTH_AUDIENCE
                   optional: true
+            - name: AUTH_PROVIDER
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-refs
+                  key: AUTH_PROVIDER
+                  optional: true
           livenessProbe:
             httpGet:
               path: /healthz

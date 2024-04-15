@@ -1,23 +1,23 @@
-package controllers
+package authorization
 
 import (
 	"context"
 	"reflect"
 
+	"github.com/opendatahub-io/odh-platform/pkg/env"
 	"github.com/pkg/errors"
 	"istio.io/api/security/v1beta1"
 	istiotypev1beta1 "istio.io/api/type/v1beta1"
 	istiosecv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
-	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 )
 
-func (r *PlatformAuthorizationReconciler) reconcileAuthPolicy(ctx context.Context, service *v1.Service) error {
-
-	desired := createAuthorizationPolicy(service)
+func (r *PlatformAuthorizationReconciler) reconcileAuthPolicy(ctx context.Context, target *unstructured.Unstructured) error {
+	desired := createAuthorizationPolicy(r.authComponent.Ports, r.authComponent.WorkloadSelector, target)
 	found := &istiosecv1beta1.AuthorizationPolicy{}
 	justCreated := false
 
@@ -27,16 +27,13 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthPolicy(ctx context.Contex
 	}, found)
 	if err != nil {
 		if apierrs.IsNotFound(err) {
-
 			err = r.Create(ctx, desired)
 			if err != nil && !apierrs.IsAlreadyExists(err) {
-
 				return errors.Wrap(err, "unable to create AuthorizationPolicy")
 			}
 
 			justCreated = true
 		} else {
-
 			return errors.Wrap(err, "unable to fetch AuthorizationPolicy")
 		}
 	}
@@ -58,7 +55,6 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthPolicy(ctx context.Contex
 
 			return errors.Wrap(r.Update(ctx, found), "failed updating AuthorizationPolicy")
 		}); err != nil {
-
 			return errors.Wrap(err, "unable to reconcile the AuthorizationPolicy")
 		}
 	}
@@ -67,35 +63,35 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthPolicy(ctx context.Contex
 }
 
 // TODO: Owned by?
-func createAuthorizationPolicy(service *v1.Service) *istiosecv1beta1.AuthorizationPolicy {
+func createAuthorizationPolicy(ports []string, workloadSelector map[string]string, target *unstructured.Unstructured) *istiosecv1beta1.AuthorizationPolicy {
 	policy := &istiosecv1beta1.AuthorizationPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        service.Name,
-			Namespace:   service.Namespace,
-			Labels:      service.Labels,      // TODO: Where to fetch lables from
+			Name:        target.GetName(),
+			Namespace:   target.GetNamespace(),
+			Labels:      target.GetLabels(),  // TODO: Where to fetch lables from
 			Annotations: map[string]string{}, // TODO: where to fetch annotations from? part-of "service comp" or "platform?"
 			OwnerReferences: []metav1.OwnerReference{
-				serviceToOwnerRef(service),
+				targetToOwnerRef(target),
 			},
 		},
 		Spec: v1beta1.AuthorizationPolicy{
 			Selector: &istiotypev1beta1.WorkloadSelector{
-				MatchLabels: service.Spec.Selector,
+				MatchLabels: workloadSelector,
 			},
 			Action: v1beta1.AuthorizationPolicy_CUSTOM,
 			ActionDetail: &v1beta1.AuthorizationPolicy_Provider{
 				Provider: &v1beta1.AuthorizationPolicy_ExtensionProvider{
-					Name: "opendatahub-auth-provider", // TODO: Make configurable
+					Name: env.GetAuthProvider(),
 				},
 			},
 		},
 	}
-	for _, port := range service.Spec.Ports {
+	for _, port := range ports {
 		rule := v1beta1.Rule{
 			To: []*v1beta1.Rule_To{
 				{
 					Operation: &v1beta1.Operation{
-						Ports: []string{port.TargetPort.String()}, // TODO: TargetPort could be a port name, does that work or does it need to be resolved?
+						Ports: []string{port},
 						NotPaths: []string{ // TODO: part of AuthRule?
 							"/healthz",
 							"/debug/pprof/",

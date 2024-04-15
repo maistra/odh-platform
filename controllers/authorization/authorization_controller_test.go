@@ -1,4 +1,4 @@
-package controllers_test
+package authorization_test
 
 import (
 	"time"
