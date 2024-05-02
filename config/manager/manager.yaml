@@ -15,6 +15,10 @@ spec:
       terminationGracePeriodSeconds: 10
       securityContext:
         runAsNonRoot: true
+      volumes:
+        - configMap:
+            name: platform-capabilities
+          name: auth-capabilities
       containers:
         - name: manager
           image: controller:latest
@@ -31,18 +35,8 @@ spec:
               containerPort: 8081
               protocol: TCP
           env:
-            - name: CONTROL_PLANE_NAME
-              valueFrom:
-                configMapKeyRef:
-                  name: service-mesh-refs
-                  key: CONTROL_PLANE_NAME
-                  optional: true
-            - name: MESH_NAMESPACE
-              valueFrom:
-                configMapKeyRef:
-                  name: service-mesh-refs
-                  key: MESH_NAMESPACE
-                  optional: true
+            - name: CONFIG_CAPABILITIES
+              value: /opt/config/capabilities
             - name: AUTHORINO_LABEL
               valueFrom:
                 configMapKeyRef:
@@ -61,6 +55,9 @@ spec:
                   name: auth-refs
                   key: AUTH_PROVIDER
                   optional: true
+          volumeMounts:
+            - mountPath: /opt/config/
+              name: auth-capabilities
           livenessProbe:
             httpGet:
               path: /healthz

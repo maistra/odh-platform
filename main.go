@@ -5,11 +5,11 @@ import (
 	"os"
 
 	"github.com/opendatahub-io/odh-platform/controllers/authorization"
+	"github.com/opendatahub-io/odh-platform/pkg/env"
+	"github.com/opendatahub-io/odh-platform/pkg/resource"
 	pschema "github.com/opendatahub-io/odh-platform/pkg/schema"
-	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"github.com/opendatahub-io/odh-platform/version"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	_ "k8s.io/client-go/plugin/pkg/client/auth" // Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.) to ensure that exec-entrypoint and run can make use of them.
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -63,22 +63,27 @@ func main() {
 		WithName("odh-platform")
 	ctrlLog.Info("creating controller instance", "version", version.Version, "commit", version.Commit, "build-time", version.BuildTime)
 
-	// TODO: load from CM or simular
-	components := []spi.AuthorizationComponent{
-		{
-			CustomResourceType: schema.GroupVersionKind{Version: "v1", Kind: "service"},
-			WorkloadSelector: map[string]string{
-				"component": "predicator",
-			},
-			Ports: []string{
-				"8080",
-			},
-			HostPaths: []string{
-				"status.url",
-			},
-		},
+	components, err := resource.LoadConfig(env.GetConfigFile())
+	if err != nil {
+		setupLog.Error(err, "unable to load config from "+env.GetConfigFile())
+		os.Exit(1)
 	}
-
+	/*
+		components := []spi.AuthorizationComponent{
+			{
+				CustomResourceType: schema.GroupVersionKind{
+					Group:   "modelregistry.opendatahub.io",
+					Version: "v1alpha1",
+					Kind:    "ModelRegistry",
+				},
+				WorkloadSelector: map[string]string{
+					"component": "model-registry",
+				},
+				Ports:     []string{"8080", "9090"},
+				HostPaths: []string{"status.url"},
+			},
+		}
+	*/
 	for _, component := range components {
 		if err = authorization.NewPlatformAuthorizationReconciler(mgr.GetClient(), ctrlLog, component).
 			SetupWithManager(mgr); err != nil {
@@ -86,6 +91,7 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)

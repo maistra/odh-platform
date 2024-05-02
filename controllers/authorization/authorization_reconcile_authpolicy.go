@@ -40,7 +40,6 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthPolicy(ctx context.Contex
 
 	// Reconcile the Istio AuthorizationPolicy if it has been manually modified
 	if !justCreated && !CompareAuthPolicies(desired, found) {
-
 		if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			if err := r.Get(ctx, types.NamespacedName{
 				Name:      desired.Name,
@@ -86,6 +85,7 @@ func createAuthorizationPolicy(ports []string, workloadSelector map[string]strin
 			},
 		},
 	}
+
 	for _, port := range ports {
 		rule := v1beta1.Rule{
 			To: []*v1beta1.Rule_To{
@@ -104,6 +104,7 @@ func createAuthorizationPolicy(ports []string, workloadSelector map[string]strin
 		}
 		policy.Spec.Rules = append(policy.Spec.Rules, &rule)
 	}
+
 	return policy
 }
 

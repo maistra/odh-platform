@@ -78,6 +78,7 @@ func createPeerAuthentication(workloadSelector map[string]string, target *unstru
 			Mtls: &v1beta1.PeerAuthentication_MutualTLS{Mode: v1beta1.PeerAuthentication_MutualTLS_PERMISSIVE},
 		},
 	}
+
 	return policy
 }
 

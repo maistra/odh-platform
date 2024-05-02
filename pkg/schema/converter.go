@@ -1,26 +1,18 @@
 package schema
 
 import (
-	"bytes"
-
-	"github.com/manifestival/manifestival"
-	"github.com/pkg/errors"
-	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 )
 
-func ConvertToStructuredResource(yamlContent []byte, out interface{}, opts ...manifestival.Option) error {
-	reader := bytes.NewReader(yamlContent)
-
-	manifest, err := manifestival.ManifestFrom(manifestival.Reader(reader), opts...)
-	if err != nil {
-		return errors.Wrap(err, "failed reading manifest")
-	}
-
-	s := scheme.Scheme
+func ConvertToStructuredResource(yamlContent []byte, out runtime.Object) error {
+	s := runtime.NewScheme()
 	RegisterSchemes(s)
+	decode := serializer.NewCodecFactory(s).UniversalDeserializer().Decode
 
-	if err := s.Convert(&manifest.Resources()[0], out, nil); err != nil {
-		return errors.Wrap(err, "failed converting manifest")
+	_, _, err := decode(yamlContent, nil, out)
+	if err != nil {
+		return err
 	}
 
 	return nil

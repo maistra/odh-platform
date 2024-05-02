@@ -8,22 +8,13 @@ import (
 )
 
 const (
-	MeshNamespaceEnv       = "MESH_NAMESPACE"
-	ControlPlaneEnv        = "CONTROL_PLANE_NAME"
 	AuthAudience           = "AUTH_AUDIENCE"
 	AuthProvider           = "AUTH_PROVIDER"
 	AuthorinoLabelSelector = "AUTHORINO_LABEL"
+	ConfigCapabilities     = "CONFIG_CAPABILITIES"
 )
 
-func getControlPlaneName() string {
-	return getEnvOr(ControlPlaneEnv, "basic")
-}
-
-func getMeshNamespace() string {
-	return getEnvOr(MeshNamespaceEnv, "istio-system")
-}
-
-func GetAuthorinoLabel() (string, string, error) {
+func GetAuthorinoLabel() (key, value string, err error) {
 	label := getEnvOr(AuthorinoLabelSelector, "security.opendatahub.io/authorization-group=default")
 	keyValue := strings.Split(label, "=")
 
@@ -47,6 +38,10 @@ func GetAuthAudience() []string {
 	}
 
 	return audiences
+}
+
+func GetConfigFile() string {
+	return getEnvOr(ConfigCapabilities, "/tmp/capabilities")
 }
 
 func getEnvOr(key, defaultValue string) string {

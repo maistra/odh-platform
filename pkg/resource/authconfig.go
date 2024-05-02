@@ -13,13 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resources
+package resource
 
 import (
 	"bytes"
 	"context"
 	_ "embed" // needed for go:embed directive
-	"fmt"
 	"net/url"
 	"strings"
 	"text/template"
@@ -27,6 +26,7 @@ import (
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/opendatahub-io/odh-platform/pkg/schema"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
+	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,7 +46,7 @@ func NewStaticTemplateLoader(audience []string) spi.AuthConfigTemplateLoader {
 	return &staticTemplateLoader{audience: audience}
 }
 
-func (s *staticTemplateLoader) Load(ctx context.Context, authType spi.AuthType, key types.NamespacedName) (authorinov1beta2.AuthConfig, error) {
+func (s *staticTemplateLoader) Load(_ context.Context, authType spi.AuthType, key types.NamespacedName) (authorinov1beta2.AuthConfig, error) {
 	authConfig := authorinov1beta2.AuthConfig{}
 
 	templateData := map[string]interface{}{
@@ -54,34 +54,38 @@ func (s *staticTemplateLoader) Load(ctx context.Context, authType spi.AuthType, 
 		"Audiences": s.audience,
 	}
 
-	template := authConfigTemplateAnonymous
+	templateContent := authConfigTemplateAnonymous
 	if authType == spi.UserDefined {
-		template = authConfigTemplateUserDefined
+		templateContent = authConfigTemplateUserDefined
 	}
 
-	resolvedTemplate, err := s.resolveTemplate(template, templateData)
+	resolvedTemplate, err := s.resolveTemplate(templateContent, templateData)
 	if err != nil {
-		return authConfig, fmt.Errorf("could not resovle auth template. cause %w", err)
+		return authConfig, errors.Wrap(err, "could not resolve auth template")
 	}
+
 	err = schema.ConvertToStructuredResource(resolvedTemplate, &authConfig)
 	if err != nil {
-		return authConfig, fmt.Errorf("could not load auth template. cause %w", err)
+		return authConfig, errors.Wrap(err, "could not load auth template")
 	}
+
 	return authConfig, nil
 }
 
 func (s *staticTemplateLoader) resolveTemplate(tmpl []byte, data map[string]interface{}) ([]byte, error) {
 	engine, err := template.New("authconfig").Parse(string(tmpl))
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, errors.Wrap(err, "could not create template engine")
 	}
+
 	buf := new(bytes.Buffer)
+
 	err = engine.Execute(buf, data)
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, errors.Wrap(err, "could not execute template")
 	}
-	return buf.Bytes(), nil
 
+	return buf.Bytes(), nil
 }
 
 type configMapTemplateLoader struct {
@@ -89,19 +93,20 @@ type configMapTemplateLoader struct {
 	fallback spi.AuthConfigTemplateLoader
 }
 
-func NewConfigMapTemplateLoader(client client.Client, fallback spi.AuthConfigTemplateLoader) spi.AuthConfigTemplateLoader {
+func NewConfigMapTemplateLoader(cli client.Client, fallback spi.AuthConfigTemplateLoader) spi.AuthConfigTemplateLoader {
 	return &configMapTemplateLoader{
-		client:   client,
+		client:   cli,
 		fallback: fallback,
 	}
 }
 
+// TODO: check "authconfig-template" CM in key.Namespace to see if there is a "spec" to use, construct a AuthConfig object
+// https://issues.redhat.com/browse/RHOAIENG-847
 func (c *configMapTemplateLoader) Load(ctx context.Context, authType spi.AuthType, key types.NamespacedName) (authorinov1beta2.AuthConfig, error) {
-	// TOOD: check "authconfig-template" CM in key.Namespace to see if there is a "spec" to use, construct a AuthConfig object
-	// https://issues.redhat.com/browse/RHOAIENG-847
-
 	// else
-	return c.fallback.Load(ctx, authType, key)
+	ac, err := c.fallback.Load(ctx, authType, key)
+
+	return ac, errors.Wrap(err, "could not load from fallback")
 }
 
 type annotationAuthTypeDetector struct {
@@ -114,13 +119,14 @@ func NewAnnotationAuthTypeDetector(annotation string) spi.AuthTypeDetector {
 	}
 }
 
-func (k *annotationAuthTypeDetector) Detect(ctx context.Context, res *unstructured.Unstructured) (spi.AuthType, error) {
+func (k *annotationAuthTypeDetector) Detect(_ context.Context, res *unstructured.Unstructured) (spi.AuthType, error) {
 	// TODO: review controllers as package for consts
 	if value, exist := res.GetAnnotations()[k.annotation]; exist {
-		if strings.ToLower(value) == "true" {
+		if strings.EqualFold(value, "true") {
 			return spi.UserDefined, nil
 		}
 	}
+
 	return spi.Anonymous, nil
 }
 
@@ -129,7 +135,7 @@ type expressionHostExtractor struct {
 }
 
 func NewExpressionHostExtractor(paths []string) spi.HostExtractor {
-	return &expressionHostExtractor{}
+	return &expressionHostExtractor{paths: paths}
 }
 
 func (k *expressionHostExtractor) Extract(target *unstructured.Unstructured) []string {
@@ -139,26 +145,36 @@ func (k *expressionHostExtractor) Extract(target *unstructured.Unstructured) []s
 		host, found, err := unstructured.NestedString(target.Object, strings.Split(path, ".")...)
 		if err == nil && found {
 			// TODO log err?
-			url, err := url.Parse(host)
+			parsedURL, err := url.Parse(host)
 			if err == nil {
-				hosts = append(hosts, url.Host)
+				hosts = append(hosts, parsedURL.Host)
 			}
 		}
 	}
 
-	return unique(hosts)
+	u := unique(hosts)
+	if len(u) == 0 {
+		return []string{"unknown.host.com"}
+	}
+
+	return u
 }
 
 func unique(in []string) []string {
-	m := map[string]bool{}
+	store := map[string]bool{}
+
 	for _, v := range in {
-		m[v] = true
+		store[v] = true
 	}
-	k := make([]string, len(m))
+
+	keys := make([]string, len(store))
+
 	i := 0
-	for v := range m {
-		k[i] = v
+
+	for v := range store {
+		keys[i] = v
 		i++
 	}
-	return k
+
+	return keys
 }

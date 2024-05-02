@@ -7,7 +7,7 @@ import (
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/opendatahub-io/odh-platform/controllers"
 	"github.com/opendatahub-io/odh-platform/pkg/env"
-	resources "github.com/opendatahub-io/odh-platform/pkg/resource"
+	"github.com/opendatahub-io/odh-platform/pkg/resource"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"github.com/pkg/errors"
 	istiosecv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
@@ -20,14 +20,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewPlatformAuthorizationReconciler(client client.Client, log logr.Logger, authComponent spi.AuthorizationComponent) *PlatformAuthorizationReconciler {
+func NewPlatformAuthorizationReconciler(cli client.Client, log logr.Logger, authComponent spi.AuthorizationComponent) *PlatformAuthorizationReconciler {
 	return &PlatformAuthorizationReconciler{
-		Client:         client,
+		Client:         cli,
 		log:            log,
 		authComponent:  authComponent,
-		typeDetector:   resources.NewAnnotationAuthTypeDetector(controllers.AnnotationAuthEnabled),
-		hostExtractor:  resources.NewExpressionHostExtractor(authComponent.HostPaths),
-		templateLoader: resources.NewConfigMapTemplateLoader(client, resources.NewStaticTemplateLoader(env.GetAuthAudience())),
+		typeDetector:   resource.NewAnnotationAuthTypeDetector(controllers.AnnotationAuthEnabled),
+		hostExtractor:  resource.NewExpressionHostExtractor(authComponent.HostPaths),
+		templateLoader: resource.NewConfigMapTemplateLoader(cli, resource.NewStaticTemplateLoader(env.GetAuthAudience())),
 	}
 }
 
@@ -43,11 +43,12 @@ type PlatformAuthorizationReconciler struct {
 	templateLoader spi.AuthConfigTemplateLoader
 }
 
-// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch
+// +kubebuilder:rbac:groups=authorino.kuadrant.io,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=security.istio.io,resources=authorizationpolicies,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=security.istio.io,resources=peerauthentications,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile ensures that the namespace has all required resources needed to be part of the Service Mesh of Open Data Hub.
 func (r *PlatformAuthorizationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-
 	reconcilers := []reconcileAuthFunc{r.reconcileAuthConfig, r.reconcileAuthPolicy, r.reconcilePeerAuthentication}
 
 	sourceRes := &unstructured.Unstructured{}
@@ -63,9 +64,9 @@ func (r *PlatformAuthorizationReconciler) Reconcile(ctx context.Context, req ctr
 		return ctrl.Result{}, errors.Wrap(err, "failed getting service")
 	}
 
-	r.log.Info("Triggered TestReconcile", "namespace", req.Namespace, "name", req.Name)
-	var errs []error
+	r.log.Info("Triggered Auth Reconcile", "namespace", req.Namespace, "name", req.Name)
 
+	var errs []error
 	for _, reconciler := range reconcilers {
 		errs = append(errs, reconciler(ctx, sourceRes))
 	}
@@ -82,7 +83,7 @@ func (r *PlatformAuthorizationReconciler) SetupWithManager(mgr ctrl.Manager) err
 				Kind:       r.authComponent.CustomResourceType.Kind,
 			},
 		}, builder.OnlyMetadata).
-		// TODO: Add OwnerRef predicator on GVK
+		// TODO: Add OwnerRef predicator on GVK?
 		Owns(&authorinov1beta2.AuthConfig{}).
 		Owns(&istiosecv1beta1.AuthorizationPolicy{}).
 		Owns(&istiosecv1beta1.PeerAuthentication{}).
@@ -91,6 +92,7 @@ func (r *PlatformAuthorizationReconciler) SetupWithManager(mgr ctrl.Manager) err
 
 func targetToOwnerRef(obj *unstructured.Unstructured) metav1.OwnerReference {
 	controller := true
+
 	return metav1.OwnerReference{
 		APIVersion: obj.GetAPIVersion(),
 		Kind:       obj.GetKind(),
