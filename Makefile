@@ -93,7 +93,7 @@ ifneq (, $(shell which podman))
 	CONTAINER_ENGINE = podman
 endif
 
-IMG ?= quay.io/opendatahub-io/$(PROJECT_NAME)
+IMG ?= quay.io/maistra/$(PROJECT_NAME)
 # If the commit is not tagged, use "latest", otherwise use the tag name
 ifeq ($(GIT_TAG), 0)
 	TAG ?= $(VERSION)
