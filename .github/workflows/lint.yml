@@ -11,14 +11,14 @@ jobs:
     env:
       REPOSITORY: ${{ github.repository }}
     steps:
-      - name: Set up Go env
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
           path: go/src/github.com/${{ env.REPOSITORY }}
+      - name: Set up Go env
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
       - name: Set $GOPATH
         run: |
           echo "GOPATH=${{ github.workspace }}/go" >> $GITHUB_ENV
