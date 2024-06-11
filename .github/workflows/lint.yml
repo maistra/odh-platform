@@ -14,7 +14,7 @@ jobs:
       - name: Set up Go env
         uses: actions/setup-go@v5
         with:
-          go-version: '1.20'
+          go-version-file: go.mod
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
@@ -30,7 +30,8 @@ jobs:
           make deps generate
         shell: bash
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v4
         with:
           version: v1.53
+          args: --sort-results
           working-directory: go/src/github.com/${{ env.REPOSITORY }}
