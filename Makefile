@@ -114,6 +114,25 @@ image-push: ## Push container image
 .PHONY: image
 image: image-build image-push ## Build and push docker image with the manager.
 
+.PHONY: update-manifests
+update-manifests: ## Update image tags in manifests
+	sed -i 's/newTag: .*/newTag: $(VERSION)/' config/manager/kustomization.yaml
+	@echo "After update:"
+	@sed -n '/newTag:/p' config/manager/kustomization.yaml
+
+.PHONY: release
+release: ## Create a new release
+	@read -p "Enter new version (e.g., vX.Y.Z): " VERSION && \
+	$(MAKE) update-manifests VERSION=$$VERSION && \
+	git add config/ && \
+	git commit -m "release: $$VERSION" && \
+	git tag -a "$$VERSION" -m "Release $$VERSION" && \
+	git push origin --tags && \
+	$(MAKE) update-manifests VERSION="latest" && \
+	git add config/ && \
+	git commit -m "release: next iteration"
+	git push origin main
+
 ##@ Deployment
 
 ifndef ignore-not-found
