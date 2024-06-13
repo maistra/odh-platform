@@ -5,5 +5,5 @@ resources:
 - service.yaml
 images:
 - name: controller
-  newName: quay.io/aslakknutsen/odh-platform
+  newName: quay.io/maistra-dev/odh-platform
   newTag: latest
