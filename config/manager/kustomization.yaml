@@ -6,4 +6,4 @@ resources:
 images:
 - name: controller
   newName: quay.io/maistra-dev/odh-platform
-  newTag: latest
+  newTag: v0.0.1
