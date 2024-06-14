@@ -127,11 +127,10 @@ release: ## Create a new release
 	git add config/ && \
 	git commit -m "release: $$VERSION" && \
 	git tag -a "$$VERSION" -m "Release $$VERSION" && \
-	git push origin --tags && \
 	$(MAKE) update-manifests VERSION="latest" && \
 	git add config/ && \
 	git commit -m "release: next iteration"
-	git push origin main
+	@echo "Done, don't forget to push. When pushing, add --tags to your call."
 
 ##@ Deployment
 
