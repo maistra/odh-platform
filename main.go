@@ -68,22 +68,7 @@ func main() {
 		setupLog.Error(err, "unable to load config from "+env.GetConfigFile())
 		os.Exit(1)
 	}
-	/*
-		components := []spi.AuthorizationComponent{
-			{
-				CustomResourceType: schema.GroupVersionKind{
-					Group:   "modelregistry.opendatahub.io",
-					Version: "v1alpha1",
-					Kind:    "ModelRegistry",
-				},
-				WorkloadSelector: map[string]string{
-					"component": "model-registry",
-				},
-				Ports:     []string{"8080", "9090"},
-				HostPaths: []string{"status.url"},
-			},
-		}
-	*/
+
 	for _, component := range components {
 		if err = authorization.NewPlatformAuthorizationReconciler(mgr.GetClient(), ctrlLog, component).
 			SetupWithManager(mgr); err != nil {

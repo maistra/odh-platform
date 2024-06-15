@@ -6,6 +6,7 @@ import (
 
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/opendatahub-io/odh-platform/pkg/env"
+	"github.com/opendatahub-io/odh-platform/pkg/label"
 	"github.com/pkg/errors"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,7 +65,6 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthConfig(ctx context.Contex
 
 			found.Spec = *desired.Spec.DeepCopy()
 			found.ObjectMeta.Labels = desired.ObjectMeta.Labels
-			// TODO: Merge Annotations?
 
 			return errors.Wrap(r.Update(ctx, found), "failed updating AuthConfig")
 		}); err != nil {
@@ -89,8 +89,8 @@ func createAuthConfig(templ authorinov1beta2.AuthConfig, hosts []string, target 
 	labels[authKey] = authVal
 	templ.Name = target.GetName()
 	templ.Namespace = target.GetNamespace()
-	templ.Labels = labels                   // TODO: Where to fetch lables from
-	templ.Annotations = map[string]string{} // TODO: where to fetch annotations from? part-of "service comp" or "platform?"
+	templ.Labels = label.ApplyStandard(target.GetLabels())
+	templ.Annotations = map[string]string{}
 	templ.Spec.Hosts = hosts
 	templ.OwnerReferences = []metav1.OwnerReference{
 		targetToOwnerRef(target),
@@ -99,7 +99,6 @@ func createAuthConfig(templ authorinov1beta2.AuthConfig, hosts []string, target 
 	return &templ, nil
 }
 
-// TODO: We have multiple Controllers adding Spec.Hosts. Compare specifically that the ones we need are in the list, if more assume equal?
 func CompareAuthConfigs(m1, m2 *authorinov1beta2.AuthConfig) bool {
 	return reflect.DeepEqual(m1.ObjectMeta.Labels, m2.ObjectMeta.Labels) &&
 		reflect.DeepEqual(m1.Spec, m2.Spec)

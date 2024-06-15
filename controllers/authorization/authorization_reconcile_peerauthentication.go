@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/opendatahub-io/odh-platform/pkg/label"
 	"github.com/pkg/errors"
 	"istio.io/api/security/v1beta1"
 	istiotypev1beta1 "istio.io/api/type/v1beta1"
@@ -49,7 +50,6 @@ func (r *PlatformAuthorizationReconciler) reconcilePeerAuthentication(ctx contex
 
 			found.Spec = *desired.Spec.DeepCopy()
 			found.ObjectMeta.Labels = desired.ObjectMeta.Labels
-			// TODO: Merge Annotations?
 
 			return errors.Wrap(r.Update(ctx, found), "failed updating PeerAuthentication")
 		}); err != nil {
@@ -65,8 +65,8 @@ func createPeerAuthentication(workloadSelector map[string]string, target *unstru
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        target.GetName(),
 			Namespace:   target.GetNamespace(),
-			Labels:      target.GetLabels(),  // TODO: Where to fetch lables from
-			Annotations: map[string]string{}, // TODO: where to fetch annotations from? part-of "service comp" or "platform?"
+			Labels:      label.ApplyStandard(target.GetLabels()),
+			Annotations: map[string]string{},
 			OwnerReferences: []metav1.OwnerReference{
 				targetToOwnerRef(target),
 			},

@@ -56,7 +56,7 @@ func (r *PlatformAuthorizationReconciler) Reconcile(ctx context.Context, req ctr
 
 	if err := r.Client.Get(ctx, req.NamespacedName, sourceRes); err != nil {
 		if apierrs.IsNotFound(err) {
-			r.log.Info("Stopping reconciliation")
+			r.log.Info("stopping reconciliation")
 
 			return ctrl.Result{}, nil
 		}
@@ -64,7 +64,7 @@ func (r *PlatformAuthorizationReconciler) Reconcile(ctx context.Context, req ctr
 		return ctrl.Result{}, errors.Wrap(err, "failed getting service")
 	}
 
-	r.log.Info("Triggered Auth Reconcile", "namespace", req.Namespace, "name", req.Name)
+	r.log.Info("triggered auth reconcile", "namespace", req.Namespace, "name", req.Name)
 
 	var errs []error
 	for _, reconciler := range reconcilers {
@@ -83,7 +83,6 @@ func (r *PlatformAuthorizationReconciler) SetupWithManager(mgr ctrl.Manager) err
 				Kind:       r.authComponent.CustomResourceType.Kind,
 			},
 		}, builder.OnlyMetadata).
-		// TODO: Add OwnerRef predicator on GVK?
 		Owns(&authorinov1beta2.AuthConfig{}).
 		Owns(&istiosecv1beta1.AuthorizationPolicy{}).
 		Owns(&istiosecv1beta1.PeerAuthentication{}).

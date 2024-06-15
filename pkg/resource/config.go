@@ -36,14 +36,14 @@ func LoadConfig(path string) ([]spi.AuthorizationComponent, error) {
 		return []spi.AuthorizationComponent{}, errors.Wrap(err, "could not read config file "+path)
 	}
 
-	var capabilities capabilities
+	var caps capabilities
 
-	err = json.Unmarshal(content, &capabilities)
+	err = json.Unmarshal(content, &caps)
 	if err != nil {
 		return []spi.AuthorizationComponent{}, errors.Wrap(err, "could not parse json content of "+path)
 	}
 
-	for _, v := range capabilities.Authorization {
+	for _, v := range caps.Authorization {
 		components = append(components, v...)
 	}
 
