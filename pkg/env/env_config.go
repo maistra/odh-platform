@@ -14,7 +14,7 @@ const (
 	ConfigCapabilities     = "CONFIG_CAPABILITIES"
 )
 
-func GetAuthorinoLabel() (key, value string, err error) {
+func GetAuthorinoLabel() (key, value string, err error) { //nolint:nonamedreturns //reason: having named key-value makes the function easier to understand
 	label := getEnvOr(AuthorinoLabelSelector, "security.opendatahub.io/authorization-group=default")
 	keyValue := strings.Split(label, "=")
 
