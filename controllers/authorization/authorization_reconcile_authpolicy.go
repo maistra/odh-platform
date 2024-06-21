@@ -107,7 +107,16 @@ func createAuthorizationPolicy(ports []string, workloadSelector map[string]strin
 	return policy
 }
 
-func CompareAuthPolicies(m1, m2 *istiosecv1beta1.AuthorizationPolicy) bool {
-	return reflect.DeepEqual(m1.ObjectMeta.Labels, m2.ObjectMeta.Labels) &&
-		reflect.DeepEqual(m1.Spec, m2.Spec)
+func CompareAuthPolicies(authzPolicy1, authzPolicy2 *istiosecv1beta1.AuthorizationPolicy) bool {
+	// .Spec contains MessageState from protobuf which has pragma.DoNotCopy (empty mutex slice)
+	// go vet complains about copying mutex when calling DeepEquals on passed variables, when it tries to access it.
+	// DeepCopy-ing solves this problem as it's using proto.Clone underneath. This implementation recreates mutex instead of
+	// directly copying.
+	// Alternatively we could break DeepEquals calls to individual .Spec exported fields, but that might mean ensuring we
+	// always compare all relevant fields when API changes.
+	authzSpec1 := authzPolicy1.Spec.DeepCopy()
+	authzSpec2 := authzPolicy2.Spec.DeepCopy()
+
+	return reflect.DeepEqual(authzPolicy1.ObjectMeta.Labels, authzPolicy2.ObjectMeta.Labels) &&
+		reflect.DeepEqual(authzSpec1, authzSpec2)
 }

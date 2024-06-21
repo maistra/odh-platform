@@ -82,7 +82,16 @@ func createPeerAuthentication(workloadSelector map[string]string, target *unstru
 	return policy
 }
 
-func ComparePeerAuthentication(m1, m2 *istiosecv1beta1.PeerAuthentication) bool {
-	return reflect.DeepEqual(m1.ObjectMeta.Labels, m2.ObjectMeta.Labels) &&
-		reflect.DeepEqual(m1.Spec, m2.Spec)
+func ComparePeerAuthentication(peerAuth1, peerAuth2 *istiosecv1beta1.PeerAuthentication) bool {
+	// .Spec contains MessageState from protobuf which has pragma.DoNotCopy (empty mutex slice)
+	// go vet complains about copying mutex when calling DeepEquals on passed variables, when it tries to access it.
+	// DeepCopy-ing solves this problem as it's using proto.Clone underneath. This implementation recreates mutex instead of
+	// directly copying.
+	// Alternatively we could break DeepEquals calls to individual .Spec exported fields, but that might mean ensuring we
+	// always compare all relevant fields when API changes.
+	peerSpec1 := peerAuth1.Spec.DeepCopy()
+	peerSpec2 := peerAuth2.Spec.DeepCopy()
+
+	return reflect.DeepEqual(peerAuth1.ObjectMeta.Labels, peerAuth2.ObjectMeta.Labels) &&
+		reflect.DeepEqual(peerSpec1, peerSpec2)
 }
