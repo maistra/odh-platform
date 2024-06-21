@@ -2,10 +2,10 @@ package authorization
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/opendatahub-io/odh-platform/pkg/label"
-	"github.com/pkg/errors"
 	"istio.io/api/security/v1beta1"
 	istiotypev1beta1 "istio.io/api/type/v1beta1"
 	istiosecv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (r *PlatformAuthorizationReconciler) reconcilePeerAuthentication(ctx context.Context, target *unstructured.Unstructured) error {
@@ -27,14 +28,14 @@ func (r *PlatformAuthorizationReconciler) reconcilePeerAuthentication(ctx contex
 	}, found)
 	if err != nil {
 		if apierrs.IsNotFound(err) {
-			err = r.Create(ctx, desired)
-			if err != nil && !apierrs.IsAlreadyExists(err) {
-				return errors.Wrap(err, "unable to create PeerAuthentication")
+			errCreate := r.Create(ctx, desired)
+			if client.IgnoreAlreadyExists(errCreate) != nil {
+				return fmt.Errorf("unable to create PeerAuthentication: %w", errCreate)
 			}
 
 			justCreated = true
 		} else {
-			return errors.Wrap(err, "unable to fetch PeerAuthentication")
+			return fmt.Errorf("unable to fetch PeerAuthentication: %w", err)
 		}
 	}
 
@@ -45,15 +46,19 @@ func (r *PlatformAuthorizationReconciler) reconcilePeerAuthentication(ctx contex
 				Name:      desired.Name,
 				Namespace: desired.Namespace,
 			}, found); err != nil {
-				return errors.Wrapf(err, "failed getting PeerAuthentication %s in namespace %s", desired.Name, desired.Namespace)
+				return fmt.Errorf("failed getting PeerAuthentication %s in namespace %s: %w", desired.Name, desired.Namespace, err)
 			}
 
 			found.Spec = *desired.Spec.DeepCopy()
 			found.ObjectMeta.Labels = desired.ObjectMeta.Labels
 
-			return errors.Wrap(r.Update(ctx, found), "failed updating PeerAuthentication")
+			if errUpdate := r.Update(ctx, found); errUpdate != nil {
+				return fmt.Errorf("failed updating PeerAuthentication: %w", errUpdate)
+			}
+
+			return nil
 		}); err != nil {
-			return errors.Wrap(err, "unable to reconcile the PeerAuthentication")
+			return fmt.Errorf("unable to reconcile the PeerAuthentication: %w", err)
 		}
 	}
 

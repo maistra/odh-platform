@@ -1,4 +1,10 @@
 linters-settings:
+  depguard:
+    rules:
+      errors-handling:
+        deny:
+          - pkg: "github.com/pkg/errors"
+            desc: "use built-in errors/fmt packages"
   govet:
     check-shadowing: true
   golint:
@@ -56,7 +62,6 @@ linters-settings:
 linters:
   enable-all: true
   disable:
-    - depguard
     - exhaustruct
     - forbidigo
     - gofmt # We use goimports and when using them both leads to contradicting errors
@@ -70,17 +75,18 @@ linters:
     - godox
 
     # Deprecated
-    - deadcode # Deprecated
-    - exhaustivestruct # Deprecated
-    - golint # Deprecated
-    - ifshort # Deprecated
-    - interfacer # Deprecated
-    - maligned # Deprecated
-    - gomnd # Deprecated
-    - nosnakecase # Deprecated
-    - scopelint # Deprecated
-    - structcheck # Deprecated
-    - varcheck # Deprecated
+    - deadcode
+    - exhaustivestruct
+    - goerr113
+    - golint
+    - ifshort
+    - interfacer
+    - maligned
+    - gomnd
+    - nosnakecase
+    - scopelint
+    - structcheck
+    - varcheck
 
 run:
   deadline: 10m

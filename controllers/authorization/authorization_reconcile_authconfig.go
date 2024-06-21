@@ -2,35 +2,36 @@ package authorization
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/opendatahub-io/odh-platform/pkg/env"
 	"github.com/opendatahub-io/odh-platform/pkg/label"
-	"github.com/pkg/errors"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (r *PlatformAuthorizationReconciler) reconcileAuthConfig(ctx context.Context, target *unstructured.Unstructured) error {
 	authType, err := r.typeDetector.Detect(ctx, target)
 	if err != nil {
-		return errors.Wrap(err, "could not detect authtype")
+		return fmt.Errorf("could not detect authtype: %w", err)
 	}
 
 	templ, err := r.templateLoader.Load(ctx, authType, types.NamespacedName{Namespace: target.GetNamespace(), Name: target.GetName()})
 	if err != nil {
-		return errors.Wrap(err, "could not load template "+string(authType))
+		return fmt.Errorf("could not load template %s: %w", authType, err)
 	}
 
 	hosts := r.hostExtractor.Extract(target)
 
 	desired, err := createAuthConfig(templ, hosts, target)
 	if err != nil {
-		return errors.Wrap(err, "could not create destired AuthConfig")
+		return fmt.Errorf("could not create destired AuthConfig: %w", err)
 	}
 
 	found := &authorinov1beta2.AuthConfig{}
@@ -42,14 +43,14 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthConfig(ctx context.Contex
 	}, found)
 	if err != nil {
 		if apierrs.IsNotFound(err) {
-			err = r.Create(ctx, desired)
-			if err != nil && !apierrs.IsAlreadyExists(err) {
-				return errors.Wrap(err, "unable to create AuthConfig")
+			errCreate := r.Create(ctx, desired)
+			if client.IgnoreAlreadyExists(errCreate) != nil {
+				return fmt.Errorf("unable to create AuthConfig: %w", errCreate)
 			}
 
 			justCreated = true
 		} else {
-			return errors.Wrap(err, "unable to fetch AuthConfig")
+			return fmt.Errorf("unable to fetch AuthConfig: %w", err)
 		}
 	}
 
@@ -60,15 +61,19 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthConfig(ctx context.Contex
 				Name:      desired.Name,
 				Namespace: desired.Namespace,
 			}, found); err != nil {
-				return errors.Wrapf(err, "failed getting AuthConfig %s in namespace %s", desired.Name, desired.Namespace)
+				return fmt.Errorf("failed getting AuthConfig %s in namespace %s: %w", desired.Name, desired.Namespace, err)
 			}
 
 			found.Spec = *desired.Spec.DeepCopy()
 			found.ObjectMeta.Labels = desired.ObjectMeta.Labels
 
-			return errors.Wrap(r.Update(ctx, found), "failed updating AuthConfig")
+			if errUpdate := r.Update(ctx, found); errUpdate != nil {
+				return fmt.Errorf("failed updating AuthConfig: %w", errUpdate)
+			}
+
+			return nil
 		}); err != nil {
-			return errors.Wrap(err, "unable to reconcile the Authorino AuthConfig")
+			return fmt.Errorf("unable to reconcile the Authorino AuthConfig: %w", err)
 		}
 	}
 
@@ -78,7 +83,7 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthConfig(ctx context.Contex
 func createAuthConfig(templ authorinov1beta2.AuthConfig, hosts []string, target *unstructured.Unstructured) (*authorinov1beta2.AuthConfig, error) {
 	authKey, authVal, err := env.GetAuthorinoLabel()
 	if err != nil {
-		return &authorinov1beta2.AuthConfig{}, errors.Wrap(err, "could not get authorino label selcetor")
+		return &authorinov1beta2.AuthConfig{}, fmt.Errorf("could not get authorino label selector: %w", err)
 	}
 
 	labels := target.GetLabels()

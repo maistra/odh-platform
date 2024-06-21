@@ -2,6 +2,7 @@ package authorization
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
@@ -9,7 +10,6 @@ import (
 	"github.com/opendatahub-io/odh-platform/pkg/env"
 	"github.com/opendatahub-io/odh-platform/pkg/resource"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
-	"github.com/pkg/errors"
 	istiosecv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,12 +56,12 @@ func (r *PlatformAuthorizationReconciler) Reconcile(ctx context.Context, req ctr
 
 	if err := r.Client.Get(ctx, req.NamespacedName, sourceRes); err != nil {
 		if apierrs.IsNotFound(err) {
-			r.log.Info("stopping reconciliation")
+			r.log.Info("skipping reconcile. resource does not exist anymore", "resource", sourceRes.GroupVersionKind().String())
 
 			return ctrl.Result{}, nil
 		}
 
-		return ctrl.Result{}, errors.Wrap(err, "failed getting service")
+		return ctrl.Result{}, fmt.Errorf("failed getting service: %w", err)
 	}
 
 	r.log.Info("triggered auth reconcile", "namespace", req.Namespace, "name", req.Name)

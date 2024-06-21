@@ -2,11 +2,11 @@ package authorization
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/opendatahub-io/odh-platform/pkg/env"
 	"github.com/opendatahub-io/odh-platform/pkg/label"
-	"github.com/pkg/errors"
 	"istio.io/api/security/v1beta1"
 	istiotypev1beta1 "istio.io/api/type/v1beta1"
 	istiosecv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (r *PlatformAuthorizationReconciler) reconcileAuthPolicy(ctx context.Context, target *unstructured.Unstructured) error {
@@ -28,14 +29,14 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthPolicy(ctx context.Contex
 	}, found)
 	if err != nil {
 		if apierrs.IsNotFound(err) {
-			err = r.Create(ctx, desired)
-			if err != nil && !apierrs.IsAlreadyExists(err) {
-				return errors.Wrap(err, "unable to create AuthorizationPolicy")
+			errCreate := r.Create(ctx, desired)
+			if client.IgnoreAlreadyExists(errCreate) != nil {
+				return fmt.Errorf("unable to create AuthorizationPolicy: %w", errCreate)
 			}
 
 			justCreated = true
 		} else {
-			return errors.Wrap(err, "unable to fetch AuthorizationPolicy")
+			return fmt.Errorf("unable to fetch AuthorizationPolicy: %w", err)
 		}
 	}
 
@@ -46,15 +47,19 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthPolicy(ctx context.Contex
 				Name:      desired.Name,
 				Namespace: desired.Namespace,
 			}, found); err != nil {
-				return errors.Wrapf(err, "failed getting AuthorizationPolicy %s in namespace %s", desired.Name, desired.Namespace)
+				return fmt.Errorf("failed getting AuthorizationPolicy %s in namespace %s: %w", desired.Name, desired.Namespace, err)
 			}
 
 			found.Spec = *desired.Spec.DeepCopy()
 			found.ObjectMeta.Labels = desired.ObjectMeta.Labels
 
-			return errors.Wrap(r.Update(ctx, found), "failed updating AuthorizationPolicy")
+			if errUpdate := r.Update(ctx, found); errUpdate != nil {
+				return fmt.Errorf("failed updating AuthorizationPolicy: %w", errUpdate)
+			}
+
+			return nil
 		}); err != nil {
-			return errors.Wrap(err, "unable to reconcile the AuthorizationPolicy")
+			return fmt.Errorf("unable to reconcile the AuthorizationPolicy: %w", err)
 		}
 	}
 

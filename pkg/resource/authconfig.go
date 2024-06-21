@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed" // needed for go:embed directive
+	"fmt"
 	"net/url"
 	"strings"
 	"text/template"
@@ -26,7 +27,6 @@ import (
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/opendatahub-io/odh-platform/pkg/schema"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
-	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -61,12 +61,12 @@ func (s *staticTemplateLoader) Load(_ context.Context, authType spi.AuthType, ke
 
 	resolvedTemplate, err := s.resolveTemplate(templateContent, templateData)
 	if err != nil {
-		return authConfig, errors.Wrap(err, "could not resolve auth template")
+		return authConfig, fmt.Errorf("could not resolve auth template: %w", err)
 	}
 
 	err = schema.ConvertToStructuredResource(resolvedTemplate, &authConfig)
 	if err != nil {
-		return authConfig, errors.Wrap(err, "could not load auth template")
+		return authConfig, fmt.Errorf("could not load auth template: %w", err)
 	}
 
 	return authConfig, nil
@@ -75,14 +75,14 @@ func (s *staticTemplateLoader) Load(_ context.Context, authType spi.AuthType, ke
 func (s *staticTemplateLoader) resolveTemplate(tmpl []byte, data map[string]interface{}) ([]byte, error) {
 	engine, err := template.New("authconfig").Parse(string(tmpl))
 	if err != nil {
-		return []byte{}, errors.Wrap(err, "could not create template engine")
+		return []byte{}, fmt.Errorf("could not create template engine: %w", err)
 	}
 
 	buf := new(bytes.Buffer)
 
 	err = engine.Execute(buf, data)
 	if err != nil {
-		return []byte{}, errors.Wrap(err, "could not execute template")
+		return []byte{}, fmt.Errorf("could not execute template: %w", err)
 	}
 
 	return buf.Bytes(), nil
@@ -106,7 +106,7 @@ func (c *configMapTemplateLoader) Load(ctx context.Context, authType spi.AuthTyp
 	// else
 	ac, err := c.fallback.Load(ctx, authType, key)
 
-	return ac, errors.Wrap(err, "could not load from fallback")
+	return ac, fmt.Errorf("could not load from fallback: %w", err)
 }
 
 type annotationAuthTypeDetector struct {

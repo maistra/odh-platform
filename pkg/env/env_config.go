@@ -1,10 +1,9 @@
 package env
 
 import (
+	"fmt"
 	"os"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -19,7 +18,7 @@ func GetAuthorinoLabel() (key, value string, err error) { //nolint:nonamedreturn
 	keyValue := strings.Split(label, "=")
 
 	if len(keyValue) != 2 {
-		return "", "", errors.Errorf("Expected authorino label to be in key=value format, got [%s]", label)
+		return "", "", fmt.Errorf("expected authorino label to be in key=value format, got [%s]", label)
 	}
 
 	return keyValue[0], keyValue[1], nil

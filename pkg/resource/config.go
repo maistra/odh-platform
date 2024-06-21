@@ -2,10 +2,10 @@ package resource
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
-	"github.com/pkg/errors"
 )
 
 type capabilities struct {
@@ -33,14 +33,14 @@ func LoadConfig(path string) ([]spi.AuthorizationComponent, error) {
 	*/
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return []spi.AuthorizationComponent{}, errors.Wrap(err, "could not read config file "+path)
+		return []spi.AuthorizationComponent{}, fmt.Errorf("could not read config file [%s]: %w", path, err)
 	}
 
 	var caps capabilities
 
 	err = json.Unmarshal(content, &caps)
 	if err != nil {
-		return []spi.AuthorizationComponent{}, errors.Wrap(err, "could not parse json content of "+path)
+		return []spi.AuthorizationComponent{}, fmt.Errorf("could not parse json content of [%s]: %w", path, err)
 	}
 
 	for _, v := range caps.Authorization {
