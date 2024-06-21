@@ -1,4 +1,4 @@
-package controllers
+package env
 
 import (
 	"os"
@@ -8,32 +8,28 @@ import (
 )
 
 const (
-	MeshNamespaceEnv       = "MESH_NAMESPACE"
-	ControlPlaneEnv        = "CONTROL_PLANE_NAME"
-	AuthorinoLabelSelector = "AUTHORINO_LABEL"
 	AuthAudience           = "AUTH_AUDIENCE"
+	AuthProvider           = "AUTH_PROVIDER"
+	AuthorinoLabelSelector = "AUTHORINO_LABEL"
+	ConfigCapabilities     = "CONFIG_CAPABILITIES"
 )
 
-func getControlPlaneName() string {
-	return getEnvOr(ControlPlaneEnv, "basic")
-}
-
-func getMeshNamespace() string {
-	return getEnvOr(MeshNamespaceEnv, "istio-system")
-}
-
-func getAuthorinoLabel() ([]string, error) {
+func GetAuthorinoLabel() (key, value string, err error) {
 	label := getEnvOr(AuthorinoLabelSelector, "security.opendatahub.io/authorization-group=default")
 	keyValue := strings.Split(label, "=")
 
 	if len(keyValue) != 2 {
-		return nil, errors.Errorf("Expected authorino label to be in key=value format, got [%s]", label)
+		return "", "", errors.Errorf("Expected authorino label to be in key=value format, got [%s]", label)
 	}
 
-	return keyValue, nil
+	return keyValue[0], keyValue[1], nil
 }
 
-func getAuthAudience() []string {
+func GetAuthProvider() string {
+	return getEnvOr(AuthProvider, "opendatahub-auth-provider")
+}
+
+func GetAuthAudience() []string {
 	aud := getEnvOr(AuthAudience, "https://kubernetes.default.svc")
 	audiences := strings.Split(aud, ",")
 
@@ -42,6 +38,10 @@ func getAuthAudience() []string {
 	}
 
 	return audiences
+}
+
+func GetConfigFile() string {
+	return getEnvOr(ConfigCapabilities, "/tmp/capabilities")
 }
 
 func getEnvOr(key, defaultValue string) string {

@@ -5,21 +5,18 @@ go 1.20
 require (
 	github.com/go-logr/logr v1.3.0
 	github.com/kuadrant/authorino v0.17.0
-	github.com/openshift/api v0.0.0-20230213134911-7ba313770556 // relese-4.12
 	go.uber.org/zap v1.25.0
 	k8s.io/api v0.28.3
 	k8s.io/apiextensions-apiserver v0.28.3
 	k8s.io/apimachinery v0.28.3
 	k8s.io/client-go v0.28.3
 	k8s.io/code-generator v0.28.3
-	maistra.io/api v0.0.0-20221103173341-6ef6ed929778
 	sigs.k8s.io/controller-runtime v0.16.3
 	sigs.k8s.io/controller-tools v0.13.0
 )
 
 // Testing deps
 require (
-	github.com/manifestival/manifestival v0.7.2
 	github.com/onsi/ginkgo/v2 v2.11.0
 	github.com/onsi/gomega v1.27.10
 )
@@ -35,7 +32,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
-	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect

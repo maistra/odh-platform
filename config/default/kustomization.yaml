@@ -6,7 +6,7 @@ resources:
   - ../manager
 
 # Adds namespace to all resources.
-namespace: odh-platform
+namespace: opendatahub
 
 namePrefix: odh-platform-
 
