@@ -9,7 +9,7 @@ import (
 
 var _ = Describe("Config functions", Label(labels.Unit), func() {
 
-	FWhen("Load", func() {
+	PWhen("Load", func() {
 
 		It("should find all files", func() {
 
