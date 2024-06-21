@@ -28,8 +28,6 @@ import (
 var (
 	cli     client.Client
 	envTest *envtest.Environment
-	ctx     context.Context
-	cancel  context.CancelFunc
 )
 
 var testScheme = runtime.NewScheme()
@@ -39,11 +37,10 @@ func TestController(t *testing.T) {
 	RunSpecs(t, "Controller & Webhook Suite")
 }
 
-var _ = SynchronizedBeforeSuite(func() {
+var _ = SynchronizedBeforeSuite(func(ctx context.Context) {
 	if !Label(labels.EnvTest).MatchesLabelFilter(GinkgoLabelFilter()) {
 		return
 	}
-	ctx, cancel = context.WithCancel(context.TODO())
 
 	opts := zap.Options{
 		Development: true,
@@ -105,19 +102,9 @@ var _ = SynchronizedAfterSuite(func() {}, func() {
 		return
 	}
 	By("Tearing down the test environment")
-	cancel()
 	Expect(envTest.Stop()).To(Succeed())
 })
 
 func loadCRDs() []*v1.CustomResourceDefinition {
-	/*
-		smmYaml, err := maistramanifests.ReadManifest("maistra.io_servicemeshmembers.yaml")
-		Expect(err).NotTo(HaveOccurred())
-
-		crd := &v1.CustomResourceDefinition{}
-
-		err = controllers.ConvertToStructuredResource(smmYaml, crd)
-		Expect(err).NotTo(HaveOccurred())
-	*/
 	return []*v1.CustomResourceDefinition{}
 }
