@@ -1,4 +1,4 @@
-package controllers_test
+package authorization_test
 
 import (
 	"context"
@@ -8,13 +8,15 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/opendatahub-io/odh-platform/controllers"
+	"github.com/opendatahub-io/odh-platform/controllers/authorization"
+	pschema "github.com/opendatahub-io/odh-platform/pkg/schema"
+	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"github.com/opendatahub-io/odh-platform/test/labels"
 	"go.uber.org/zap/zapcore"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	maistramanifests "maistra.io/api/manifests"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -26,8 +28,6 @@ import (
 var (
 	cli     client.Client
 	envTest *envtest.Environment
-	ctx     context.Context
-	cancel  context.CancelFunc
 )
 
 var testScheme = runtime.NewScheme()
@@ -37,11 +37,10 @@ func TestController(t *testing.T) {
 	RunSpecs(t, "Controller & Webhook Suite")
 }
 
-var _ = SynchronizedBeforeSuite(func() {
+var _ = SynchronizedBeforeSuite(func(ctx context.Context) {
 	if !Label(labels.EnvTest).MatchesLabelFilter(GinkgoLabelFilter()) {
 		return
 	}
-	ctx, cancel = context.WithCancel(context.TODO())
 
 	opts := zap.Options{
 		Development: true,
@@ -64,7 +63,7 @@ var _ = SynchronizedBeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	controllers.RegisterSchemes(testScheme)
+	pschema.RegisterSchemes(testScheme)
 	utilruntime.Must(v1.AddToScheme(testScheme))
 
 	cli, err = client.New(cfg, client.Options{Scheme: testScheme})
@@ -80,11 +79,16 @@ var _ = SynchronizedBeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	err = (&controllers.PlatformAuthorizationReconciler{
-		Client: cli,
-		Log:    ctrl.Log.WithName("controllers").WithName("platform"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr)
+	err = authorization.NewPlatformAuthorizationReconciler(
+		cli,
+		ctrl.Log.WithName("controllers").WithName("platform"),
+		spi.AuthorizationComponent{
+			CustomResourceType: schema.GroupVersionKind{Version: "v1", Kind: "service"},
+			WorkloadSelector:   map[string]string{},
+			Ports:              []string{},
+			HostPaths:          []string{"status.url"},
+		},
+	).SetupWithManager(mgr)
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {
@@ -98,18 +102,9 @@ var _ = SynchronizedAfterSuite(func() {}, func() {
 		return
 	}
 	By("Tearing down the test environment")
-	cancel()
 	Expect(envTest.Stop()).To(Succeed())
 })
 
 func loadCRDs() []*v1.CustomResourceDefinition {
-	smmYaml, err := maistramanifests.ReadManifest("maistra.io_servicemeshmembers.yaml")
-	Expect(err).NotTo(HaveOccurred())
-
-	crd := &v1.CustomResourceDefinition{}
-
-	err = controllers.ConvertToStructuredResource(smmYaml, crd)
-	Expect(err).NotTo(HaveOccurred())
-
-	return []*v1.CustomResourceDefinition{crd}
+	return []*v1.CustomResourceDefinition{}
 }

@@ -16,13 +16,16 @@ all: tools lint test build
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
+.PHONY: clean
+clean: ## Purges build artifacts
+	@rm -rf $(LOCALBIN)
+
 ##@ Development
 
 .PHONY: generate
 generate: tools ## Generates required resources for the controller to work properly (see config/ folder)
 	$(LOCALBIN)/controller-gen rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	$(call fetch-external-crds,github.com/kuadrant/authorino,api/v1beta1)
-	$(call fetch-external-crds,github.com/openshift/api,route/v1)
 
 SRC_DIRS:=./controllers ./test
 SRCS:=$(shell find ${SRC_DIRS} -name "*.go")
@@ -33,7 +36,7 @@ format: $(SRCS) ## Removes unneeded imports and formats source code
 	$(LOCALBIN)/goimports -l -w -e $(SRC_DIRS) $(TEST_DIRS)
 
 .PHONY: lint
-lint: tools ## Concurrently runs a whole bunch of static analysis tools
+lint: tools format ## Concurrently runs a whole bunch of static analysis tools
 	$(call header,"Running a whole bunch of static analysis tools")
 	$(LOCALBIN)/golangci-lint run --fix --sort-results
 
@@ -182,7 +185,7 @@ $(LOCALBIN)/goimports:
 	$(call header,"Installing $(notdir $@)")
 	GOBIN=$(LOCALBIN) go install -mod=readonly golang.org/x/tools/cmd/goimports
 
-LINT_VERSION=v1.53.3
+LINT_VERSION=v1.59.1
 $(LOCALBIN)/golangci-lint:
 	$(call header,"Installing $(notdir $@)")
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(LOCALBIN) $(LINT_VERSION)

@@ -1,8 +1,10 @@
 linters-settings:
-  govet:
-    check-shadowing: true
-  golint:
-    min-confidence: 0
+  depguard:
+    rules:
+      errors-handling:
+        deny:
+          - pkg: "github.com/pkg/errors"
+            desc: "use built-in errors/fmt packages"
   gocyclo:
     min-complexity: 16
   cyclop:
@@ -15,13 +17,6 @@ linters-settings:
   goconst:
     min-len: 4
     min-occurrences: 3
-  depguard:
-    list-type: blacklist
-    packages:
-      - github.com/sirupsen/logrus
-      - sigs.k8s.io/controller-runtime/pkg/log
-      - sigs.k8s.io/controller-runtime/pkg/log/zap
-      - sigs.k8s.io/controller-runtime/pkg/runtime/log
   misspell:
     locale: US
     ignore-words:
@@ -63,21 +58,26 @@ linters-settings:
 linters:
   enable-all: true
   disable:
-    - depguard
+    - err113
     - exhaustruct
-    - exhaustivestruct
     - forbidigo
     - gofmt # We use goimports and when using them both leads to contradicting errors
     - gofumpt
-    - gomnd
+    - mnd
     - paralleltest
     - prealloc
+
+    # Temporarily ignored due to "wip"
+    - godox
+
+    # Deprecated
+    - gomnd
 
 run:
   deadline: 10m
 
 output:
-  format: colored-line-number
+  formats: colored-line-number
   print-issued-lines: true
   print-linter-name: true
 

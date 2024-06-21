@@ -1,3 +1,3 @@
-# ODH Project Controller
+# ODH Platform
 
-I watch your ~~projects!~~ namespaces!
+## ODH Platform Authorization

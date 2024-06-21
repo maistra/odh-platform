@@ -4,34 +4,23 @@ on:
     branches:
       - main
   pull_request:
+permissions:
+  contents: read
+  pull-requests: read
+  checks: write
 jobs:
   go-lint:
     name: golangci-lint
-    runs-on: ubuntu-20.04
-    env:
-      REPOSITORY: ${{ github.repository }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-          path: go/src/github.com/${{ env.REPOSITORY }}
       - name: Set up Go env
         uses: actions/setup-go@v5
         with:
-          go-version-file: go/src/github.com/${{ env.REPOSITORY }}/go.mod
-      - name: Set $GOPATH
-        run: |
-          echo "GOPATH=${{ github.workspace }}/go" >> $GITHUB_ENV
-          echo "${{ github.workspace }}/go/bin" >> $GITHUB_PATH
-        shell: bash
-      - name: Prepare codebase for linter (generates deps, stubs)
-        run: |
-          cd go/src/github.com/${{ env.REPOSITORY }}
-          make deps generate
-        shell: bash
+          go-version-file: go.mod
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
-          version: v1.53
-          args: --sort-results
-          working-directory: go/src/github.com/${{ env.REPOSITORY }}
+          version: v1.59.1
+          skip-cache: true
+          args: --timeout 5m0s
