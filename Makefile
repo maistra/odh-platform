@@ -163,7 +163,7 @@ $(LOCALBIN)/goimports:
 	$(call header,"Installing $(notdir $@)")
 	GOBIN=$(LOCALBIN) go install -mod=readonly golang.org/x/tools/cmd/goimports
 
-LINT_VERSION=v1.57.2
+LINT_VERSION=v1.59.1
 $(LOCALBIN)/golangci-lint:
 	$(call header,"Installing $(notdir $@)")
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(LOCALBIN) $(LINT_VERSION)

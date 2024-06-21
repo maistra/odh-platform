@@ -5,10 +5,6 @@ linters-settings:
         deny:
           - pkg: "github.com/pkg/errors"
             desc: "use built-in errors/fmt packages"
-  govet:
-    check-shadowing: true
-  golint:
-    min-confidence: 0
   gocyclo:
     min-complexity: 16
   cyclop:
@@ -62,12 +58,12 @@ linters-settings:
 linters:
   enable-all: true
   disable:
+    - err113
     - exhaustruct
     - forbidigo
     - gofmt # We use goimports and when using them both leads to contradicting errors
     - gofumpt
-    - gomnd
-    - nosnakecase #
+    - mnd
     - paralleltest
     - prealloc
 
@@ -75,24 +71,13 @@ linters:
     - godox
 
     # Deprecated
-    - deadcode
-    - exhaustivestruct
-    - goerr113
-    - golint
-    - ifshort
-    - interfacer
-    - maligned
     - gomnd
-    - nosnakecase
-    - scopelint
-    - structcheck
-    - varcheck
 
 run:
   deadline: 10m
 
 output:
-  format: colored-line-number
+  formats: colored-line-number
   print-issued-lines: true
   print-linter-name: true
 
