@@ -59,7 +59,9 @@ linters-settings:
       # Ensures that i.e. k8s.io/api/rbac/v1 is aliased as rbacv1
       - pkg: k8s.io/api/(\w+)/(v[\w\d]+)
         alias: $1$2
-      - pkg: github.com/openshift/api/(\w+)/(v[\w\d]+)
+      - pkg: github.com/(openshift)/api/(\w+)/(v[\w\d]+)
+        alias: $1$2$3
+      - pkg: github.com/kuadrant/(authorino)/api/(v[\w\d]+)
         alias: $1$2
       - pkg: (istio).io/api/(\w+)/(v[\w\d]+)
         alias: $1$2$3
