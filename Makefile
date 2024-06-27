@@ -96,7 +96,8 @@ ifneq (, $(shell which podman))
 	CONTAINER_ENGINE = podman
 endif
 
-IMG ?= quay.io/maistra-dev/$(PROJECT_NAME)
+CONTAINER_REGISTRY ?= maistra-dev
+IMG ?= quay.io/$(CONTAINER_REGISTRY)/$(PROJECT_NAME)
 # If the commit is not tagged, use "latest", otherwise use the tag name
 ifeq ($(GIT_TAG), 0)
 	TAG ?= $(VERSION)
