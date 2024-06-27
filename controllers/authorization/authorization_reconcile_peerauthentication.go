@@ -8,8 +8,8 @@ import (
 	"github.com/opendatahub-io/odh-platform/pkg/label"
 	"istio.io/api/security/v1beta1"
 	istiotypev1beta1 "istio.io/api/type/v1beta1"
-	istiosecv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	istiosecurityv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
+	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,7 +19,7 @@ import (
 
 func (r *PlatformAuthorizationReconciler) reconcilePeerAuthentication(ctx context.Context, target *unstructured.Unstructured) error {
 	desired := createPeerAuthentication(r.authComponent.WorkloadSelector, target)
-	found := &istiosecv1beta1.PeerAuthentication{}
+	found := &istiosecurityv1beta1.PeerAuthentication{}
 	justCreated := false
 
 	err := r.Get(ctx, types.NamespacedName{
@@ -27,7 +27,7 @@ func (r *PlatformAuthorizationReconciler) reconcilePeerAuthentication(ctx contex
 		Namespace: desired.Namespace,
 	}, found)
 	if err != nil {
-		if apierrs.IsNotFound(err) {
+		if k8serr.IsNotFound(err) {
 			errCreate := r.Create(ctx, desired)
 			if client.IgnoreAlreadyExists(errCreate) != nil {
 				return fmt.Errorf("unable to create PeerAuthentication: %w", errCreate)
@@ -65,8 +65,8 @@ func (r *PlatformAuthorizationReconciler) reconcilePeerAuthentication(ctx contex
 	return nil
 }
 
-func createPeerAuthentication(workloadSelector map[string]string, target *unstructured.Unstructured) *istiosecv1beta1.PeerAuthentication {
-	policy := &istiosecv1beta1.PeerAuthentication{
+func createPeerAuthentication(workloadSelector map[string]string, target *unstructured.Unstructured) *istiosecurityv1beta1.PeerAuthentication {
+	policy := &istiosecurityv1beta1.PeerAuthentication{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        target.GetName(),
 			Namespace:   target.GetNamespace(),
@@ -87,7 +87,7 @@ func createPeerAuthentication(workloadSelector map[string]string, target *unstru
 	return policy
 }
 
-func ComparePeerAuthentication(peerAuth1, peerAuth2 *istiosecv1beta1.PeerAuthentication) bool {
+func ComparePeerAuthentication(peerAuth1, peerAuth2 *istiosecurityv1beta1.PeerAuthentication) bool {
 	// .Spec contains MessageState from protobuf which has pragma.DoNotCopy (empty mutex slice)
 	// go vet complains about copying mutex when calling DeepEquals on passed variables, when it tries to access it.
 	// DeepCopy-ing solves this problem as it's using proto.Clone underneath. This implementation recreates mutex instead of

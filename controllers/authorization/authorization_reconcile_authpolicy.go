@@ -9,8 +9,8 @@ import (
 	"github.com/opendatahub-io/odh-platform/pkg/label"
 	"istio.io/api/security/v1beta1"
 	istiotypev1beta1 "istio.io/api/type/v1beta1"
-	istiosecv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	istiosecurityv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
+	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -20,7 +20,7 @@ import (
 
 func (r *PlatformAuthorizationReconciler) reconcileAuthPolicy(ctx context.Context, target *unstructured.Unstructured) error {
 	desired := createAuthorizationPolicy(r.authComponent.Ports, r.authComponent.WorkloadSelector, target)
-	found := &istiosecv1beta1.AuthorizationPolicy{}
+	found := &istiosecurityv1beta1.AuthorizationPolicy{}
 	justCreated := false
 
 	err := r.Get(ctx, types.NamespacedName{
@@ -28,7 +28,7 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthPolicy(ctx context.Contex
 		Namespace: desired.Namespace,
 	}, found)
 	if err != nil {
-		if apierrs.IsNotFound(err) {
+		if k8serr.IsNotFound(err) {
 			errCreate := r.Create(ctx, desired)
 			if client.IgnoreAlreadyExists(errCreate) != nil {
 				return fmt.Errorf("unable to create AuthorizationPolicy: %w", errCreate)
@@ -66,8 +66,8 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthPolicy(ctx context.Contex
 	return nil
 }
 
-func createAuthorizationPolicy(ports []string, workloadSelector map[string]string, target *unstructured.Unstructured) *istiosecv1beta1.AuthorizationPolicy {
-	policy := &istiosecv1beta1.AuthorizationPolicy{
+func createAuthorizationPolicy(ports []string, workloadSelector map[string]string, target *unstructured.Unstructured) *istiosecurityv1beta1.AuthorizationPolicy {
+	policy := &istiosecurityv1beta1.AuthorizationPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        target.GetName(),
 			Namespace:   target.GetNamespace(),
@@ -112,7 +112,7 @@ func createAuthorizationPolicy(ports []string, workloadSelector map[string]strin
 	return policy
 }
 
-func CompareAuthPolicies(authzPolicy1, authzPolicy2 *istiosecv1beta1.AuthorizationPolicy) bool {
+func CompareAuthPolicies(authzPolicy1, authzPolicy2 *istiosecurityv1beta1.AuthorizationPolicy) bool {
 	// .Spec contains MessageState from protobuf which has pragma.DoNotCopy (empty mutex slice)
 	// go vet complains about copying mutex when calling DeepEquals on passed variables, when it tries to access it.
 	// DeepCopy-ing solves this problem as it's using proto.Clone underneath. This implementation recreates mutex instead of

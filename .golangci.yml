@@ -43,18 +43,37 @@ linters-settings:
     min-complexity: 20
   wrapcheck:
     ignoreSigs:
-      - .Errorf(
+      - fmt.Errorf(
       - errors.New(
       - errors.Unwrap(
-      - .Wrap(
-      - .Wrapf(
-      - .WithMessage(
-      - errors.WrapIfWithDetails
-      - errors.WithDetails(
-      - errors.WrapWithDetails(
-      - errors.WrapIf(
-      - errors.NewWithDetails(
-
+      - errors.Join(
+  revive:
+    rules:
+      - name: dot-imports
+        arguments:
+          - allowedPackages: ["github.com/onsi/ginkgo/v2","github.com/onsi/gomega","github.com/onsi/gomega/gstruct"]
+  importas:
+    alias:
+      - pkg: k8s.io/apimachinery/pkg/api/errors
+        alias: k8serr
+      # Ensures that i.e. k8s.io/api/rbac/v1 is aliased as rbacv1
+      - pkg: k8s.io/api/(\w+)/(v[\w\d]+)
+        alias: $1$2
+      - pkg: github.com/openshift/api/(\w+)/(v[\w\d]+)
+        alias: $1$2
+      - pkg: (istio).io/api/(\w+)/(v[\w\d]+)
+        alias: $1$2$3
+      - pkg: (istio).io/client-go/pkg/apis/(\w+)/(v[\w\d]+)
+        alias: $1$2$3
+  ireturn:
+    allow:
+      # defaults https://golangci-lint.run/usage/linters/#ireturn
+      - anon
+      - error
+      - empty
+      - stdlib
+      # also allow generics
+      - generic
 linters:
   enable-all: true
   disable:

@@ -2,6 +2,7 @@ package authorization
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/go-logr/logr"
@@ -10,11 +11,10 @@ import (
 	"github.com/opendatahub-io/odh-platform/pkg/env"
 	"github.com/opendatahub-io/odh-platform/pkg/resource"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
-	istiosecv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	istiosecurityv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
+	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	k8serrs "k8s.io/apimachinery/pkg/util/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -55,7 +55,7 @@ func (r *PlatformAuthorizationReconciler) Reconcile(ctx context.Context, req ctr
 	sourceRes.SetGroupVersionKind(r.authComponent.CustomResourceType)
 
 	if err := r.Client.Get(ctx, req.NamespacedName, sourceRes); err != nil {
-		if apierrs.IsNotFound(err) {
+		if k8serr.IsNotFound(err) {
 			r.log.Info("skipping reconcile. resource does not exist anymore", "resource", sourceRes.GroupVersionKind().String())
 
 			return ctrl.Result{}, nil
@@ -71,7 +71,7 @@ func (r *PlatformAuthorizationReconciler) Reconcile(ctx context.Context, req ctr
 		errs = append(errs, reconciler(ctx, sourceRes))
 	}
 
-	return ctrl.Result{}, k8serrs.NewAggregate(errs)
+	return ctrl.Result{}, errors.Join(errs...)
 }
 
 func (r *PlatformAuthorizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -84,8 +84,8 @@ func (r *PlatformAuthorizationReconciler) SetupWithManager(mgr ctrl.Manager) err
 			},
 		}, builder.OnlyMetadata).
 		Owns(&authorinov1beta2.AuthConfig{}).
-		Owns(&istiosecv1beta1.AuthorizationPolicy{}).
-		Owns(&istiosecv1beta1.PeerAuthentication{}).
+		Owns(&istiosecurityv1beta1.AuthorizationPolicy{}).
+		Owns(&istiosecurityv1beta1.PeerAuthentication{}).
 		Complete(r)
 }
 

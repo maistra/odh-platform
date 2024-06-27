@@ -8,7 +8,7 @@ import (
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/opendatahub-io/odh-platform/pkg/env"
 	"github.com/opendatahub-io/odh-platform/pkg/label"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -42,7 +42,7 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthConfig(ctx context.Contex
 		Namespace: desired.Namespace,
 	}, found)
 	if err != nil {
-		if apierrs.IsNotFound(err) {
+		if k8serr.IsNotFound(err) {
 			errCreate := r.Create(ctx, desired)
 			if client.IgnoreAlreadyExists(errCreate) != nil {
 				return fmt.Errorf("unable to create AuthConfig: %w", errCreate)
