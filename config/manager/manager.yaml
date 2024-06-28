@@ -18,7 +18,7 @@ spec:
       volumes:
         - configMap:
             name: platform-capabilities
-          name: auth-capabilities
+          name: platform-capabilities
       containers:
         - name: manager
           image: controller:latest
@@ -36,7 +36,7 @@ spec:
               protocol: TCP
           env:
             - name: CONFIG_CAPABILITIES
-              value: /opt/config/capabilities
+              value: /opt/config/platform-capabilities
             - name: AUTHORINO_LABEL
               valueFrom:
                 configMapKeyRef:
@@ -56,8 +56,8 @@ spec:
                   key: AUTH_PROVIDER
                   optional: true
           volumeMounts:
-            - mountPath: /opt/config/
-              name: auth-capabilities
+            - mountPath: /opt/config/platform-capabilities
+              name: platform-capabilities
           livenessProbe:
             httpGet:
               path: /healthz

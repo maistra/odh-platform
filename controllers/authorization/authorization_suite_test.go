@@ -34,7 +34,7 @@ var testScheme = runtime.NewScheme()
 
 func TestController(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Controller & Webhook Suite")
+	RunSpecs(t, "Reconcilers suite")
 }
 
 var _ = SynchronizedBeforeSuite(func(ctx context.Context) {
@@ -83,10 +83,13 @@ var _ = SynchronizedBeforeSuite(func(ctx context.Context) {
 		cli,
 		ctrl.Log.WithName("controllers").WithName("platform"),
 		spi.AuthorizationComponent{
-			CustomResourceType: schema.GroupVersionKind{Version: "v1", Kind: "service"},
-			WorkloadSelector:   map[string]string{},
-			Ports:              []string{},
-			HostPaths:          []string{"status.url"},
+			CustomResourceType: spi.ResourceSchema{
+				GroupVersionKind: schema.GroupVersionKind{Version: "v1", Kind: "service"},
+				Resources:        "services",
+			},
+			WorkloadSelector: map[string]string{},
+			Ports:            []string{},
+			HostPaths:        []string{"status.url"},
 		},
 	).SetupWithManager(mgr)
 	Expect(err).ToNot(HaveOccurred())

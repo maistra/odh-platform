@@ -2,6 +2,10 @@ package spi
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -17,10 +21,33 @@ const (
 )
 
 type AuthorizationComponent struct {
-	CustomResourceType schema.GroupVersionKind `json:"gvk"`
-	WorkloadSelector   map[string]string       `json:"workloadSelector"` // label key value
-	Ports              []string                `json:"ports"`            // port numbers
-	HostPaths          []string                `json:"hostPaths"`        // json path expression e.g. status.url
+	CustomResourceType ResourceSchema    `json:"schema"`
+	WorkloadSelector   map[string]string `json:"workloadSelector"` // label key value
+	Ports              []string          `json:"ports"`            // port numbers
+	HostPaths          []string          `json:"hostPaths"`        // json path expression e.g. status.url
+}
+
+func (a AuthorizationComponent) Load(configPath string) ([]AuthorizationComponent, error) {
+	content, err := os.ReadFile(configPath + string(filepath.Separator) + "authorization")
+	if err != nil {
+		return []AuthorizationComponent{}, fmt.Errorf("could not read config file [%s]: %w", configPath, err)
+	}
+
+	var authz []AuthorizationComponent
+
+	err = json.Unmarshal(content, &authz)
+	if err != nil {
+		return []AuthorizationComponent{}, fmt.Errorf("could not parse json content of [%s]: %w", configPath, err)
+	}
+
+	return authz, nil
+}
+
+type ResourceSchema struct {
+	// GroupVersionKind specifies the group, version, and kind of the resource.
+	schema.GroupVersionKind `json:"gvk,omitempty"`
+	// Resources is the type of resource being protected, e.g., "pods", "services".
+	Resources string `json:"resources,omitempty"`
 }
 
 // HostExtractor attempts to extract Hosts from the given resource.

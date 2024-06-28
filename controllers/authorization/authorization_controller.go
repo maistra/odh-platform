@@ -52,7 +52,7 @@ func (r *PlatformAuthorizationReconciler) Reconcile(ctx context.Context, req ctr
 	reconcilers := []reconcileAuthFunc{r.reconcileAuthConfig, r.reconcileAuthPolicy, r.reconcilePeerAuthentication}
 
 	sourceRes := &unstructured.Unstructured{}
-	sourceRes.SetGroupVersionKind(r.authComponent.CustomResourceType)
+	sourceRes.SetGroupVersionKind(r.authComponent.CustomResourceType.GroupVersionKind)
 
 	if err := r.Client.Get(ctx, req.NamespacedName, sourceRes); err != nil {
 		if k8serr.IsNotFound(err) {

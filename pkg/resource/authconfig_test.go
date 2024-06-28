@@ -8,12 +8,12 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-var _ = Describe("Authconfig functions", Label(labels.Unit), func() {
+var _ = Describe("AuthConfig functions", Label(labels.Unit), func() {
 
-	When("Host extractor", func() {
+	Context("Host extraction", func() {
 
-		It("should extract host from unstrucured via paths", func() {
-
+		It("should extract host from unstructured via paths", func() {
+			// given
 			extractor := resource.NewExpressionHostExtractor([]string{"status.url"})
 			target := unstructured.Unstructured{
 				Object: map[string]interface{}{
@@ -23,7 +23,11 @@ var _ = Describe("Authconfig functions", Label(labels.Unit), func() {
 				},
 			}
 
-			Expect(extractor.Extract(&target)).To(Equal([]string{"test.com"}))
+			// when
+			hosts := extractor.Extract(&target)
+
+			// then
+			Expect(hosts).To(HaveExactElements("test.com"))
 		})
 
 	})

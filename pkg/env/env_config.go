@@ -40,7 +40,7 @@ func GetAuthAudience() []string {
 }
 
 func GetConfigFile() string {
-	return getEnvOr(ConfigCapabilities, "/tmp/capabilities")
+	return getEnvOr(ConfigCapabilities, "/tmp/platform-capabilities")
 }
 
 func getEnvOr(key, defaultValue string) string {

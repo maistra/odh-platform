@@ -1,0 +1,21 @@
+[
+    {
+        "schema": {
+            "gvk": {
+                "kind": "service",
+                "version": "v1",
+                "group": "core"
+            },
+            "resources": "modelregistries"
+        },
+        "workloadSelector": {
+            "component": "predicator"
+        },
+        "ports": [
+            "9192"
+        ],
+        "hostPaths": [
+            "status.url"
+        ]
+    }
+]

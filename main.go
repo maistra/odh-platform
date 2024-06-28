@@ -6,8 +6,8 @@ import (
 
 	"github.com/opendatahub-io/odh-platform/controllers/authorization"
 	"github.com/opendatahub-io/odh-platform/pkg/env"
-	"github.com/opendatahub-io/odh-platform/pkg/resource"
 	pschema "github.com/opendatahub-io/odh-platform/pkg/schema"
+	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"github.com/opendatahub-io/odh-platform/version"
 	"k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/client-go/plugin/pkg/client/auth" // Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.) to ensure that exec-entrypoint and run can make use of them.
@@ -63,13 +63,13 @@ func main() {
 		WithName("odh-platform")
 	ctrlLog.Info("creating controller instance", "version", version.Version, "commit", version.Commit, "build-time", version.BuildTime)
 
-	components, err := resource.LoadConfig(env.GetConfigFile())
-	if err != nil {
-		setupLog.Error(err, "unable to load config from "+env.GetConfigFile())
+	authorizationComponents, errLoad := spi.LoadConfig(spi.AuthorizationComponent{}, env.GetConfigFile())
+	if errLoad != nil {
+		setupLog.Error(errLoad, "unable to load config from "+env.GetConfigFile())
 		os.Exit(1)
 	}
 
-	for _, component := range components {
+	for _, component := range authorizationComponents {
 		if err = authorization.NewPlatformAuthorizationReconciler(mgr.GetClient(), ctrlLog, component).
 			SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "odh-platform-"+component.CustomResourceType.Kind)
