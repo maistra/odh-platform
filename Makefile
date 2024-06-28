@@ -27,7 +27,7 @@ generate: tools ## Generates required resources for the controller to work prope
 	$(LOCALBIN)/controller-gen rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	$(call fetch-external-crds,github.com/kuadrant/authorino,api/v1beta1)
 
-SRC_DIRS:=./controllers ./test
+SRC_DIRS:=./controllers ./pkg ./version ./test
 SRCS:=$(shell find ${SRC_DIRS} -name "*.go")
 
 .PHONY: format
