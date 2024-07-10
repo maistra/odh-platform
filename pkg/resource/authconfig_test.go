@@ -12,7 +12,7 @@ var _ = Describe("AuthConfig functions", Label(labels.Unit), func() {
 
 	Context("Host extraction", func() {
 
-		It("should extract host from unstructured via paths", func() {
+		It("should extract host from unstructured via paths as string", func() {
 			// given
 			extractor := resource.NewExpressionHostExtractor([]string{"status.url"})
 			target := unstructured.Unstructured{
@@ -28,6 +28,24 @@ var _ = Describe("AuthConfig functions", Label(labels.Unit), func() {
 
 			// then
 			Expect(hosts).To(HaveExactElements("test.com"))
+		})
+
+		It("should extract host from unstructured via paths as slice of strings", func() {
+			// given
+			extractor := resource.NewExpressionHostExtractor([]string{"status.url"})
+			target := unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"status": map[string]interface{}{
+						"url": []interface{}{"http://test.com", "http://test2.com"},
+					},
+				},
+			}
+
+			// when
+			hosts := extractor.Extract(&target)
+
+			// then
+			Expect(hosts).To(ContainElements("test.com", "test2.com"))
 		})
 
 	})

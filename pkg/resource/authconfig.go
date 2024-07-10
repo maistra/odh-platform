@@ -142,12 +142,20 @@ func (k *expressionHostExtractor) Extract(target *unstructured.Unstructured) []s
 	hosts := []string{}
 
 	for _, path := range k.paths {
-		host, found, err := unstructured.NestedString(target.Object, strings.Split(path, ".")...)
+		foundHost, found, err := unstructured.NestedString(target.Object, strings.Split(path, ".")...)
 		if err == nil && found {
-			// TODO log err?
-			parsedURL, err := url.Parse(host)
+			parsedURL, err := url.Parse(foundHost)
 			if err == nil {
 				hosts = append(hosts, parsedURL.Host)
+			}
+		}
+		foundHosts, found, err := unstructured.NestedStringSlice(target.Object, strings.Split(path, ".")...)
+		if err == nil && found {
+			for _, foundHost := range foundHosts {
+				parsedURL, err := url.Parse(foundHost)
+				if err == nil {
+					hosts = append(hosts, parsedURL.Host)
+				}
 			}
 		}
 	}
