@@ -80,28 +80,37 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthConfig(ctx context.Contex
 	return nil
 }
 
-func createAuthConfig(templ authorinov1beta2.AuthConfig, hosts []string, target *unstructured.Unstructured) (*authorinov1beta2.AuthConfig, error) {
+func createAuthConfig(authConfigTpl authorinov1beta2.AuthConfig, hosts []string, target *unstructured.Unstructured) (*authorinov1beta2.AuthConfig, error) {
 	authKey, authVal, err := env.GetAuthorinoLabel()
 	if err != nil {
 		return &authorinov1beta2.AuthConfig{}, fmt.Errorf("could not get authorino label selector: %w", err)
 	}
 
-	labels := target.GetLabels()
-	if labels == nil {
-		labels = map[string]string{}
+	if authConfigTpl.Annotations == nil {
+		authConfigTpl.Annotations = map[string]string{}
 	}
 
-	labels[authKey] = authVal
-	templ.Name = target.GetName()
-	templ.Namespace = target.GetNamespace()
-	templ.Labels = label.ApplyStandard(target.GetLabels())
-	templ.Annotations = map[string]string{}
-	templ.Spec.Hosts = hosts
-	templ.OwnerReferences = []metav1.OwnerReference{
+	if authConfigTpl.Labels == nil {
+		authConfigTpl.Labels = map[string]string{}
+	}
+
+	authConfigTpl.Labels[authKey] = authVal
+
+	stdLabels := label.ApplyStandard(target.GetLabels())
+	for k, v := range stdLabels {
+		if _, found := authConfigTpl.Labels[k]; !found {
+			authConfigTpl.Labels[k] = v
+		}
+	}
+
+	authConfigTpl.Name = target.GetName()
+	authConfigTpl.Namespace = target.GetNamespace()
+	authConfigTpl.Spec.Hosts = hosts
+	authConfigTpl.OwnerReferences = []metav1.OwnerReference{
 		targetToOwnerRef(target),
 	}
 
-	return &templ, nil
+	return &authConfigTpl, nil
 }
 
 func CompareAuthConfigs(m1, m2 *authorinov1beta2.AuthConfig) bool {
