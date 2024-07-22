@@ -86,16 +86,25 @@ func createAuthConfig(templ authorinov1beta2.AuthConfig, hosts []string, target 
 		return &authorinov1beta2.AuthConfig{}, fmt.Errorf("could not get authorino label selector: %w", err)
 	}
 
-	labels := target.GetLabels()
-	if labels == nil {
-		labels = map[string]string{}
+	if templ.Annotations == nil {
+		templ.Annotations = map[string]string{}
 	}
 
-	labels[authKey] = authVal
+	if templ.Labels == nil {
+		templ.Labels = map[string]string{}
+	}
+
+	templ.Labels[authKey] = authVal
+
+	stadLables := label.ApplyStandard(target.GetLabels())
+	for k, v := range stadLables {
+		if _, found := templ.Labels[k]; !found {
+			templ.Labels[k] = v
+		}
+	}
+
 	templ.Name = target.GetName()
 	templ.Namespace = target.GetNamespace()
-	templ.Labels = label.ApplyStandard(target.GetLabels())
-	templ.Annotations = map[string]string{}
 	templ.Spec.Hosts = hosts
 	templ.OwnerReferences = []metav1.OwnerReference{
 		targetToOwnerRef(target),
