@@ -105,8 +105,11 @@ func NewConfigMapTemplateLoader(cli client.Client, fallback spi.AuthConfigTempla
 func (c *configMapTemplateLoader) Load(ctx context.Context, authType spi.AuthType, key types.NamespacedName) (authorinov1beta2.AuthConfig, error) {
 	// else
 	ac, err := c.fallback.Load(ctx, authType, key)
+	if err != nil {
+		return authorinov1beta2.AuthConfig{}, fmt.Errorf("could not load from fallback: %w", err)
+	}
 
-	return ac, fmt.Errorf("could not load from fallback: %w", err)
+	return ac, nil
 }
 
 type annotationAuthTypeDetector struct {
@@ -145,11 +148,11 @@ func (k *expressionHostExtractor) Extract(target *unstructured.Unstructured) []s
 		splitPath := strings.Split(path, ".")
 
 		if foundHost, foundStr, errNestedStr := unstructured.NestedString(target.Object, splitPath...); errNestedStr == nil && foundStr {
-			hosts = appendParsedHosts(hosts, foundHost)
+			hosts = appendHosts(hosts, foundHost)
 		}
 
 		if foundHosts, foundSlice, errNestedSlice := unstructured.NestedStringSlice(target.Object, splitPath...); errNestedSlice == nil && foundSlice {
-			hosts = appendParsedHosts(hosts, foundHosts...)
+			hosts = appendHosts(hosts, foundHosts...)
 		}
 	}
 
@@ -180,12 +183,21 @@ func unique(in []string) []string {
 	return keys
 }
 
-func appendParsedHosts(hosts []string, foundHosts ...string) []string {
+func appendHosts(hosts []string, foundHosts ...string) []string {
 	for _, foundHost := range foundHosts {
-		if parsedURL, errParse := url.Parse(foundHost); errParse == nil {
-			hosts = append(hosts, parsedURL.Host)
+		if isURI(foundHost) {
+			parsedURL, errParse := url.Parse(foundHost)
+			if errParse == nil {
+				hosts = append(hosts, parsedURL.Host)
+			}
+		} else {
+			hosts = append(hosts, foundHost)
 		}
 	}
 
 	return hosts
+}
+
+func isURI(host string) bool {
+	return strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://")
 }
