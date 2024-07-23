@@ -105,8 +105,11 @@ func NewConfigMapTemplateLoader(cli client.Client, fallback spi.AuthConfigTempla
 func (c *configMapTemplateLoader) Load(ctx context.Context, authType spi.AuthType, key types.NamespacedName) (authorinov1beta2.AuthConfig, error) {
 	// else
 	ac, err := c.fallback.Load(ctx, authType, key)
+	if err != nil {
+		return authorinov1beta2.AuthConfig{}, fmt.Errorf("could not load from fallback: %w", err)
+	}
 
-	return ac, fmt.Errorf("could not load from fallback: %w", err)
+	return ac, nil
 }
 
 type annotationAuthTypeDetector struct {
@@ -141,21 +144,35 @@ func NewExpressionHostExtractor(paths []string) spi.HostExtractor {
 func (k *expressionHostExtractor) Extract(target *unstructured.Unstructured) []string {
 	hosts := []string{}
 
+	isURL := func(url string) bool {
+		if strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://") {
+			return true
+		}
+
+		return false
+	}
+
+	appendHost := func(hostList []string, urlStr string) []string {
+		if isURL(urlStr) {
+			parsedURL, err := url.Parse(urlStr)
+			if err == nil {
+				return append(hostList, parsedURL.Host)
+			}
+		}
+
+		return append(hostList, urlStr)
+	}
+
 	for _, path := range k.paths {
 		foundHost, found, err := unstructured.NestedString(target.Object, strings.Split(path, ".")...)
 		if err == nil && found {
-			parsedURL, err := url.Parse(foundHost)
-			if err == nil {
-				hosts = append(hosts, parsedURL.Host)
-			}
+			hosts = appendHost(hosts, foundHost)
 		}
+
 		foundHosts, found, err := unstructured.NestedStringSlice(target.Object, strings.Split(path, ".")...)
 		if err == nil && found {
 			for _, foundHost := range foundHosts {
-				parsedURL, err := url.Parse(foundHost)
-				if err == nil {
-					hosts = append(hosts, parsedURL.Host)
-				}
+				hosts = appendHost(hosts, foundHost)
 			}
 		}
 	}

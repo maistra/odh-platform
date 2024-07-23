@@ -34,12 +34,9 @@ var _ = Describe("AuthConfig functions", Label(labels.Unit), func() {
 			// given
 			extractor := resource.NewExpressionHostExtractor([]string{"status.url"})
 			target := unstructured.Unstructured{
-				Object: map[string]interface{}{
-					"status": map[string]interface{}{
-						"url": []interface{}{"http://test.com", "http://test2.com"},
-					},
-				},
+				Object: map[string]interface{}{},
 			}
+			unstructured.SetNestedStringSlice(target.Object, []string{"test.com", "test2.com"}, "status", "url")
 
 			// when
 			hosts := extractor.Extract(&target)
