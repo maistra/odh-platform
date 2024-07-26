@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/opendatahub-io/odh-platform/controllers/authorization"
+	"github.com/opendatahub-io/odh-platform/controllers/routing"
 	"github.com/opendatahub-io/odh-platform/pkg/env"
 	pschema "github.com/opendatahub-io/odh-platform/pkg/schema"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
@@ -71,6 +72,20 @@ func main() {
 
 	for _, component := range authorizationComponents {
 		if err = authorization.NewPlatformAuthorizationReconciler(mgr.GetClient(), ctrlLog, component).
+			SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "odh-platform-"+component.CustomResourceType.Kind)
+			os.Exit(1)
+		}
+	}
+
+	routingComponents, errLoad := spi.LoadConfig(spi.RoutingComponent{}, env.GetConfigFile())
+	if errLoad != nil {
+		setupLog.Error(errLoad, "unable to load config from "+env.GetConfigFile())
+		os.Exit(1)
+	}
+
+	for _, component := range routingComponents {
+		if err = routing.NewPlatformRoutingReconciler(mgr.GetClient(), ctrlLog, component).
 			SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "odh-platform-"+component.CustomResourceType.Kind)
 			os.Exit(1)

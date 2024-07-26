@@ -13,6 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+// Auth
+
 type AuthType string
 
 const (
@@ -27,6 +29,8 @@ type AuthorizationComponent struct {
 	HostPaths          []string          `json:"hostPaths"`        // json path expression e.g. status.url
 }
 
+// TODO: the config file will contain more then just AuthorizationComponents now.. adjust to read it multiple times pr Type or load it all at once..?
+// TODO: move the config load and save into a sub package and lazy share with operator.
 func (a AuthorizationComponent) Load(configPath string) ([]AuthorizationComponent, error) {
 	content, err := os.ReadFile(configPath + string(filepath.Separator) + "authorization")
 	if err != nil {
@@ -41,13 +45,6 @@ func (a AuthorizationComponent) Load(configPath string) ([]AuthorizationComponen
 	}
 
 	return authz, nil
-}
-
-type ResourceSchema struct {
-	// GroupVersionKind specifies the group, version, and kind of the resource.
-	schema.GroupVersionKind `json:"gvk,omitempty"`
-	// Resources is the type of resource being protected, e.g., "pods", "services".
-	Resources string `json:"resources,omitempty"`
 }
 
 // HostExtractor attempts to extract Hosts from the given resource.
@@ -67,4 +64,63 @@ type AuthTypeDetector interface {
 //   - Loader source
 type AuthConfigTemplateLoader interface {
 	Load(ctx context.Context, authType AuthType, key types.NamespacedName) (authorinov1beta2.AuthConfig, error)
+}
+
+// Routing
+
+type RouteType string
+
+const (
+	PublicRoute   RouteType = "public"
+	ExternalRoute RouteType = "external"
+)
+
+type RoutingComponent struct {
+	CustomResourceType ResourceSchema `json:"schema"`
+}
+
+// TODO: the config file will contain more then just AuthorizationComponents now.. adjust to read it multiple times pr Type or load it all at once..?
+// TODO: move the config load and save into a sub package and lazy share with operator.
+func (a RoutingComponent) Load(configPath string) ([]RoutingComponent, error) {
+	content, err := os.ReadFile(configPath + string(filepath.Separator) + "routing")
+	if err != nil {
+		return []RoutingComponent{}, fmt.Errorf("could not read config file [%s]: %w", configPath, err)
+	}
+
+	var routes []RoutingComponent
+
+	err = json.Unmarshal(content, &routes)
+	if err != nil {
+		return []RoutingComponent{}, fmt.Errorf("could not parse json content of [%s]: %w", configPath, err)
+	}
+
+	return routes, nil
+}
+
+type RoutingTemplateData struct {
+	PublicServiceName string // [service-name]-[service-namespace]
+	ServiceName       string // service-name
+	ServiceNamespace  string // service-namespace
+	GatewayNamespace  string // gateway-namespace
+	Domain            string // app.crc.testing
+
+	// Infra
+	IngressSelectorLabel string // istio
+	IngressSelectorValue string // rhoai-gateway
+	InfraService         string // rhoai-router-ingress
+}
+
+// RoutingTemplateLoader provides a way to differentiate the Route template used based on
+//   - RouteType
+//   - Namespace / Resource name
+//   - Loader source
+type RoutingTemplateLoader interface {
+	Load(ctx context.Context, routeType RouteType, key types.NamespacedName, data RoutingTemplateData) ([]unstructured.Unstructured, error)
+}
+
+type ResourceSchema struct {
+	// GroupVersionKind specifies the group, version, and kind of the resource.
+	schema.GroupVersionKind `json:"gvk,omitempty"`
+	// Resources is the type of resource being protected, e.g., "pods", "services".
+	Resources string `json:"resources,omitempty"`
 }

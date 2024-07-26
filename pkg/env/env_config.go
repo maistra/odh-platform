@@ -7,10 +7,14 @@ import (
 )
 
 const (
-	AuthAudience           = "AUTH_AUDIENCE"
-	AuthProvider           = "AUTH_PROVIDER"
-	AuthorinoLabelSelector = "AUTHORINO_LABEL"
-	ConfigCapabilities     = "CONFIG_CAPABILITIES"
+	AuthAudience              = "AUTH_AUDIENCE"
+	AuthProvider              = "AUTH_PROVIDER"
+	RouteGatewayNamespace     = "ROUTE_GATEWAY_NAMESPACE"
+	RouteGatewayService       = "ROUTE_GATEWAY_SERVICE"
+	RouteIngressSelectorKey   = "ROUTE_INGRESS_SELECTOR_KEY"
+	RouteIngressSelectorValue = "ROUTE_INGRESS_SELECTOR_VALUE"
+	AuthorinoLabelSelector    = "AUTHORINO_LABEL"
+	ConfigCapabilities        = "CONFIG_CAPABILITIES"
 )
 
 func GetAuthorinoLabel() (key, value string, err error) { //nolint:nonamedreturns //reason: having named key-value makes the function easier to understand
@@ -41,6 +45,22 @@ func GetAuthAudience() []string {
 
 func GetConfigFile() string {
 	return getEnvOr(ConfigCapabilities, "/tmp/platform-capabilities")
+}
+
+func GetGatewayNamespace() string {
+	return getEnvOr(RouteGatewayNamespace, "opendatahub-ingress")
+}
+
+func GetGatewayService() string {
+	return getEnvOr(RouteGatewayService, "istio-ingressgateway")
+}
+
+func GetIngressSelectorKey() string {
+	return getEnvOr(RouteIngressSelectorKey, "opendatahub")
+}
+
+func GetIngressSelectorValue() string {
+	return getEnvOr(RouteIngressSelectorValue, "ingressgateway")
 }
 
 func getEnvOr(key, defaultValue string) string {

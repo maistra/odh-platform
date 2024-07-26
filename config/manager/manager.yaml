@@ -55,6 +55,30 @@ spec:
                   name: auth-refs
                   key: AUTH_PROVIDER
                   optional: true
+            - name: ROUTE_GATEWAY_NAMESPACE
+              valueFrom:
+                configMapKeyRef:
+                  name: mesh-refs
+                  key: DEFAULT_INGRESS_GATEWAY_NAMESPACE
+                  optional: true
+            - name: ROUTE_GATEWAY_SERVICE
+              valueFrom:
+                configMapKeyRef:
+                  name: mesh-refs
+                  key: DEFAULT_INGRESS_GATEWAY_SERVICE
+                  optional: true
+            - name: ROUTE_INGRESS_SELECTOR_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: mesh-refs
+                  key: DEFAULT_INGRESS_GATEWAY_SELECTOR_KEY
+                  optional: true
+            - name: ROUTE_INGRESS_SELECTOR_VALUE
+              valueFrom:
+                configMapKeyRef:
+                  name: mesh-refs
+                  key: DEFAULT_INGRESS_GATEWAY_SELECTOR_VALUE
+                  optional: true
           volumeMounts:
             - mountPath: /opt/config/platform-capabilities
               name: platform-capabilities

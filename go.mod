@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/go-logr/logr v1.4.2
 	github.com/kuadrant/authorino v0.17.2
+	github.com/openshift/api v0.0.0-20230918194705-55e9a6dcc436 // pins to be aligned with ODH Operator (k8s and golang versions)
 	go.uber.org/zap v1.26.0
 	istio.io/api v1.20.2-0.20231213020515-8655fab91d5d
 	istio.io/client-go v1.20.2

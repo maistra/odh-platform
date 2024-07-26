@@ -1,0 +1,32 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name:  # identity of the service being exposed
+  namespace: {{ .GatewayNamespace }}
+spec:
+  to:
+    kind: Service
+    name: {{ .InfraService }}
+  port:
+    targetPort: https
+  tls:
+    termination: reencrypt
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ .PublicServiceName }}-ingress
+  namespace: {{ .GatewayNamespace }}
+spec:
+  gateways:
+  - {{ .InfraService }} # name of wildcard Gateway
+  hosts:
+  - {{ .PublicServiceName}}.{{ .Domain }} # hostname on the Route
+  http:
+  - name: {{ .PublicServiceName }}-ingress
+    route:
+    - destination:
+        host: {{ .ServiceName }}.{{ .ServiceNamespace }}.svc.cluster.local   # srv k8s
+        port:
+          number: 8080 # port number on mesh service

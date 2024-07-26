@@ -61,7 +61,7 @@ func (r *PlatformAuthorizationReconciler) Reconcile(ctx context.Context, req ctr
 			return ctrl.Result{}, nil
 		}
 
-		return ctrl.Result{}, fmt.Errorf("failed getting service: %w", err)
+		return ctrl.Result{}, fmt.Errorf("failed getting resource: %w", err)
 	}
 
 	r.log.Info("triggered auth reconcile", "namespace", req.Namespace, "name", req.Name)
