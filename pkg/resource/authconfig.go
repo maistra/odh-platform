@@ -142,21 +142,14 @@ func (k *expressionHostExtractor) Extract(target *unstructured.Unstructured) []s
 	hosts := []string{}
 
 	for _, path := range k.paths {
-		foundHost, found, err := unstructured.NestedString(target.Object, strings.Split(path, ".")...)
-		if err == nil && found {
-			parsedURL, err := url.Parse(foundHost)
-			if err == nil {
-				hosts = append(hosts, parsedURL.Host)
-			}
+		splitPath := strings.Split(path, ".")
+
+		if foundHost, foundStr, errNestedStr := unstructured.NestedString(target.Object, splitPath...); errNestedStr == nil && foundStr {
+			hosts = appendParsedHosts(hosts, foundHost)
 		}
-		foundHosts, found, err := unstructured.NestedStringSlice(target.Object, strings.Split(path, ".")...)
-		if err == nil && found {
-			for _, foundHost := range foundHosts {
-				parsedURL, err := url.Parse(foundHost)
-				if err == nil {
-					hosts = append(hosts, parsedURL.Host)
-				}
-			}
+
+		if foundHosts, foundSlice, errNestedSlice := unstructured.NestedStringSlice(target.Object, splitPath...); errNestedSlice == nil && foundSlice {
+			hosts = appendParsedHosts(hosts, foundHosts...)
 		}
 	}
 
@@ -185,4 +178,14 @@ func unique(in []string) []string {
 	}
 
 	return keys
+}
+
+func appendParsedHosts(hosts []string, foundHosts ...string) []string {
+	for _, foundHost := range foundHosts {
+		if parsedURL, errParse := url.Parse(foundHost); errParse == nil {
+			hosts = append(hosts, parsedURL.Host)
+		}
+	}
+
+	return hosts
 }
