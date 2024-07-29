@@ -13,7 +13,7 @@ limitations under the License.
 */
 
 //nolint:ireturn //reason: we want to return spi.Interfaces
-package resource
+package authorization
 
 import (
 	"bytes"
