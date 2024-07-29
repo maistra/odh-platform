@@ -1,6 +1,7 @@
 module github.com/opendatahub-io/odh-platform
 
 go 1.21
+toolchain go1.22.5
 
 require (
 	github.com/go-logr/logr v1.4.2
@@ -11,7 +12,7 @@ require (
 	istio.io/client-go v1.20.2
 	k8s.io/api v0.28.3
 	k8s.io/apiextensions-apiserver v0.28.3
-	k8s.io/apimachinery v0.28.3
+	k8s.io/apimachinery v0.30.3
 	k8s.io/client-go v0.28.3
 	k8s.io/code-generator v0.28.3
 	sigs.k8s.io/controller-runtime v0.16.3
