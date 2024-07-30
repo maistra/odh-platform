@@ -77,7 +77,7 @@ linters-settings:
       # also allow generics
       - generic
       # we want to return spi.Interfaces in routing.go
-      - spi.RoutingTemplateLoader
+      - spi
 linters:
   enable-all: true
   disable:
