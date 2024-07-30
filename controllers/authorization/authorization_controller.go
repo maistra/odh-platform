@@ -9,7 +9,7 @@ import (
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/opendatahub-io/odh-platform/controllers"
 	"github.com/opendatahub-io/odh-platform/pkg/env"
-	"github.com/opendatahub-io/odh-platform/pkg/resource"
+	"github.com/opendatahub-io/odh-platform/pkg/resource/authorization"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	istiosecurityv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
@@ -25,9 +25,9 @@ func NewPlatformAuthorizationReconciler(cli client.Client, log logr.Logger, auth
 		Client:         cli,
 		log:            log,
 		authComponent:  authComponent,
-		typeDetector:   resource.NewAnnotationAuthTypeDetector(controllers.AnnotationAuthEnabled),
-		hostExtractor:  resource.NewExpressionHostExtractor(authComponent.HostPaths),
-		templateLoader: resource.NewConfigMapTemplateLoader(cli, resource.NewStaticTemplateLoader(env.GetAuthAudience())),
+		typeDetector:   authorization.NewAnnotationAuthTypeDetector(controllers.AnnotationAuthEnabled),
+		hostExtractor:  authorization.NewExpressionHostExtractor(authComponent.HostPaths),
+		templateLoader: authorization.NewConfigMapTemplateLoader(cli, authorization.NewStaticTemplateLoader(env.GetAuthAudience())),
 	}
 }
 
