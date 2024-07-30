@@ -17,17 +17,15 @@ import (
 )
 
 func (r *PlatformAuthorizationReconciler) reconcileAuthConfig(ctx context.Context, target *unstructured.Unstructured) error {
-	authType, err := r.typeDetector.Detect(ctx, target)
+	templ, err := r.detectAndLoadTemplate(ctx, target)
 	if err != nil {
-		return fmt.Errorf("could not detect authtype: %w", err)
+		return err
 	}
 
-	templ, err := r.templateLoader.Load(ctx, authType, types.NamespacedName{Namespace: target.GetNamespace(), Name: target.GetName()})
+	hosts, err := r.extractHosts(target)
 	if err != nil {
-		return fmt.Errorf("could not load template %s: %w", authType, err)
+		return err
 	}
-
-	hosts := r.hostExtractor.Extract(target)
 
 	desired, err := createAuthConfig(templ, hosts, target)
 	if err != nil {
@@ -116,4 +114,27 @@ func createAuthConfig(authConfigTpl authorinov1beta2.AuthConfig, hosts []string,
 func CompareAuthConfigs(m1, m2 *authorinov1beta2.AuthConfig) bool {
 	return reflect.DeepEqual(m1.ObjectMeta.Labels, m2.ObjectMeta.Labels) &&
 		reflect.DeepEqual(m1.Spec, m2.Spec)
+}
+
+func (r *PlatformAuthorizationReconciler) detectAndLoadTemplate(ctx context.Context, target *unstructured.Unstructured) (authorinov1beta2.AuthConfig, error) {
+	authType, err := r.typeDetector.Detect(ctx, target)
+	if err != nil {
+		return authorinov1beta2.AuthConfig{}, fmt.Errorf("could not detect authtype: %w", err)
+	}
+
+	templ, err := r.templateLoader.Load(ctx, authType, types.NamespacedName{Namespace: target.GetNamespace(), Name: target.GetName()})
+	if err != nil {
+		return authorinov1beta2.AuthConfig{}, fmt.Errorf("could not load template %s: %w", authType, err)
+	}
+
+	return templ, nil
+}
+
+func (r *PlatformAuthorizationReconciler) extractHosts(target *unstructured.Unstructured) ([]string, error) {
+	hosts, err := r.hostExtractor.Extract(target)
+	if err != nil {
+		return nil, fmt.Errorf("could not extract host: %w", err)
+	}
+
+	return hosts, nil
 }

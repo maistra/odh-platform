@@ -24,9 +24,10 @@ var _ = Describe("AuthConfig functions", Label(labels.Unit), func() {
 			}
 
 			// when
-			hosts := extractor.Extract(&target)
+			hosts, err := extractor.Extract(&target)
 
 			// then
+			Expect(err).To(Not(HaveOccurred()))
 			Expect(hosts).To(HaveExactElements("test.com"))
 		})
 
@@ -39,9 +40,10 @@ var _ = Describe("AuthConfig functions", Label(labels.Unit), func() {
 			unstructured.SetNestedStringSlice(target.Object, []string{"test.com", "test2.com"}, "status", "url")
 
 			// when
-			hosts := extractor.Extract(&target)
+			hosts, err := extractor.Extract(&target)
 
 			// then
+			Expect(err).To(Not(HaveOccurred()))
 			Expect(hosts).To(ContainElements("test.com", "test2.com"))
 		})
 
