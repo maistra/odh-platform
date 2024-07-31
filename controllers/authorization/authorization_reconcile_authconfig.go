@@ -17,12 +17,12 @@ import (
 )
 
 func (r *PlatformAuthorizationReconciler) reconcileAuthConfig(ctx context.Context, target *unstructured.Unstructured) error {
-	templ, err := r.detectAndLoadTemplate(ctx, target)
+	hosts, err := r.extractHosts(target)
 	if err != nil {
 		return err
 	}
 
-	hosts, err := r.extractHosts(target)
+	templ, err := r.createAuthConfigTemplate(ctx, target)
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func CompareAuthConfigs(m1, m2 *authorinov1beta2.AuthConfig) bool {
 		reflect.DeepEqual(m1.Spec, m2.Spec)
 }
 
-func (r *PlatformAuthorizationReconciler) detectAndLoadTemplate(ctx context.Context, target *unstructured.Unstructured) (authorinov1beta2.AuthConfig, error) {
+func (r *PlatformAuthorizationReconciler) createAuthConfigTemplate(ctx context.Context, target *unstructured.Unstructured) (authorinov1beta2.AuthConfig, error) {
 	authType, err := r.typeDetector.Detect(ctx, target)
 	if err != nil {
 		return authorinov1beta2.AuthConfig{}, fmt.Errorf("could not detect authtype: %w", err)
