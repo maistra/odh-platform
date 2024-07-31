@@ -7,7 +7,7 @@ updates:
     rebase-strategy: "disabled"
     # To be aligned with opendatahub-operator codebase these dependencies are ignored for now
     ignore:
-      - dependency-name: "sigs.k8s.io/controller-runtime"
+      - dependency-name: "sigs.k8s.io/*"
       - dependency-name: "k8s.io/*"
     reviewers:
       - aslakknutsen
