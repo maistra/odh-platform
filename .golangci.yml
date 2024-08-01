@@ -76,6 +76,8 @@ linters-settings:
       - stdlib
       # also allow generics
       - generic
+      # we want to return spi.Interfaces in routing.go and authconfig.go
+      - spi
 linters:
   enable-all: true
   disable:

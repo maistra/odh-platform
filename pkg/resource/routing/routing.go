@@ -1,4 +1,3 @@
-//nolint:ireturn //reason: we want to return spi.Interfaces
 package routing
 
 import (
