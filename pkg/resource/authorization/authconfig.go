@@ -140,27 +140,46 @@ func NewExpressionHostExtractor(paths []string) spi.HostExtractor {
 	return &expressionHostExtractor{paths: paths}
 }
 
-func (k *expressionHostExtractor) Extract(target *unstructured.Unstructured) []string {
+func (k *expressionHostExtractor) Extract(target *unstructured.Unstructured) ([]string, error) {
 	hosts := []string{}
 
 	for _, path := range k.paths {
 		splitPath := strings.Split(path, ".")
+		extractedHosts, err := extractHosts(target, splitPath)
 
-		if foundHost, foundStr, errNestedStr := unstructured.NestedString(target.Object, splitPath...); errNestedStr == nil && foundStr {
-			hosts = appendHosts(hosts, foundHost)
+		if err != nil {
+			return nil, fmt.Errorf("failed to extract hosts at path %s: %w", path, err)
 		}
 
-		if foundHosts, foundSlice, errNestedSlice := unstructured.NestedStringSlice(target.Object, splitPath...); errNestedSlice == nil && foundSlice {
-			hosts = appendHosts(hosts, foundHosts...)
+		parsedHosts, errAppend := appendHosts(hosts, extractedHosts...)
+
+		if errAppend != nil {
+			return nil, fmt.Errorf("failed to append hosts %v: %w", extractedHosts, errAppend)
 		}
+
+		hosts = parsedHosts
 	}
 
 	u := unique(hosts)
 	if len(u) == 0 {
-		return []string{"unknown.host.com"}
+		return []string{"unknown.host.com"}, nil
 	}
 
-	return u
+	return u, nil
+}
+
+func extractHosts(target *unstructured.Unstructured, splitPath []string) ([]string, error) {
+	// extracting as string
+	if foundHost, found, err := unstructured.NestedString(target.Object, splitPath...); err == nil && found {
+		return []string{foundHost}, nil
+	}
+
+	// extracting as slice of strings
+	if foundHosts, found, err := unstructured.NestedStringSlice(target.Object, splitPath...); err == nil && found {
+		return foundHosts, nil
+	}
+
+	return nil, fmt.Errorf("neither string nor slice of strings found at path %v", splitPath)
 }
 
 func unique(in []string) []string {
@@ -182,19 +201,21 @@ func unique(in []string) []string {
 	return keys
 }
 
-func appendHosts(hosts []string, foundHosts ...string) []string {
+func appendHosts(hosts []string, foundHosts ...string) ([]string, error) {
 	for _, foundHost := range foundHosts {
 		if isURI(foundHost) {
 			parsedURL, errParse := url.Parse(foundHost)
-			if errParse == nil {
-				hosts = append(hosts, parsedURL.Host)
+			if errParse != nil {
+				return nil, fmt.Errorf("failed to parse URL %s: %w", foundHost, errParse)
 			}
+
+			hosts = append(hosts, parsedURL.Host)
 		} else {
 			hosts = append(hosts, foundHost)
 		}
 	}
 
-	return hosts
+	return hosts, nil
 }
 
 func isURI(host string) bool {
