@@ -48,19 +48,19 @@ func GetConfigFile() string {
 }
 
 func GetGatewayNamespace() string {
-	return getEnvOr(RouteGatewayNamespace, "opendatahub-ingress")
+	return getEnvOr(RouteGatewayNamespace, "opendatahub-services")
 }
 
 func GetGatewayService() string {
-	return getEnvOr(RouteGatewayService, "istio-ingressgateway")
+	return getEnvOr(RouteGatewayService, "opendatahub-ingress-router")
 }
 
 func GetIngressSelectorKey() string {
-	return getEnvOr(RouteIngressSelectorKey, "opendatahub")
+	return getEnvOr(RouteIngressSelectorKey, "istio")
 }
 
 func GetIngressSelectorValue() string {
-	return getEnvOr(RouteIngressSelectorValue, "ingressgateway")
+	return getEnvOr(RouteIngressSelectorValue, "opendatahub-ingress-gateway")
 }
 
 func getEnvOr(key, defaultValue string) string {

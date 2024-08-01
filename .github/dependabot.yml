@@ -5,8 +5,14 @@ updates:
     schedule:
       interval: "weekly"
     rebase-strategy: "disabled"
+    # To be aligned with opendatahub-operator codebase these dependencies are ignored for now
+    ignore:
+      - dependency-name: "sigs.k8s.io/*"
+      - dependency-name: "k8s.io/*"
     reviewers:
+      - aslakknutsen
       - bartoszmajsak
+      - cam-garrison
 
   - package-ecosystem: "docker"
     directory: "/build"
@@ -14,7 +20,9 @@ updates:
       interval: "weekly"
     rebase-strategy: "disabled"
     reviewers:
+      - aslakknutsen
       - bartoszmajsak
+      - cam-garrison
 
   - package-ecosystem: "github-actions"
     directory: "/" # resolved as .github/workflows
@@ -22,4 +30,6 @@ updates:
       interval: "weekly"
     rebase-strategy: "disabled"
     reviewers:
+      - aslakknutsen
       - bartoszmajsak
+      - cam-garrison
