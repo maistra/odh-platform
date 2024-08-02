@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/opendatahub-io/odh-platform/controllers"
 	"github.com/opendatahub-io/odh-platform/pkg/env"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 func (r *PlatformRoutingReconciler) reconcileResources(ctx context.Context, target *unstructured.Unstructured) error {
-	exportMode, exportModeFound := target.GetAnnotations()[controllers.AnnotationRoutingExportMode]
+	exportMode, exportModeFound := target.GetAnnotations()[metadata.AnnotationRoutingExportMode]
 	if !exportModeFound {
 		return nil
 	}

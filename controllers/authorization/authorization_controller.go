@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-logr/logr"
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
-	"github.com/opendatahub-io/odh-platform/controllers"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/resource/authorization"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	istiosecurityv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
@@ -26,7 +26,7 @@ func NewPlatformAuthorizationReconciler(cli client.Client, log logr.Logger,
 		log:            log,
 		config:         config,
 		authComponent:  authComponent,
-		typeDetector:   authorization.NewAnnotationAuthTypeDetector(controllers.AnnotationAuthEnabled),
+		typeDetector:   authorization.NewAnnotationAuthTypeDetector(metadata.AnnotationAuthEnabled),
 		hostExtractor:  authorization.NewExpressionHostExtractor(authComponent.HostPaths),
 		templateLoader: authorization.NewConfigMapTemplateLoader(cli, authorization.NewStaticTemplateLoader(config.Audiences)),
 	}
