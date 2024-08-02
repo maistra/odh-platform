@@ -6,7 +6,7 @@ metadata:
 spec:
   to:
     kind: Service
-    name: {{ .InfraService }}
+    name: {{ .IngressService }}
   port:
     targetPort: https
   tls:
@@ -20,7 +20,7 @@ metadata:
   namespace: {{ .GatewayNamespace }}
 spec:
   gateways:
-  - {{ .InfraService }} # name of wildcard Gateway
+  - {{ .IngressService }} # name of wildcard Gateway
   hosts:
   - {{ .PublicServiceName}}.{{ .Domain }} # hostname on the Route
   http:

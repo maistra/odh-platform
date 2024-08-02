@@ -107,7 +107,7 @@ type RoutingTemplateData struct {
 	// Infra
 	IngressSelectorLabel string // istio
 	IngressSelectorValue string // rhoai-gateway
-	InfraService         string // rhoai-router-ingress
+	IngressService       string // rhoai-router-ingress
 }
 
 // RoutingTemplateLoader provides a way to differentiate the Route template used based on

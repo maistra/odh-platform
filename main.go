@@ -84,8 +84,20 @@ func main() {
 		os.Exit(1)
 	}
 
+	config := routing.PlatformRoutingConfiguration{
+		IngressSelectorLabel: env.GetIngressSelectorKey(),
+		IngressSelectorValue: env.GetIngressSelectorValue(),
+		IngressService:       env.GetGatewayService(),
+		GatewayNamespace:     env.GetGatewayNamespace(),
+	}
+
 	for _, component := range routingComponents {
-		if err = routing.NewPlatformRoutingReconciler(mgr.GetClient(), ctrlLog, component).
+		if err = routing.NewPlatformRoutingReconciler(
+			mgr.GetClient(),
+			ctrlLog,
+			component,
+			config,
+		).
 			SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "odh-platform-"+component.CustomResourceType.Kind)
 			os.Exit(1)

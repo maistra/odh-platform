@@ -24,7 +24,7 @@ var _ = Describe("Resource functions", Label(labels.Unit), func() {
 
 			IngressSelectorLabel: "istio",
 			IngressSelectorValue: "rhoai-gateway",
-			InfraService:         "rhoai-router-ingress",
+			IngressService:       "rhoai-router-ingress",
 		}
 
 		It("should load public resources", func() {

@@ -30,7 +30,7 @@ func (r *PlatformRoutingReconciler) reconcileResources(ctx context.Context, targ
 
 		IngressSelectorLabel: env.GetIngressSelectorKey(),
 		IngressSelectorValue: env.GetIngressSelectorValue(),
-		InfraService:         env.GetGatewayService(),
+		IngressService:       env.GetGatewayService(),
 	}
 
 	targetKey := types.NamespacedName{Namespace: target.GetNamespace(), Name: target.GetName()}
