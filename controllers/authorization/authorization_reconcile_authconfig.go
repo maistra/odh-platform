@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
-	"github.com/opendatahub-io/odh-platform/pkg/env"
 	"github.com/opendatahub-io/odh-platform/pkg/label"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,7 +27,7 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthConfig(ctx context.Contex
 		return err
 	}
 
-	desired, err := createAuthConfig(templ, hosts, target)
+	desired, err := createAuthConfig(templ, hosts, r.config.Label, target)
 	if err != nil {
 		return fmt.Errorf("could not create destired AuthConfig: %w", err)
 	}
@@ -78,12 +78,7 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthConfig(ctx context.Contex
 	return nil
 }
 
-func createAuthConfig(authConfigTpl authorinov1beta2.AuthConfig, hosts []string, target *unstructured.Unstructured) (*authorinov1beta2.AuthConfig, error) {
-	authKey, authVal, err := env.GetAuthorinoLabel()
-	if err != nil {
-		return &authorinov1beta2.AuthConfig{}, fmt.Errorf("could not get authorino label selector: %w", err)
-	}
-
+func createAuthConfig(authConfigTpl authorinov1beta2.AuthConfig, hosts []string, labelKV string, target *unstructured.Unstructured) (*authorinov1beta2.AuthConfig, error) {
 	if authConfigTpl.Annotations == nil {
 		authConfigTpl.Annotations = map[string]string{}
 	}
@@ -92,7 +87,12 @@ func createAuthConfig(authConfigTpl authorinov1beta2.AuthConfig, hosts []string,
 		authConfigTpl.Labels = map[string]string{}
 	}
 
-	authConfigTpl.Labels[authKey] = authVal
+	keyValue := strings.Split(labelKV, "=")
+	if len(keyValue) != 2 {
+		return nil, fmt.Errorf("expected authorino label to be in key=value format, got [%s]", labelKV)
+	}
+
+	authConfigTpl.Labels[keyValue[0]] = keyValue[1]
 
 	stdLabels := label.ApplyStandard(target.GetLabels())
 	for k, v := range stdLabels {

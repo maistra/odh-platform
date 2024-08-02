@@ -8,7 +8,6 @@ import (
 	"github.com/go-logr/logr"
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/opendatahub-io/odh-platform/controllers"
-	"github.com/opendatahub-io/odh-platform/pkg/env"
 	"github.com/opendatahub-io/odh-platform/pkg/resource/authorization"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	istiosecurityv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
@@ -20,23 +19,35 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewPlatformAuthorizationReconciler(cli client.Client, log logr.Logger, authComponent spi.AuthorizationComponent) *PlatformAuthorizationReconciler {
+func NewPlatformAuthorizationReconciler(cli client.Client, log logr.Logger,
+	authComponent spi.AuthorizationComponent, config PlatformAuthorizationConfig) *PlatformAuthorizationReconciler {
 	return &PlatformAuthorizationReconciler{
 		Client:         cli,
 		log:            log,
+		config:         config,
 		authComponent:  authComponent,
 		typeDetector:   authorization.NewAnnotationAuthTypeDetector(controllers.AnnotationAuthEnabled),
 		hostExtractor:  authorization.NewExpressionHostExtractor(authComponent.HostPaths),
-		templateLoader: authorization.NewConfigMapTemplateLoader(cli, authorization.NewStaticTemplateLoader(env.GetAuthAudience())),
+		templateLoader: authorization.NewConfigMapTemplateLoader(cli, authorization.NewStaticTemplateLoader(config.Audiences)),
 	}
 }
 
 type reconcileAuthFunc func(ctx context.Context, target *unstructured.Unstructured) error
 
+type PlatformAuthorizationConfig struct {
+	// Label in a format of key=value. It's used to target created AuthConfig by Authorino instance.
+	Label string
+	// Audiences is a list of audiences that will be used in the AuthConfig template when performing TokenReview.
+	Audiences []string
+	// ProviderName is the name of the registered external authorization provider in Service Mesh.
+	ProviderName string
+}
+
 // PlatformAuthorizationReconciler holds the controller configuration.
 type PlatformAuthorizationReconciler struct {
 	client.Client
 	log            logr.Logger
+	config         PlatformAuthorizationConfig
 	authComponent  spi.AuthorizationComponent
 	typeDetector   spi.AuthTypeDetector
 	hostExtractor  spi.HostExtractor

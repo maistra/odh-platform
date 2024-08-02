@@ -70,8 +70,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	authorizationConfig := authorization.PlatformAuthorizationConfig{
+		Label:        env.GetAuthorinoLabel(),
+		Audiences:    env.GetAuthAudience(),
+		ProviderName: env.GetAuthProvider(),
+	}
 	for _, component := range authorizationComponents {
-		if err = authorization.NewPlatformAuthorizationReconciler(mgr.GetClient(), ctrlLog, component).
+		if err = authorization.NewPlatformAuthorizationReconciler(mgr.GetClient(), ctrlLog, component, authorizationConfig).
 			SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "odh-platform-"+component.CustomResourceType.Kind)
 			os.Exit(1)
@@ -84,7 +89,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	config := routing.PlatformRoutingConfiguration{
+	routingConfig := routing.PlatformRoutingConfiguration{
 		IngressSelectorLabel: env.GetIngressSelectorKey(),
 		IngressSelectorValue: env.GetIngressSelectorValue(),
 		IngressService:       env.GetGatewayService(),
@@ -96,7 +101,7 @@ func main() {
 			mgr.GetClient(),
 			ctrlLog,
 			component,
-			config,
+			routingConfig,
 		).
 			SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "odh-platform-"+component.CustomResourceType.Kind)

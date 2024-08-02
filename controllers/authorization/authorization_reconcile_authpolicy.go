@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/opendatahub-io/odh-platform/pkg/env"
 	"github.com/opendatahub-io/odh-platform/pkg/label"
 	"istio.io/api/security/v1beta1"
 	istiotypev1beta1 "istio.io/api/type/v1beta1"
@@ -19,7 +18,7 @@ import (
 )
 
 func (r *PlatformAuthorizationReconciler) reconcileAuthPolicy(ctx context.Context, target *unstructured.Unstructured) error {
-	desired := createAuthorizationPolicy(r.authComponent.Ports, r.authComponent.WorkloadSelector, target)
+	desired := createAuthzPolicy(r.authComponent.Ports, r.authComponent.WorkloadSelector, r.config.ProviderName, target)
 	found := &istiosecurityv1beta1.AuthorizationPolicy{}
 	justCreated := false
 
@@ -66,7 +65,7 @@ func (r *PlatformAuthorizationReconciler) reconcileAuthPolicy(ctx context.Contex
 	return nil
 }
 
-func createAuthorizationPolicy(ports []string, workloadSelector map[string]string, target *unstructured.Unstructured) *istiosecurityv1beta1.AuthorizationPolicy {
+func createAuthzPolicy(ports []string, workloadSelector map[string]string, providerName string, target *unstructured.Unstructured) *istiosecurityv1beta1.AuthorizationPolicy {
 	policy := &istiosecurityv1beta1.AuthorizationPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        target.GetName(),
@@ -84,7 +83,7 @@ func createAuthorizationPolicy(ports []string, workloadSelector map[string]strin
 			Action: v1beta1.AuthorizationPolicy_CUSTOM,
 			ActionDetail: &v1beta1.AuthorizationPolicy_Provider{
 				Provider: &v1beta1.AuthorizationPolicy_ExtensionProvider{
-					Name: env.GetAuthProvider(),
+					Name: providerName,
 				},
 			},
 		},

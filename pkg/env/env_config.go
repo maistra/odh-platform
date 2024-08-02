@@ -1,7 +1,6 @@
 package env
 
 import (
-	"fmt"
 	"os"
 	"strings"
 )
@@ -17,15 +16,8 @@ const (
 	ConfigCapabilities        = "CONFIG_CAPABILITIES"
 )
 
-func GetAuthorinoLabel() (key, value string, err error) { //nolint:nonamedreturns //reason: having named key-value makes the function easier to understand
-	label := getEnvOr(AuthorinoLabelSelector, "security.opendatahub.io/authorization-group=default")
-	keyValue := strings.Split(label, "=")
-
-	if len(keyValue) != 2 {
-		return "", "", fmt.Errorf("expected authorino label to be in key=value format, got [%s]", label)
-	}
-
-	return keyValue[0], keyValue[1], nil
+func GetAuthorinoLabel() string {
+	return getEnvOr(AuthorinoLabelSelector, "security.opendatahub.io/authorization-group=default")
 }
 
 func GetAuthProvider() string {
