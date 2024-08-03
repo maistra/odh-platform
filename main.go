@@ -6,7 +6,7 @@ import (
 
 	"github.com/opendatahub-io/odh-platform/controllers/authorization"
 	"github.com/opendatahub-io/odh-platform/controllers/routing"
-	"github.com/opendatahub-io/odh-platform/pkg/env"
+	"github.com/opendatahub-io/odh-platform/pkg/config"
 	pschema "github.com/opendatahub-io/odh-platform/pkg/schema"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"github.com/opendatahub-io/odh-platform/version"
@@ -64,16 +64,16 @@ func main() {
 		WithName("odh-platform")
 	ctrlLog.Info("creating controller instance", "version", version.Version, "commit", version.Commit, "build-time", version.BuildTime)
 
-	authorizationComponents, errLoad := spi.LoadConfig(spi.AuthorizationComponent{}, env.GetConfigFile())
+	authorizationComponents, errLoad := config.Load(spi.AuthorizationComponent{}, config.GetConfigFile())
 	if errLoad != nil {
-		setupLog.Error(errLoad, "unable to load config from "+env.GetConfigFile())
+		setupLog.Error(errLoad, "unable to load config from "+config.GetConfigFile())
 		os.Exit(1)
 	}
 
 	authorizationConfig := authorization.PlatformAuthorizationConfig{
-		Label:        env.GetAuthorinoLabel(),
-		Audiences:    env.GetAuthAudience(),
-		ProviderName: env.GetAuthProvider(),
+		Label:        config.GetAuthorinoLabel(),
+		Audiences:    config.GetAuthAudience(),
+		ProviderName: config.GetAuthProvider(),
 	}
 	for _, component := range authorizationComponents {
 		if err = authorization.NewPlatformAuthorizationReconciler(mgr.GetClient(), ctrlLog, component, authorizationConfig).
@@ -83,17 +83,17 @@ func main() {
 		}
 	}
 
-	routingComponents, errLoad := spi.LoadConfig(spi.RoutingComponent{}, env.GetConfigFile())
+	routingComponents, errLoad := config.Load(spi.RoutingComponent{}, config.GetConfigFile())
 	if errLoad != nil {
-		setupLog.Error(errLoad, "unable to load config from "+env.GetConfigFile())
+		setupLog.Error(errLoad, "unable to load config from "+config.GetConfigFile())
 		os.Exit(1)
 	}
 
 	routingConfig := routing.PlatformRoutingConfiguration{
-		IngressSelectorLabel: env.GetIngressSelectorKey(),
-		IngressSelectorValue: env.GetIngressSelectorValue(),
-		IngressService:       env.GetGatewayService(),
-		GatewayNamespace:     env.GetGatewayNamespace(),
+		IngressSelectorLabel: config.GetIngressSelectorKey(),
+		IngressSelectorValue: config.GetIngressSelectorValue(),
+		IngressService:       config.GetGatewayService(),
+		GatewayNamespace:     config.GetGatewayNamespace(),
 	}
 
 	for _, component := range routingComponents {

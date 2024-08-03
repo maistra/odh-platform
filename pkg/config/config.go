@@ -1,4 +1,4 @@
-package spi
+package config
 
 import (
 	"fmt"
@@ -9,8 +9,8 @@ type LoadableConfig[T any] interface {
 	Load(configPath string) ([]T, error)
 }
 
-// LoadConfig loads the configuration from the given path using the strategy defined by the LoadableConfig implementation.
-func LoadConfig[T LoadableConfig[T]](instance T, configPath string) ([]T, error) {
+// Load loads the configuration from the given path using the strategy defined by the LoadableConfig implementation.
+func Load[T LoadableConfig[T]](instance T, configPath string) ([]T, error) {
 	defs, err := instance.Load(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed loading config for: %w", err)

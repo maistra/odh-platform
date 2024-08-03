@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/opendatahub-io/odh-platform/controllers/authorization"
-	"github.com/opendatahub-io/odh-platform/pkg/env"
+	"github.com/opendatahub-io/odh-platform/pkg/config"
 	pschema "github.com/opendatahub-io/odh-platform/pkg/schema"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"github.com/opendatahub-io/odh-platform/test/labels"
@@ -93,9 +93,9 @@ var _ = SynchronizedBeforeSuite(func(ctx context.Context) {
 			HostPaths:        []string{"status.url"},
 		},
 		authorization.PlatformAuthorizationConfig{
-			Label:        env.GetAuthorinoLabel(),
-			Audiences:    env.GetAuthAudience(),
-			ProviderName: env.GetAuthProvider(),
+			Label:        config.GetAuthorinoLabel(),
+			Audiences:    config.GetAuthAudience(),
+			ProviderName: config.GetAuthProvider(),
 		},
 	).SetupWithManager(mgr)
 	Expect(err).ToNot(HaveOccurred())

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/opendatahub-io/odh-platform/pkg/env"
+	"github.com/opendatahub-io/odh-platform/pkg/config"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -25,12 +25,12 @@ func (r *PlatformRoutingReconciler) reconcileResources(ctx context.Context, targ
 		PublicServiceName: "registry-office", // TODO: serviceName - serviceNamespace
 		ServiceName:       "registry",        // TODO: lookupService.GetName()
 		ServiceNamespace:  target.GetNamespace(),
-		GatewayNamespace:  env.GetGatewayNamespace(),
+		GatewayNamespace:  config.GetGatewayNamespace(),
 		Domain:            "app-crc.testing", // TODO: Read from where?
 
-		IngressSelectorLabel: env.GetIngressSelectorKey(),
-		IngressSelectorValue: env.GetIngressSelectorValue(),
-		IngressService:       env.GetGatewayService(),
+		IngressSelectorLabel: config.GetIngressSelectorKey(),
+		IngressSelectorValue: config.GetIngressSelectorValue(),
+		IngressService:       config.GetGatewayService(),
 	}
 
 	targetKey := types.NamespacedName{Namespace: target.GetNamespace(), Name: target.GetName()}
