@@ -1,4 +1,4 @@
-package cluster
+package envtest
 
 import (
 	"context"
