@@ -4,11 +4,11 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/opendatahub-io/odh-platform/pkg/resource/authorization"
-	"github.com/opendatahub-io/odh-platform/test/labels"
+	"github.com/opendatahub-io/odh-platform/test"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-var _ = Describe("AuthConfig functions", Label(labels.Unit), func() {
+var _ = Describe("AuthConfig functions", test.Unit(), func() {
 
 	Context("Host extraction", func() {
 

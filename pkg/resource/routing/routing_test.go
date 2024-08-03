@@ -7,11 +7,11 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/opendatahub-io/odh-platform/pkg/resource/routing"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
-	"github.com/opendatahub-io/odh-platform/test/labels"
+	"github.com/opendatahub-io/odh-platform/test"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-var _ = Describe("Resource functions", Label(labels.Unit), func() {
+var _ = Describe("Resource functions", test.Unit(), func() {
 
 	Context("Template Loader", func() {
 

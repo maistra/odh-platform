@@ -6,10 +6,10 @@ import (
 	. "github.com/onsi/gomega/gstruct"
 	"github.com/opendatahub-io/odh-platform/pkg/config"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
-	"github.com/opendatahub-io/odh-platform/test/labels"
+	"github.com/opendatahub-io/odh-platform/test"
 )
 
-var _ = Describe("Loading capabilities", Label(labels.Unit), func() {
+var _ = Describe("Loading capabilities", test.Unit(), func() {
 
 	Context("loading capabilities from files", func() {
 

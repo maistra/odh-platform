@@ -12,7 +12,7 @@ import (
 	"github.com/opendatahub-io/odh-platform/pkg/config"
 	pschema "github.com/opendatahub-io/odh-platform/pkg/schema"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
-	"github.com/opendatahub-io/odh-platform/test/labels"
+	"github.com/opendatahub-io/odh-platform/test"
 	"go.uber.org/zap/zapcore"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,7 +39,7 @@ func TestController(t *testing.T) {
 }
 
 var _ = SynchronizedBeforeSuite(func(ctx context.Context) {
-	if !Label(labels.EnvTest).MatchesLabelFilter(GinkgoLabelFilter()) {
+	if test.IsEnvTest() {
 		return
 	}
 
@@ -107,7 +107,7 @@ var _ = SynchronizedBeforeSuite(func(ctx context.Context) {
 }, func() {})
 
 var _ = SynchronizedAfterSuite(func() {}, func() {
-	if !Label(labels.EnvTest).MatchesLabelFilter(GinkgoLabelFilter()) {
+	if test.IsEnvTest() {
 		return
 	}
 	By("Tearing down the test environment")
