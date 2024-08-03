@@ -1,11 +1,15 @@
 package metadata
 
-const AnnotationAuthEnabled = "security.opendatahub.io/enable-auth"
-
-const AnnotationAuthorizationGroup = "security.opendatahub.io/authorization-group"
-
-const AnnotationRoutingExportMode = "routing.opendatahub.io/export-mode"
-
-const AnnotationRoutingAddressesPublic = "routing.opendatahub.io/addresses-public"
-
-const AnnotationRoutingAddressesExternal = "routing.opendatahub.io/addresses-external"
+var Annotations = struct { //nolint:gochecknoglobals //reason: anonymous struct is used for grouping annotations together instead of consts
+	AuthEnabled              string
+	AuthorizationGroup       string
+	RoutingExportMode        string
+	RoutingAddressesPublic   string
+	RoutingAddressesExternal string
+}{
+	AuthEnabled:              "security.opendatahub.io/enable-auth",
+	AuthorizationGroup:       "security.opendatahub.io/authorization-group",
+	RoutingExportMode:        "routing.opendatahub.io/export-mode",
+	RoutingAddressesPublic:   "routing.opendatahub.io/addresses-public",
+	RoutingAddressesExternal: "routing.opendatahub.io/addresses-external",
+}

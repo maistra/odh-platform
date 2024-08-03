@@ -26,7 +26,7 @@ func NewPlatformAuthorizationReconciler(cli client.Client, log logr.Logger,
 		log:            log,
 		config:         config,
 		authComponent:  authComponent,
-		typeDetector:   authorization.NewAnnotationAuthTypeDetector(metadata.AnnotationAuthEnabled),
+		typeDetector:   authorization.NewAnnotationAuthTypeDetector(metadata.Annotations.AuthEnabled),
 		hostExtractor:  authorization.NewExpressionHostExtractor(authComponent.HostPaths),
 		templateLoader: authorization.NewConfigMapTemplateLoader(cli, authorization.NewStaticTemplateLoader(config.Audiences)),
 	}

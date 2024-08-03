@@ -12,7 +12,7 @@ import (
 )
 
 func (r *PlatformRoutingReconciler) reconcileResources(ctx context.Context, target *unstructured.Unstructured) error {
-	exportMode, exportModeFound := target.GetAnnotations()[metadata.AnnotationRoutingExportMode]
+	exportMode, exportModeFound := target.GetAnnotations()[metadata.Annotations.RoutingExportMode]
 	if !exportModeFound {
 		return nil
 	}

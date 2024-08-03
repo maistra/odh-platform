@@ -2,24 +2,32 @@ package metadata
 
 import "github.com/opendatahub-io/odh-platform/version"
 
-const (
-	LabelAppPartOf       = "app.kubernetes.io/part-of"
-	LabelAppComponent    = "app.kubernetes.io/component"
-	LabelAppName         = "app.kubernetes.io/name"
-	LabelAppVersion      = "app.kubernetes.io/version"
-	LabelAppManagedBy    = "app.kubernetes.io/managed-by"
-	LabelOwnerName       = "platform.opendatahub.io/owner-name"
-	LabelRoutingExported = "routing.opendatahub.io/exported"
-)
+var Labels = struct { //nolint:gochecknoglobals //reason: anonymous struct is used for grouping labels together instead of consts
+	AppPartOf       string
+	AppComponent    string
+	AppName         string
+	AppVersion      string
+	AppManagedBy    string
+	OwnerName       string
+	RoutingExported string
+}{
+	AppPartOf:       "app.kubernetes.io/part-of",
+	AppComponent:    "app.kubernetes.io/component",
+	AppName:         "app.kubernetes.io/name",
+	AppVersion:      "app.kubernetes.io/version",
+	AppManagedBy:    "app.kubernetes.io/managed-by",
+	OwnerName:       "platform.opendatahub.io/owner-name",
+	RoutingExported: "routing.opendatahub.io/exported",
+}
 
 func ApplyStandard(source map[string]string) map[string]string {
 	target := map[string]string{}
 
-	target[LabelAppPartOf] = source[LabelAppName]
-	target[LabelAppComponent] = source[LabelAppComponent]
+	target[Labels.AppPartOf] = source[Labels.AppName]
+	target[Labels.AppComponent] = source[Labels.AppComponent]
 
-	target[LabelAppVersion] = version.Version
-	target[LabelAppManagedBy] = "odh-platform"
+	target[Labels.AppVersion] = version.Version
+	target[Labels.AppManagedBy] = "odh-platform"
 
 	return target
 }
