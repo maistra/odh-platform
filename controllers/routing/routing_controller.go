@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	platformctrl "github.com/opendatahub-io/odh-platform/controllers"
 	"github.com/opendatahub-io/odh-platform/pkg/resource/routing"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	openshiftroutev1 "github.com/openshift/api/route/v1"
@@ -27,8 +28,6 @@ func NewPlatformRoutingReconciler(cli client.Client, log logr.Logger, routingCom
 		templateLoader: routing.NewStaticTemplateLoader(),
 	}
 }
-
-type reconcileRoutingFunc func(ctx context.Context, target *unstructured.Unstructured) error
 
 // PlatformRoutingReconciler holds the controller configuration.
 type PlatformRoutingReconciler struct {
@@ -53,7 +52,7 @@ type PlatformRoutingConfiguration struct {
 
 // Reconcile ensures that the namespace has all required resources needed to be part of the Service Mesh of Open Data Hub.
 func (r *PlatformRoutingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	reconcilers := []reconcileRoutingFunc{r.reconcileResources}
+	reconcilers := []platformctrl.SubReconcileFunc{r.reconcileResources}
 
 	sourceRes := &unstructured.Unstructured{}
 	sourceRes.SetGroupVersionKind(r.component.CustomResourceType.GroupVersionKind)

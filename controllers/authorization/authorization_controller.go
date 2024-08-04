@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-logr/logr"
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
+	platformctrl "github.com/opendatahub-io/odh-platform/controllers"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/resource/authorization"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
@@ -31,8 +32,6 @@ func NewPlatformAuthorizationReconciler(cli client.Client, log logr.Logger,
 		templateLoader: authorization.NewConfigMapTemplateLoader(cli, authorization.NewStaticTemplateLoader(config.Audiences)),
 	}
 }
-
-type reconcileAuthFunc func(ctx context.Context, target *unstructured.Unstructured) error
 
 type PlatformAuthorizationConfig struct {
 	// Label in a format of key=value. It's used to target created AuthConfig by Authorino instance.
@@ -60,7 +59,7 @@ type PlatformAuthorizationReconciler struct {
 
 // Reconcile ensures that the namespace has all required resources needed to be part of the Service Mesh of Open Data Hub.
 func (r *PlatformAuthorizationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	reconcilers := []reconcileAuthFunc{r.reconcileAuthConfig, r.reconcileAuthPolicy, r.reconcilePeerAuthentication}
+	reconcilers := []platformctrl.SubReconcileFunc{r.reconcileAuthConfig, r.reconcileAuthPolicy, r.reconcilePeerAuthentication}
 
 	sourceRes := &unstructured.Unstructured{}
 	sourceRes.SetGroupVersionKind(r.authComponent.CustomResourceType.GroupVersionKind)
