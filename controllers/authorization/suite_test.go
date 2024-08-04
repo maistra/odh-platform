@@ -53,8 +53,7 @@ var _ = SynchronizedBeforeSuite(func(ctx context.Context) {
 	envTest = &envtest.Environment{
 		CRDInstallOptions: envtest.CRDInstallOptions{
 			Scheme:             testScheme,
-			CRDs:               loadCRDs(),
-			Paths:              []string{filepath.Join("..", "config", "crd", "external")},
+			Paths:              []string{filepath.Join(test.ProjectRoot(), "config", "crd", "external")},
 			ErrorIfPathMissing: true,
 			CleanUpAfterUse:    false,
 		},
@@ -113,7 +112,3 @@ var _ = SynchronizedAfterSuite(func() {}, func() {
 	By("Tearing down the test environment")
 	Expect(envTest.Stop()).To(Succeed())
 })
-
-func loadCRDs() []*v1.CustomResourceDefinition {
-	return []*v1.CustomResourceDefinition{}
-}

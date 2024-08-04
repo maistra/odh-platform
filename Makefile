@@ -25,7 +25,13 @@ clean: ## Purges build artifacts
 .PHONY: generate
 generate: tools ## Generates required resources for the controller to work properly (see config/ folder)
 	$(LOCALBIN)/controller-gen rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-	$(call fetch-external-crds,github.com/kuadrant/authorino,api/v1beta1)
+## These CRDs are primarily used while testing in Kubernetes envtest
+	$(call fetch-external-crds,github.com/kuadrant/authorino,api/v1beta2)
+	$(call fetch-external-crds,github.com/openshift/api,route/v1)
+## Istio bundles all CRDs into one. We don't need them all so we extract those needed.
+	curl -s https://raw.githubusercontent.com/istio/istio/master/manifests/charts/base/crds/crd-all.gen.yaml | \
+	$(LOCALBIN)/yq eval 'select((.spec.group == "security.istio.io" or .spec.group == "networking.istio.io") and (.spec.versions[].name == "v1beta1"))' - > ./config/crd/external/istio-filtered-crds.yaml
+
 
 SRC_DIRS:=./controllers ./pkg ./version ./test
 SRCS:=$(shell find ${SRC_DIRS} -name "*.go")
@@ -142,6 +148,7 @@ tools: deps
 tools: $(LOCALBIN)/controller-gen $(LOCALBIN)/kustomize ## Installs required tools in local ./bin folder
 tools: $(LOCALBIN)/setup-envtest $(LOCALBIN)/ginkgo
 tools: $(LOCALBIN)/goimports $(LOCALBIN)/golangci-lint
+tools: $(LOCALBIN)/yq
 
 KUSTOMIZE_VERSION ?= v5.0.1
 $(LOCALBIN)/kustomize:
@@ -167,6 +174,11 @@ $(LOCALBIN)/ginkgo:
 $(LOCALBIN)/goimports:
 	$(call header,"Installing $(notdir $@)")
 	GOBIN=$(LOCALBIN) go install -mod=readonly golang.org/x/tools/cmd/goimports
+
+YQ_VERSION=v4.44.2
+$(LOCALBIN)/yq:
+	$(call header,"Installing $(notdir $@)")
+	GOBIN=$(LOCALBIN) go install github.com/mikefarah/yq/v4@$(YQ_VERSION)
 
 LINT_VERSION=v1.59.1
 $(LOCALBIN)/golangci-lint:
