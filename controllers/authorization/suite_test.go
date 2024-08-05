@@ -4,7 +4,6 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -13,25 +12,15 @@ import (
 	pschema "github.com/opendatahub-io/odh-platform/pkg/schema"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"github.com/opendatahub-io/odh-platform/test"
-	"go.uber.org/zap/zapcore"
+	"github.com/opendatahub-io/odh-platform/test/k8senvtest"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
-var (
-	cli     client.Client
-	envTest *envtest.Environment
-)
-
-var testScheme = runtime.NewScheme()
+var envTest *k8senvtest.Client
 
 func TestController(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -39,48 +28,16 @@ func TestController(t *testing.T) {
 }
 
 var _ = SynchronizedBeforeSuite(func(ctx context.Context) {
-	if test.IsEnvTest() {
+	if !test.IsEnvTest() {
 		return
 	}
 
-	opts := zap.Options{
-		Development: true,
-		TimeEncoder: zapcore.TimeEncoderOfLayout(time.RFC3339),
-	}
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseFlagOptions(&opts)))
-
-	By("Bootstrapping k8s test environment")
-	envTest = &envtest.Environment{
-		CRDInstallOptions: envtest.CRDInstallOptions{
-			Scheme:             testScheme,
-			Paths:              []string{filepath.Join(test.ProjectRoot(), "config", "crd", "external")},
-			ErrorIfPathMissing: true,
-			CleanUpAfterUse:    false,
-		},
-	}
-
-	cfg, err := envTest.Start()
-	Expect(err).NotTo(HaveOccurred())
-	Expect(cfg).NotTo(BeNil())
-
+	testScheme := runtime.NewScheme()
 	pschema.RegisterSchemes(testScheme)
 	utilruntime.Must(v1.AddToScheme(testScheme))
 
-	cli, err = client.New(cfg, client.Options{Scheme: testScheme})
-	Expect(err).NotTo(HaveOccurred())
-	Expect(cli).NotTo(BeNil())
-
-	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme:         testScheme,
-		LeaderElection: false,
-		Metrics: metricsserver.Options{
-			BindAddress: "0",
-		},
-	})
-	Expect(err).NotTo(HaveOccurred())
-
-	err = authorization.NewPlatformAuthorizationReconciler(
-		cli,
+	authzCtrl := authorization.NewPlatformAuthorizationReconciler(
+		nil, // SetupWithManager will ensure the client defined for the manager is propagated to the controller under test
 		ctrl.Log.WithName("controllers").WithName("platform"),
 		spi.AuthorizationComponent{
 			CustomResourceType: spi.ResourceSchema{
@@ -96,17 +53,19 @@ var _ = SynchronizedBeforeSuite(func(ctx context.Context) {
 			Audiences:    config.GetAuthAudience(),
 			ProviderName: config.GetAuthProvider(),
 		},
-	).SetupWithManager(mgr)
-	Expect(err).ToNot(HaveOccurred())
+	)
 
-	go func() {
-		defer GinkgoRecover()
-		Expect(mgr.Start(ctx)).To(Succeed(), "Failed to start manager")
-	}()
+	envTest = k8senvtest.Configure(
+		k8senvtest.WithCRDs(filepath.Join(test.ProjectRoot(), "config", "crd", "external")),
+		k8senvtest.WithScheme(testScheme),
+	).
+		WithControllers(authzCtrl.SetupWithManager).
+		Start(ctx)
+
 }, func() {})
 
 var _ = SynchronizedAfterSuite(func() {}, func() {
-	if test.IsEnvTest() {
+	if !test.IsEnvTest() {
 		return
 	}
 	By("Tearing down the test environment")

@@ -85,6 +85,11 @@ func (r *PlatformAuthorizationReconciler) Reconcile(ctx context.Context, req ctr
 }
 
 func (r *PlatformAuthorizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if r.Client == nil {
+		// Ensures client is set - fall back to the one defined for the passed manager
+		r.Client = mgr.GetClient()
+	}
+
 	//nolint:wrapcheck //reason there is no point in wrapping it
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&metav1.PartialObjectMetadata{

@@ -11,5 +11,5 @@ func EnvTest() ginkgo.Labels {
 }
 
 func IsEnvTest() bool {
-	return !EnvTest().MatchesLabelFilter(ginkgo.GinkgoLabelFilter())
+	return EnvTest().MatchesLabelFilter(ginkgo.GinkgoLabelFilter())
 }

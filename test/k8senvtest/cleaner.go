@@ -1,4 +1,4 @@
-package envtest
+package k8senvtest
 
 import (
 	"context"
