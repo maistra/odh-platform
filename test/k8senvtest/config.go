@@ -18,7 +18,7 @@ import (
 )
 
 type Config struct {
-	ctrlSetupFuncs []controllers.SetupWithManager
+	ctrlSetupFuncs []controllers.SetupWithManagerFunc
 	envTestOptions []Option
 }
 
@@ -47,7 +47,7 @@ func Configure(options ...Option) *Config {
 }
 
 // WithControllers register controllers under tests required for the test suite.
-func (e *Config) WithControllers(setupFunc ...controllers.SetupWithManager) *Config {
+func (e *Config) WithControllers(setupFunc ...controllers.SetupWithManagerFunc) *Config {
 	e.ctrlSetupFuncs = append(e.ctrlSetupFuncs, setupFunc...)
 
 	return e
@@ -90,6 +90,11 @@ func (e *Config) Start(ctx context.Context) *Client {
 	})
 	gomega.Expect(errMgr).NotTo(gomega.HaveOccurred())
 
+	for _, setupFunc := range e.ctrlSetupFuncs {
+		errSetup := setupFunc(mgr)
+		gomega.Expect(errSetup).NotTo(gomega.HaveOccurred())
+	}
+
 	go func() {
 		defer ginkgo.GinkgoRecover()
 		gomega.Expect(mgr.Start(ctx)).To(gomega.Succeed(), "Failed to start manager")
@@ -113,6 +118,7 @@ func WithCRDs(paths ...string) Option {
 // WithScheme sets the scheme for the test environment.
 func WithScheme(scheme *runtime.Scheme) Option {
 	return func(target *envtest.Environment) {
+		target.Scheme = scheme
 		target.CRDInstallOptions.Scheme = scheme
 	}
 }

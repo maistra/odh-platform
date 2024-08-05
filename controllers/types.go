@@ -7,6 +7,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-type SetupWithManager func(mgr ctrl.Manager) error
+type SetupWithManagerFunc func(mgr ctrl.Manager) error
 
 type SubReconcileFunc func(ctx context.Context, target *unstructured.Unstructured) error
