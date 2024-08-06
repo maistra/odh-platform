@@ -73,11 +73,17 @@ func (r *PlatformRoutingReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, fmt.Errorf("failed getting resource: %w", err)
 	}
 
-	r.log.Info("triggered route reconcile", "namespace", req.Namespace, "name", req.Name)
+	// TODO(mvp) if !sourceRes.GetDeletionTimestamp().IsZero() { handle removal of dependant resources }
+
+	r.log.Info("triggered routing reconcile", "namespace", req.Namespace, "name", req.Name)
 
 	var errs []error
 	for _, reconciler := range reconcilers {
 		errs = append(errs, reconciler(ctx, sourceRes))
+	}
+
+	if errUpdate := r.Update(ctx, sourceRes); errUpdate != nil {
+		errs = append(errs, errUpdate)
 	}
 
 	return ctrl.Result{}, errors.Join(errs...)
@@ -89,6 +95,7 @@ func (r *PlatformRoutingReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		r.Client = mgr.GetClient()
 	}
 
+	// TODO(mvp) define predicates for labels, annotation and generation changes
 	//nolint:wrapcheck //reason there is no point in wrapping it
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(ctrlName+"-"+strings.ToLower(r.component.CustomResourceType.Kind)).

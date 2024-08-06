@@ -96,6 +96,7 @@ func (r *PlatformAuthorizationReconciler) SetupWithManager(mgr ctrl.Manager) err
 		r.Client = mgr.GetClient()
 	}
 
+	// TODO(mvp): define predicates so we do not reconcile unnecessarily
 	//nolint:wrapcheck //reason there is no point in wrapping it
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(ctrlName+"-"+strings.ToLower(r.authComponent.CustomResourceType.Kind)).

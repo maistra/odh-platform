@@ -60,7 +60,7 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 		Expect(err).ToNot(HaveOccurred())
 
 		var errCreate error
-		createdComponent, errCreate = test.CreateOrUpdateResource(ctx, envTest.Client, componentResource(resourceName, testNamespaceName))
+		createdComponent, errCreate = test.CreateResource(ctx, envTest.Client, componentResource(resourceName, testNamespaceName))
 		Expect(errCreate).ToNot(HaveOccurred())
 	})
 

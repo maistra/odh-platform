@@ -12,6 +12,7 @@ spec:
   - name: https
     port: 443
     targetPort: 8443
+    protocol: TCP
 
 ---
 apiVersion: networking.istio.io/v1beta1
@@ -55,7 +56,7 @@ spec:
     - destination:
         host: {{ .ServiceName }}.{{ .ServiceNamespace }}.svc.cluster.local   # srv k8s
         port:
-          number: 8080 # port number on mesh service
+          number: {{ .ServiceTargetPort }}
 ---
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
