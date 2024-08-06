@@ -9,7 +9,7 @@ import (
 	"github.com/onsi/gomega/types"
 )
 
-// HaveHosts is a custom matcher to verify hosts in AuthConfigs
+// HaveHosts is a custom matcher to verify hosts in AuthConfigs.
 func HaveHosts(expectedHosts ...string) types.GomegaMatcher {
 	return &authConfigHostsMatcher{expectedHosts: expectedHosts}
 }
@@ -39,7 +39,7 @@ func (matcher *authConfigHostsMatcher) NegatedFailureMessage(actual any) string 
 	return format.Message(actual, "not to have hosts", matcher.expectedHosts)
 }
 
-// HaveKubernetesTokenReview is a custom matcher to verify Kubernetes Token Review configuration in AuthConfigs
+// HaveKubernetesTokenReview is a custom matcher to verify Kubernetes Token Review configuration in AuthConfigs.
 func HaveKubernetesTokenReview() types.GomegaMatcher {
 	return &kubernetesTokenReviewMatcher{}
 }
@@ -72,7 +72,7 @@ func (matcher *kubernetesTokenReviewMatcher) NegatedFailureMessage(actual any) s
 	return format.Message(actual, "not to have Kubernetes Token Review configured for kubernetes-user authentication")
 }
 
-// HaveAuthenticationMethod is a custom matcher to verify the presence of an authentication method in AuthConfigs
+// HaveAuthenticationMethod is a custom matcher to verify the presence of an authentication method in AuthConfigs.
 func HaveAuthenticationMethod(method string) types.GomegaMatcher {
 	return &authConfigMethodMatcher{expectedMethod: method}
 }

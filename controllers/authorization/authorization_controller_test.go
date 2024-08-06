@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/test"
-	"github.com/opendatahub-io/odh-platform/test/matchers"
+	. "github.com/opendatahub-io/odh-platform/test/matchers"
 	"istio.io/api/security/v1beta1"
 	istiosecurityv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -80,12 +80,12 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 				return err
 			}
 
-			Expect(createdAuthConfig).To(matchers.HaveHosts("example.com"))
+			Expect(createdAuthConfig).To(HaveHosts("example.com"))
 			Expect(createdAuthConfig.Labels).To(HaveKeyWithValue("security.opendatahub.io/authorization-group", "default"))
 
-			Expect(createdAuthConfig).To(matchers.HaveAuthenticationMethod("anonymous-access"))
-			Expect(createdAuthConfig).NotTo(matchers.HaveAuthenticationMethod("kubernetes-user"))
-			Expect(createdAuthConfig).NotTo(matchers.HaveKubernetesTokenReview())
+			Expect(createdAuthConfig).To(HaveAuthenticationMethod("anonymous-access"))
+			Expect(createdAuthConfig).NotTo(HaveAuthenticationMethod("kubernetes-user"))
+			Expect(createdAuthConfig).NotTo(HaveKubernetesTokenReview())
 
 			return nil
 		}, 10*time.Second, 2*time.Second).Should(Succeed())
@@ -112,12 +112,12 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 				return err
 			}
 
-			Expect(createdAuthConfig).To(matchers.HaveHosts("example.com"))
+			Expect(createdAuthConfig).To(HaveHosts("example.com"))
 			Expect(createdAuthConfig.Labels).To(HaveKeyWithValue("security.opendatahub.io/authorization-group", "default"))
 
-			Expect(createdAuthConfig).To(matchers.HaveAuthenticationMethod("kubernetes-user"))
-			Expect(createdAuthConfig).NotTo(matchers.HaveAuthenticationMethod("anonymous-access"))
-			Expect(createdAuthConfig).To(matchers.HaveKubernetesTokenReview())
+			Expect(createdAuthConfig).To(HaveAuthenticationMethod("kubernetes-user"))
+			Expect(createdAuthConfig).NotTo(HaveAuthenticationMethod("anonymous-access"))
+			Expect(createdAuthConfig).To(HaveKubernetesTokenReview())
 
 			return nil
 		}, 10*time.Second, 2*time.Second).Should(Succeed())
