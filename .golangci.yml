@@ -51,7 +51,12 @@ linters-settings:
     rules:
       - name: dot-imports
         arguments:
-          - allowedPackages: ["github.com/onsi/ginkgo/v2","github.com/onsi/gomega","github.com/onsi/gomega/gstruct"]
+          - allowedPackages: [
+            "github.com/onsi/ginkgo/v2",
+            "github.com/onsi/gomega",
+            "github.com/onsi/gomega/gstruct",
+            "github.com/opendatahub-io/odh-platform/test/matchers"
+          ]
   importas:
     alias:
       - pkg: k8s.io/apimachinery/pkg/api/errors
@@ -80,6 +85,11 @@ linters-settings:
       - generic
       # we want to return spi.Interfaces in routing.go and authconfig.go
       - spi
+      # for custom Gomega matchers
+      - types.GomegaMatcher
+  varnamelen: 
+    ignore-names:
+      - g # g Gomega
 linters:
   enable-all: true
   disable:
