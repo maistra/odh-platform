@@ -10,25 +10,38 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/test"
+	"github.com/opendatahub-io/odh-platform/test/matchers"
 	"istio.io/api/security/v1beta1"
 	istiosecurityv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
+
+const watchedCR = `
+apiVersion: opendatahub.io/v1
+kind: Component
+metadata:
+  name: %[1]s
+  namespace: %[2]s
+spec:
+  name: %[1]s
+  host: example.com
+`
 
 var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), func() {
 	var (
 		resourceName      string
 		testNamespaceName string
 		testNamespace     *corev1.Namespace
-		createdCfgMap     *corev1.ConfigMap
+		createdComponent  *unstructured.Unstructured
 	)
 
 	BeforeEach(func(ctx context.Context) {
-		resourceName = "test-configmap"
+		resourceName = "test-component"
 		base := "test-namespace"
 		testNamespaceName = fmt.Sprintf("%s%s", base, utilrand.String(7))
 
@@ -46,34 +59,15 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 		})
 		Expect(err).ToNot(HaveOccurred())
 
-		testConfigMap := &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      resourceName,
-				Namespace: testNamespaceName,
-			},
-			Data: map[string]string{
-				"host": "example.com",
-			},
-		}
-		_, err = controllerutil.CreateOrUpdate(ctx, envTest.Client, testConfigMap, func() error {
-			return nil
-		})
-		Expect(err).ToNot(HaveOccurred())
-
-		createdCfgMap = &corev1.ConfigMap{}
-		err = envTest.Client.Get(ctx, types.NamespacedName{
-			Name:      resourceName,
-			Namespace: testNamespaceName,
-		}, createdCfgMap)
-		Expect(err).NotTo(HaveOccurred())
+		var errCreate error
+		createdComponent, errCreate = test.CreateOrUpdateResource(ctx, envTest.Client, componentResource(resourceName, testNamespaceName))
+		Expect(errCreate).ToNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
-		envTest.DeleteAll(createdCfgMap, testNamespace)
+		envTest.DeleteAll(createdComponent, testNamespace)
 	})
 
-	// TODO: rename other references to cfgmap to target CR (similar)
-	// TODO: test reconcile/update on anonymous vs rules defined (verify both cases)
 	It("should create an anonymous AuthConfig resource by default when a target CR is created", func(ctx context.Context) {
 		Eventually(func() error {
 			createdAuthConfig := &authorinov1beta2.AuthConfig{}
@@ -86,29 +80,26 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 				return err
 			}
 
-			Expect(createdAuthConfig.ObjectMeta.OwnerReferences).To(HaveLen(1))
-			ownerRef := createdAuthConfig.ObjectMeta.OwnerReferences[0]
-			checkOwnerRef(ownerRef, *createdCfgMap)
-
-			Expect(createdAuthConfig.Spec.Hosts).To(ContainElement("example.com"))
+			Expect(createdAuthConfig).To(matchers.HaveHosts("example.com"))
 			Expect(createdAuthConfig.Labels).To(HaveKeyWithValue("security.opendatahub.io/authorization-group", "default"))
 
-			// Check for non-anonymous authentication
-			authMethod := createdAuthConfig.Spec.Authentication
-			Expect(authMethod).To(HaveKey("anonymous-access"))
-			Expect(authMethod).NotTo(HaveKey("kubernetes-user"))
+			Expect(createdAuthConfig).To(matchers.HaveAuthenticationMethod("anonymous-access"))
+			Expect(createdAuthConfig).NotTo(matchers.HaveAuthenticationMethod("kubernetes-user"))
+			Expect(createdAuthConfig).NotTo(matchers.HaveKubernetesTokenReview())
 
 			return nil
 		}, 10*time.Second, 2*time.Second).Should(Succeed())
 	})
 
 	It("should create a non-anonymous AuthConfig resource when annotation is specified", func(ctx context.Context) {
-		if createdCfgMap.Annotations == nil {
-			createdCfgMap.Annotations = map[string]string{}
+		if createdComponent.GetAnnotations() == nil {
+			createdComponent.SetAnnotations(map[string]string{})
 		}
 
-		createdCfgMap.Annotations[metadata.Annotations.AuthEnabled] = "true"
-		Expect(envTest.Client.Update(ctx, createdCfgMap)).To(Succeed())
+		annotations := createdComponent.GetAnnotations()
+		annotations[metadata.Annotations.AuthEnabled] = "true"
+		createdComponent.SetAnnotations(annotations)
+		Expect(envTest.Client.Update(ctx, createdComponent)).To(Succeed())
 
 		Eventually(func() error {
 			createdAuthConfig := &authorinov1beta2.AuthConfig{}
@@ -121,24 +112,18 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 				return err
 			}
 
-			Expect(createdAuthConfig.Spec.Hosts).To(ContainElement("example.com"))
+			Expect(createdAuthConfig).To(matchers.HaveHosts("example.com"))
 			Expect(createdAuthConfig.Labels).To(HaveKeyWithValue("security.opendatahub.io/authorization-group", "default"))
 
-			// Check for non-anonymous authentication
-			authMethod := createdAuthConfig.Spec.Authentication
-			Expect(authMethod).To(HaveKey("kubernetes-user"))
-			Expect(authMethod).NotTo(HaveKey("anonymous-access"))
-
-			// Verify Kubernetes Token Review is configured
-			kubernetesTokenReview := authMethod["kubernetes-user"].KubernetesTokenReview
-			Expect(kubernetesTokenReview).NotTo(BeNil())
+			Expect(createdAuthConfig).To(matchers.HaveAuthenticationMethod("kubernetes-user"))
+			Expect(createdAuthConfig).NotTo(matchers.HaveAuthenticationMethod("anonymous-access"))
+			Expect(createdAuthConfig).To(matchers.HaveKubernetesTokenReview())
 
 			return nil
 		}, 10*time.Second, 2*time.Second).Should(Succeed())
 	})
 
-	// Custom matchers (gomega)
-	It("should create an AuthorizationPolicy when a ConfigMap is created", func(ctx context.Context) {
+	It("should create an AuthorizationPolicy when a Component is created", func(ctx context.Context) {
 		Eventually(func() error {
 			createdAuthPolicy := &istiosecurityv1beta1.AuthorizationPolicy{}
 			err := envTest.Client.Get(ctx, types.NamespacedName{
@@ -150,17 +135,13 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 				return err
 			}
 
-			Expect(createdAuthPolicy.ObjectMeta.OwnerReferences).To(HaveLen(1))
-			ownerRef := createdAuthPolicy.ObjectMeta.OwnerReferences[0]
-			checkOwnerRef(ownerRef, *createdCfgMap)
-
 			Expect(createdAuthPolicy.Spec.GetAction()).To(Equal(v1beta1.AuthorizationPolicy_CUSTOM))
 
 			return nil
 		}, 10*time.Second, 2*time.Second).Should(Succeed())
 	})
 
-	It("should create a PeerAuthentication when a ConfigMap is created", func(ctx context.Context) {
+	It("should create a PeerAuthentication when a Component is created", func(ctx context.Context) {
 		Eventually(func() error {
 			createdPeerAuth := &istiosecurityv1beta1.PeerAuthentication{}
 			err := envTest.Client.Get(ctx, types.NamespacedName{
@@ -172,25 +153,20 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 				return err
 			}
 
-			Expect(createdPeerAuth.ObjectMeta.OwnerReferences).To(HaveLen(1))
-			ownerRef := createdPeerAuth.ObjectMeta.OwnerReferences[0]
-			checkOwnerRef(ownerRef, *createdCfgMap)
-
 			Expect(createdPeerAuth.Spec.GetMtls().GetMode()).To(Equal(v1beta1.PeerAuthentication_MutualTLS_PERMISSIVE))
 
 			return nil
 		}, 10*time.Second, 2*time.Second).Should(Succeed())
 	})
 
-	// TODO:
+	// TODO: fill out stubs once owner-name labels are propagated to auth resources
 	PIt("should have ownerReference on all created auth resources", func(ctx context.Context) {
-		// get by owner name label
+		// get all three resources by owner name label
 
+		// use matchers.owner.go to ensure that correct ownerReference is set on all of them
 	})
 })
 
-func checkOwnerRef(owner metav1.OwnerReference, cfgMap corev1.ConfigMap) {
-	Expect(owner.Name).To(Equal(cfgMap.Name))
-	Expect(owner.UID).To(Equal(cfgMap.UID))
-	Expect(owner.BlockOwnerDeletion).To(BeNil())
+func componentResource(name, namespace string) []byte {
+	return []byte(fmt.Sprintf(watchedCR, name, namespace))
 }

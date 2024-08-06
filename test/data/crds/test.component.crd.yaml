@@ -17,6 +17,8 @@ spec:
               properties:
                 name:
                   type: string
+                host:
+                  type: string
   scope: Namespaced
   names:
     plural: components

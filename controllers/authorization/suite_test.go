@@ -34,12 +34,16 @@ var _ = SynchronizedBeforeSuite(func(ctx context.Context) {
 			ctrl.Log.WithName("controllers").WithName("platform"),
 			spi.AuthorizationComponent{
 				CustomResourceType: spi.ResourceSchema{
-					GroupVersionKind: schema.GroupVersionKind{Version: "v1", Kind: "configmap"},
-					Resources:        "configmaps",
+					GroupVersionKind: schema.GroupVersionKind{
+						Version: "v1",
+						Group:   "opendatahub.io",
+						Kind:    "Component",
+					},
+					Resources: "components",
 				},
 				WorkloadSelector: map[string]string{},
 				Ports:            []string{},
-				HostPaths:        []string{"data.host"},
+				HostPaths:        []string{"spec.host"},
 			},
 			authorization.PlatformAuthorizationConfig{
 				Label:        config.GetAuthorinoLabel(),
