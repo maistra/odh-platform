@@ -47,7 +47,16 @@ func WithLabels(labels ...string) Options {
 			return fmt.Errorf("failed unable to set labels: %w", err)
 		}
 
-		obj.SetLabels(labelsMap)
+		existingLabels := obj.GetLabels()
+		if existingLabels == nil {
+			existingLabels = make(map[string]string)
+		}
+
+		for k, v := range labelsMap {
+			existingLabels[k] = v
+		}
+
+		obj.SetLabels(existingLabels)
 
 		return nil
 	}
@@ -60,7 +69,16 @@ func WithAnnotations(annotationKeyValue ...string) Options {
 			return fmt.Errorf("failed to set labels: %w", err)
 		}
 
-		obj.SetAnnotations(annotationsMap)
+		existingAnnotations := obj.GetAnnotations()
+		if existingAnnotations == nil {
+			existingAnnotations = make(map[string]string)
+		}
+
+		for k, v := range annotationsMap {
+			existingAnnotations[k] = v
+		}
+
+		obj.SetAnnotations(existingAnnotations)
 
 		return nil
 	}
