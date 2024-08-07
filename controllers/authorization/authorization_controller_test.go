@@ -96,10 +96,10 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 			createdComponent.SetAnnotations(map[string]string{})
 		}
 
-		annotations := createdComponent.GetAnnotations()
-		annotations[metadata.Annotations.AuthEnabled] = "true"
-		createdComponent.SetAnnotations(annotations)
-		Expect(envTest.Client.Update(ctx, createdComponent)).To(Succeed())
+		_, errCreate := controllerutil.CreateOrUpdate(ctx, envTest.Client, createdComponent, func() error {
+			return metadata.ApplyMetaOptions(createdComponent, metadata.WithAnnotations(metadata.Annotations.AuthEnabled, "true"))
+		})
+		Expect(errCreate).ToNot(HaveOccurred())
 
 		Eventually(func() error {
 			createdAuthConfig := &authorinov1beta2.AuthConfig{}

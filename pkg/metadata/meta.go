@@ -28,10 +28,6 @@ func ApplyMetaOptions(obj metav1.Object, opts ...Options) error {
 // and related resources are created in a different namespace or are cluster-scoped.
 func WithOwnerLabels(source client.Object) Options {
 	ownerName := source.GetName()
-	if source.GetNamespace() != "" {
-		ownerName = source.GetNamespace() + "-" + ownerName
-	}
-
 	ownerKind := source.GetObjectKind().GroupVersionKind().Kind
 
 	return WithLabels(
