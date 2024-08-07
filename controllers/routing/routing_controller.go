@@ -67,6 +67,13 @@ func (r *PlatformRoutingReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	// TODO(mvp) if !sourceRes.GetDeletionTimestamp().IsZero() { handle removal of dependant resources }
+	if !sourceRes.GetDeletionTimestamp().IsZero() {
+		if err := r.HandleResourceDeletion(ctx, sourceRes); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to handle resource deletion: %w", err)
+		}
+
+		return ctrl.Result{}, nil
+	}
 
 	r.log.Info("triggered routing reconcile", "namespace", req.Namespace, "name", req.Name)
 
