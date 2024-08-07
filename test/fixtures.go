@@ -1,12 +1,17 @@
 package test
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/onsi/ginkgo/v2"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/util/yaml"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 //go:embed data/expected_authconfig.yaml
@@ -40,4 +45,17 @@ func ProjectRoot() string {
 	}
 
 	return rootDir
+}
+
+func CreateOrUpdateResource(ctx context.Context, cli client.Client, data []byte) (*unstructured.Unstructured, error) {
+	unstrObj := &unstructured.Unstructured{}
+	if err := yaml.Unmarshal(data, &unstrObj.Object); err != nil {
+		return nil, fmt.Errorf("error unmarshalling YAML to unstructured: %w", err)
+	}
+
+	_, err := controllerutil.CreateOrUpdate(ctx, cli, unstrObj, func() error {
+		return nil
+	})
+
+	return unstrObj, err
 }
