@@ -2,125 +2,94 @@ package routing
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/opendatahub-io/odh-platform/pkg/cluster"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
-	openshiftroutev1 "github.com/openshift/api/route/v1"
-	istionetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // HandleResourceDeletion handles the removal of dependent resources when the target resource is being deleted.
-func (r *PlatformRoutingReconciler) HandleResourceDeletion(ctx context.Context, target *unstructured.Unstructured) error {
-	exportModes, found := extractExportModes(target)
+func (r *PlatformRoutingReconciler) HandleResourceDeletion(ctx context.Context, sourceRes *unstructured.Unstructured) (ctrl.Result, error) {
+	exportModes, found := extractExportModes(sourceRes)
 	if !found {
-		r.log.Info("No export modes found, skipping deletion logic", "target", target)
+		r.log.Info("No export modes found, skipping deletion logic", "sourceRes", sourceRes)
 
-		return nil
+		return ctrl.Result{}, nil
 	}
 
-	exportedSvc, errSvcGet := getExportedService(ctx, r.Client, target)
-	if errSvcGet != nil {
-		if errors.Is(errSvcGet, &NoExportedServicesError{}) {
-			r.log.Info("no exported service found for target", "target", target)
+	r.log.Info("Handling deletion of dependent resources", "sourceRes", sourceRes)
 
-			return nil
-		}
-
-		return errSvcGet
-	}
-
-	publicSvcName := exportedSvc.GetName() + "-" + exportedSvc.GetNamespace()
-
-	r.log.Info("Handling deletion of dependent resources", "target", target)
-
-	// Iterate over the export modes and delete corresponding resources
 	for _, exportMode := range exportModes {
-		if err := r.deleteResourcesForExportMode(ctx, target, publicSvcName, exportMode); err != nil {
-			return fmt.Errorf("failed to delete resources for export mode %s: %w", exportMode, err)
+		if err := r.deleteResourcesForExportMode(ctx, sourceRes, exportMode); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to delete resources for export mode %s: %w", exportMode, err)
 		}
 	}
 
-	return nil
+	return removeFinalizerAndUpdate(ctx, r.Client, sourceRes)
 }
 
 // deleteResourcesForExportMode deletes resources based on the given export mode.
-func (r *PlatformRoutingReconciler) deleteResourcesForExportMode(ctx context.Context, target *unstructured.Unstructured, svcName string, exportMode spi.RouteType) error {
+func (r *PlatformRoutingReconciler) deleteResourcesForExportMode(ctx context.Context, target *unstructured.Unstructured, exportMode spi.RouteType) error {
 	switch exportMode {
 	case spi.ExternalRoute:
-		return r.deleteExternalResources(ctx, target, svcName)
+		return r.deleteResourcesByLabels(ctx, target, metadata.ExternalGVKs())
 	case spi.PublicRoute:
-		return r.deletePublicResources(ctx, target, svcName)
+		return r.deleteResourcesByLabels(ctx, target, metadata.PublicGVKs())
 	}
 
 	return nil
 }
 
-func (r *PlatformRoutingReconciler) deleteExternalResources(ctx context.Context, target *unstructured.Unstructured, svcName string) error {
+func (r *PlatformRoutingReconciler) deleteResourcesByLabels(ctx context.Context, target *unstructured.Unstructured, gvkList []schema.GroupVersionKind) error {
+	ownerName := target.GetName()
+	ownerKind := target.GetObjectKind().GroupVersionKind().Kind
+
+	labelSelector := client.MatchingLabels{
+		metadata.Labels.OwnerName: ownerName,
+		metadata.Labels.OwnerKind: ownerKind,
+	}
+
+	var resourcesToDelete []*unstructured.Unstructured
+
+	for _, gvk := range gvkList {
+		resourceList := &unstructured.UnstructuredList{}
+		resourceList.SetGroupVersionKind(gvk)
+		err := r.Client.List(ctx, resourceList, client.InNamespace(r.config.GatewayNamespace), labelSelector)
+
+		if err != nil {
+			return fmt.Errorf("error listing resources: %w", err)
+		}
+
+		for _, resource := range resourceList.Items {
+			resourceCopy := resource.DeepCopy()
+			resourcesToDelete = append(resourcesToDelete, resourceCopy)
+		}
+	}
+
 	var deletionErr error
-
-	routeResource := &unstructured.Unstructured{}
-	routeResource.SetGroupVersionKind(openshiftroutev1.SchemeGroupVersion.WithKind("Route"))
-	routeResource.SetName(svcName + "-route")
-	routeResource.SetNamespace(r.config.GatewayNamespace)
-
-	virtualServiceResource := &unstructured.Unstructured{}
-	virtualServiceResource.SetGroupVersionKind(istionetworkingv1beta1.SchemeGroupVersion.WithKind("VirtualService"))
-	virtualServiceResource.SetName(svcName + "-ingress")
-	virtualServiceResource.SetNamespace(r.config.GatewayNamespace)
-
-	resources := []*unstructured.Unstructured{routeResource, virtualServiceResource}
-
-	if err := cluster.Delete(ctx, r.Client, resources, metadata.WithOwnerLabels(target)); err != nil {
-		deletionErr = fmt.Errorf("failed to delete external resources: %w", err)
-		r.log.Error(deletionErr, "Error deleting external resources")
+	if err := cluster.Delete(ctx, r.Client, resourcesToDelete); err != nil {
+		deletionErr = fmt.Errorf("failed to delete resources: %w", err)
 	}
 
 	return deletionErr
 }
 
-func (r *PlatformRoutingReconciler) deletePublicResources(ctx context.Context, target *unstructured.Unstructured, svcName string) error {
-	var deletionErr error
+func removeFinalizerAndUpdate(ctx context.Context, cli client.Client, sourceRes *unstructured.Unstructured) (ctrl.Result, error) {
+	finalizer := metadata.Finalizers.Routing
 
-	serviceResource := &unstructured.Unstructured{}
-	serviceResource.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "",
-		Version: "v1",
-		Kind:    "Service",
-	})
-	serviceResource.SetName(svcName)
-	serviceResource.SetNamespace(r.config.GatewayNamespace)
+	if controllerutil.ContainsFinalizer(sourceRes, finalizer) {
+		controllerutil.RemoveFinalizer(sourceRes, finalizer)
 
-	gatewayResource := &unstructured.Unstructured{}
-	gatewayResource.SetGroupVersionKind(istionetworkingv1beta1.SchemeGroupVersion.WithKind("Gateway"))
-	gatewayResource.SetName(svcName)
-	gatewayResource.SetNamespace(r.config.GatewayNamespace)
-
-	virtualServiceResource := &unstructured.Unstructured{}
-	virtualServiceResource.SetGroupVersionKind(istionetworkingv1beta1.SchemeGroupVersion.WithKind("VirtualService"))
-	virtualServiceResource.SetName(svcName)
-	virtualServiceResource.SetNamespace(r.config.GatewayNamespace)
-
-	destinationRuleResource := &unstructured.Unstructured{}
-	destinationRuleResource.SetGroupVersionKind(istionetworkingv1beta1.SchemeGroupVersion.WithKind("DestinationRule"))
-	destinationRuleResource.SetName(svcName)
-	destinationRuleResource.SetNamespace(r.config.GatewayNamespace)
-
-	resources := []*unstructured.Unstructured{
-		serviceResource,
-		gatewayResource,
-		virtualServiceResource,
-		destinationRuleResource,
+		if err := cli.Update(ctx, sourceRes); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to update resource to remove finalizer: %w", err)
+		}
 	}
 
-	if err := cluster.Delete(ctx, r.Client, resources, metadata.WithOwnerLabels(target)); err != nil {
-		deletionErr = fmt.Errorf("failed to delete public resources: %w", err)
-		r.log.Error(deletionErr, "Error deleting public resources")
-	}
-
-	return deletionErr
+	return ctrl.Result{}, nil
 }

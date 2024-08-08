@@ -19,9 +19,9 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	utilrand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const watchedCR = `
@@ -34,8 +34,6 @@ spec:
   name: %[1]s
 `
 
-const domain = "opendatahub.io"
-
 var _ = Describe("Platform routing setup for the component", test.EnvTest(), func() {
 
 	var (
@@ -43,6 +41,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		appNs      *corev1.Namespace
 		deployment *appsv1.Deployment
 		svc        *corev1.Service
+		domain     string
 
 		toRemove []client.Object
 	)
@@ -55,20 +54,27 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		}
 		Expect(envTest.Client.Create(ctx, routerNs)).To(Succeed())
 
+		base := "app-ns"
+		testNamespaceName := fmt.Sprintf("%s%s", base, utilrand.String(7))
+
 		appNs = &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "app-ns",
+				Name: testNamespaceName,
 			},
 		}
 		Expect(envTest.Client.Create(ctx, appNs)).To(Succeed())
 
-		config, errIngress := test.DefaultIngressControllerConfig(ctx, envTest.Client)
-		Expect(errIngress).ToNot(HaveOccurred())
-
 		deployment, svc = simpleSvcDeployment(ctx, appNs.Name, "mesh-service-name")
 
-		toRemove = []client.Object{routerNs, appNs, config, svc, deployment}
+		toRemove = []client.Object{routerNs, deployment, svc}
 
+		if !envTest.UsingExistingCluster() {
+			config, errIngress := test.DefaultIngressControllerConfig(ctx, envTest.Client)
+			Expect(errIngress).ToNot(HaveOccurred())
+			toRemove = append(toRemove, config)
+		}
+
+		domain = test.GetClusterDomain(ctx, envTest.Client)
 	})
 
 	AfterEach(func(_ context.Context) {
@@ -98,18 +104,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			})
 
 			// then
-			Eventually(routeExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(Succeed())
-
-			Eventually(ingressVirtualServiceExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(Succeed())
-
+			externalResourcesShouldExist(svc, domain, ctx)
 		})
 
 		It("should have new hosts propagated back to watched resource", func(ctx context.Context) {
@@ -278,37 +273,129 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			})
 
 			// then
-			Eventually(routeExistsFor(svc)).
+			externalResourcesShouldExist(svc, domain, ctx)
+			publicResourcesShouldExist(svc, ctx)
+
+			Eventually(func(g Gomega, ctx context.Context) error {
+				updatedComponent := component.DeepCopy()
+				if errGet := envTest.Get(ctx, client.ObjectKeyFromObject(updatedComponent), updatedComponent); errGet != nil {
+					return errGet
+				}
+
+				g.Expect(updatedComponent).To(
+					HaveAnnotations(
+						metadata.Annotations.RoutingAddressesExternal,
+						fmt.Sprintf("%s-%s.%s", svc.Name, svc.Namespace, domain),
+						metadata.Annotations.RoutingAddressesPublic,
+						fmt.Sprintf("%[1]s-%[2]s.%[3]s;%[1]s-%[2]s.%[3]s.svc;%[1]s-%[2]s.%[3]s.svc.cluster.local", svc.Name, svc.Namespace, routingConfiguration.GatewayNamespace),
+					),
+				)
+
+				return nil
+			}).
 				WithContext(ctx).
 				WithTimeout(test.DefaultTimeout).
 				WithPolling(test.DefaultPolling).
 				Should(Succeed())
 
-			Eventually(ingressVirtualServiceExistsFor(svc)).
+		})
+
+	})
+
+	When("component is deleted all routing resources should be removed", func() {
+
+		It("should remove the routing resources when both public;external", func(ctx context.Context) {
+			// given
+			component, errCreate := test.CreateResource(ctx, envTest.Client,
+				componentResource("public-and-external-test-deletion", appNs.Name))
+			Expect(errCreate).ToNot(HaveOccurred())
+			toRemove = append(toRemove, component)
+
+			// when
+			By("adding routing requirements on the resource and related svc", func() {
+				component = test.AddRoutingRequirements(ctx, component, svc, "public;external", envTest.Client)
+			})
+
+			// then
+			externalResourcesShouldExist(svc, domain, ctx)
+			publicResourcesShouldExist(svc, ctx)
+
+			// when
+			By("deleting the component", func() {
+				// Re-fetch the component from the cluster to get the latest version
+				errGetComponent := envTest.Client.Get(ctx, client.ObjectKey{
+					Namespace: component.GetNamespace(),
+					Name:      component.GetName(),
+				}, component)
+				Expect(errGetComponent).ToNot(HaveOccurred())
+
+				errDelete := envTest.Client.Delete(ctx, component)
+				Expect(errDelete).ToNot(HaveOccurred())
+			})
+
+			// then
+			Eventually(routeExistsFor(svc, domain)).
 				WithContext(ctx).
 				WithTimeout(test.DefaultTimeout).
 				WithPolling(test.DefaultPolling).
-				Should(Succeed())
+				ShouldNot(Succeed())
+
+			Eventually(ingressVirtualServiceExistsFor(svc, domain)).
+				WithContext(ctx).
+				WithTimeout(test.DefaultTimeout).
+				WithPolling(test.DefaultPolling).
+				ShouldNot(Succeed())
 
 			Eventually(publicSvcExistsFor(svc)).
 				WithContext(ctx).
 				WithTimeout(test.DefaultTimeout).
 				WithPolling(test.DefaultPolling).
-				Should(Succeed())
+				ShouldNot(Succeed())
 
 			Eventually(publicVirtualSvcExistsFor(svc)).
 				WithContext(ctx).
 				WithTimeout(test.DefaultTimeout).
 				WithPolling(test.DefaultPolling).
-				Should(Succeed())
+				ShouldNot(Succeed())
 
 			Eventually(publicGatewayExistsFor(svc)).
 				WithContext(ctx).
 				WithTimeout(test.DefaultTimeout).
 				WithPolling(test.DefaultPolling).
-				Should(Succeed())
+				ShouldNot(Succeed())
+		})
+	})
 
-			Eventually(destinationRuleExistsFor(svc)).
+})
+
+func externalResourcesShouldExist(svc *corev1.Service, domain string, ctx context.Context) {
+	Eventually(routeExistsFor(svc, domain)).
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(Succeed())
+
+	Eventually(ingressVirtualServiceExistsFor(svc, domain)).
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(Succeed())
+}
+
+func publicResourcesShouldExist(svc *corev1.Service, ctx context.Context) {
+	Eventually(publicSvcExistsFor(svc)).
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(Succeed())
+
+	Eventually(publicGatewayExistsFor(svc)).
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(Succeed())
+
+	Eventually(destinationRuleExistsFor(svc)).
 				WithContext(ctx).
 				WithTimeout(test.DefaultTimeout).
 				WithPolling(test.DefaultPolling).
@@ -379,7 +466,7 @@ func addRoutingRequirementsToSvc(ctx context.Context, exportedSvc *corev1.Servic
 	Expect(errExportSvc).ToNot(HaveOccurred())
 }
 
-func routeExistsFor(exportedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
+func routeExistsFor(exportedSvc *corev1.Service, domain string) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
 		svcRoute := &openshiftroutev1.Route{}
 		if errGet := envTest.Get(ctx, types.NamespacedName{
@@ -490,7 +577,7 @@ func destinationRuleExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx con
 	}
 }
 
-func ingressVirtualServiceExistsFor(exportedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
+func ingressVirtualServiceExistsFor(exportedSvc *corev1.Service, domain string) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
 		routerVS := &v1beta1.VirtualService{}
 		if errGet := envTest.Get(ctx, types.NamespacedName{

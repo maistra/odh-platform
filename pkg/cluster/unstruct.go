@@ -43,21 +43,15 @@ func Apply(ctx context.Context, cli client.Client, objects []*unstructured.Unstr
 	return nil
 }
 
-// Delete removes the specified resources, applying metadata options before deletion.
-func Delete(ctx context.Context, cli client.Client, objects []*unstructured.Unstructured, metaOptions ...metadata.Options) error {
+// Delete removes the specified resources.
+func Delete(ctx context.Context, cli client.Client, objects []*unstructured.Unstructured) error {
 	for _, source := range objects {
-		for _, opt := range metaOptions {
-			if err := opt(source); err != nil {
-				return err
-			}
-		}
-
 		target := source.DeepCopy()
 		name := source.GetName()
 		namespace := source.GetNamespace()
 
 		errGet := cli.Get(ctx, k8stypes.NamespacedName{Name: name, Namespace: namespace}, target)
-		if client.IgnoreNotFound(errGet) != nil {
+		if errGet != nil && client.IgnoreNotFound(errGet) == nil {
 			// Resource doesn't exist, nothing to delete
 			continue
 		} else if errGet != nil {
