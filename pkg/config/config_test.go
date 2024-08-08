@@ -1,6 +1,8 @@
 package config_test
 
 import (
+	"path/filepath"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -14,7 +16,10 @@ var _ = Describe("Loading capabilities", test.Unit(), func() {
 	Context("loading capabilities from files", func() {
 
 		It("should load authorized resources", func() {
-			authorizationComponents, err := config.Load(spi.AuthorizationComponent{}, "../../test/data/config")
+			configPath := filepath.Join(test.ProjectRoot(), "test", "data", "config")
+
+			authorizationComponents, err := config.Load(spi.AuthorizationComponent{}, configPath)
+
 			Expect(err).To(Succeed())
 			Expect(authorizationComponents).To(ContainElement(
 				MatchFields(IgnoreExtras, Fields{
