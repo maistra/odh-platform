@@ -51,23 +51,18 @@ func (r *PlatformRoutingReconciler) reconcileResources(ctx context.Context, targ
 }
 
 func (r *PlatformRoutingReconciler) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
-	// TODO(pr): wrap target with key/exportmode and labels to pass around instead of redoing stuff
 	exportModes, found := extractExportModes(target)
 	if !found {
 		return fmt.Errorf("could not extract export modes from target %s", target.GetName())
 	}
 
 	templateData := spi.RoutingTemplateData{
-		PublicServiceName: exportedSvc.GetName() + "-" + exportedSvc.GetNamespace(),
-		ServiceName:       exportedSvc.GetName(),
-		ServiceNamespace:  exportedSvc.GetNamespace(),
-		ServiceTargetPort: exportedSvc.Spec.Ports[0].TargetPort.String(),
-		Domain:            domain,
-		// TODO: compose instead
-		IngressSelectorLabel: r.config.IngressSelectorLabel,
-		IngressSelectorValue: r.config.IngressSelectorValue,
-		IngressService:       r.config.IngressService,
-		GatewayNamespace:     r.config.GatewayNamespace,
+		PlatformRoutingConfiguration: r.config,
+		PublicServiceName:            exportedSvc.GetName() + "-" + exportedSvc.GetNamespace(),
+		ServiceName:                  exportedSvc.GetName(),
+		ServiceNamespace:             exportedSvc.GetNamespace(),
+		ServiceTargetPort:            exportedSvc.Spec.Ports[0].TargetPort.String(),
+		Domain:                       domain,
 	}
 
 	withOwnershipLabels := ownershipLabels(target)
@@ -96,7 +91,7 @@ func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.Routi
 		return fmt.Errorf("could not extract export modes from target %s", target.GetName())
 	}
 
-	// TODO(mvp) : put the logic of creating host names into a single place
+	// TODO(mvp): put the logic of creating host names into a single place
 	for _, exportMode := range exportModes {
 		switch exportMode {
 		case spi.ExternalRoute:
@@ -120,6 +115,7 @@ func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.Routi
 
 func ownershipLabels(target *unstructured.Unstructured) []metadata.Options {
 	return []metadata.Options{
+		// TODO(mvp): add standard labels
 		metadata.WithOwnerLabels(target),
 		metadata.WithLabels(metadata.Labels.AppManagedBy, "odh-routing-controller"),
 	}

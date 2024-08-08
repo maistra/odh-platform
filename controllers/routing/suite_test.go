@@ -16,7 +16,7 @@ import (
 
 var (
 	envTest              *k8senvtest.Client
-	routingConfiguration = routing.PlatformRoutingConfiguration{
+	routingConfiguration = spi.PlatformRoutingConfiguration{
 		IngressService:       "odh-router",
 		GatewayNamespace:     "odh-gateway",
 		IngressSelectorLabel: "istio",

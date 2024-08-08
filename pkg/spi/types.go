@@ -97,20 +97,24 @@ func (a RoutingComponent) Load(configPath string) ([]RoutingComponent, error) {
 	return routes, nil
 }
 
+type PlatformRoutingConfiguration struct {
+	IngressSelectorLabel,
+	IngressSelectorValue,
+	IngressService,
+	GatewayNamespace string
+}
+
 // TODO(mvp) revise the stuct name - is it only for templates?
 type RoutingTemplateData struct {
+	PlatformRoutingConfiguration
+
 	PublicServiceName string // [service-name]-[service-namespace]
 	ServiceName       string
 	ServiceNamespace  string
+
 	ServiceTargetPort string
 
-	GatewayNamespace string
-	Domain           string
-
-	// Infra
-	IngressSelectorLabel string
-	IngressSelectorValue string
-	IngressService       string
+	Domain string
 }
 
 // RoutingTemplateLoader provides a way to differentiate the Route template used based on
