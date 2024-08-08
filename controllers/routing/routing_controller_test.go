@@ -11,6 +11,7 @@ import (
 	"github.com/opendatahub-io/odh-platform/test"
 	. "github.com/opendatahub-io/odh-platform/test/matchers"
 	openshiftroutev1 "github.com/openshift/api/route/v1"
+	istionetworkingv1beta1 "istio.io/api/networking/v1beta1"
 	"istio.io/client-go/pkg/apis/networking/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -232,6 +233,12 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 				WithPolling(test.DefaultPolling).
 				Should(Succeed())
 
+			Eventually(destinationRuleExistsFor(svc)).
+				WithContext(ctx).
+				WithTimeout(test.DefaultTimeout).
+				WithPolling(test.DefaultPolling).
+				Should(Succeed())
+
 		})
 
 		It("should have new hosts propagated back to watched resource by the controller", func(ctx context.Context) {
@@ -355,6 +362,12 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 				Should(Succeed())
 
 			Eventually(publicGatewayExistsFor(svc)).
+				WithContext(ctx).
+				WithTimeout(test.DefaultTimeout).
+				WithPolling(test.DefaultPolling).
+				Should(Succeed())
+
+			Eventually(destinationRuleExistsFor(svc)).
 				WithContext(ctx).
 				WithTimeout(test.DefaultTimeout).
 				WithPolling(test.DefaultPolling).
@@ -550,6 +563,27 @@ func publicVirtualSvcExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx co
 		)
 		g.Expect(publicVS).To(BeAttachedToGateways("mesh", exposedSvc.Name+"-"+exposedSvc.Namespace))
 		g.Expect(publicVS).To(RouteToHost(exposedSvc.Name+"."+exposedSvc.Namespace+".svc.cluster.local", 8000))
+
+		return nil
+	}
+}
+
+func destinationRuleExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
+	return func(g Gomega, ctx context.Context) error {
+		destinationRule := &v1beta1.DestinationRule{}
+		if errGet := envTest.Get(ctx, types.NamespacedName{
+			Name:      exposedSvc.Name + "-" + exposedSvc.Namespace,
+			Namespace: routingConfiguration.GatewayNamespace,
+		}, destinationRule); errGet != nil {
+			return errGet
+		}
+
+		g.Expect(destinationRule).To(
+			HaveHost(
+				exposedSvc.Name + "-" + exposedSvc.Namespace + "." + routingConfiguration.GatewayNamespace + ".svc.cluster.local",
+			),
+		)
+		g.Expect(destinationRule.Spec.GetTrafficPolicy().GetTls().GetMode()).To(Equal(istionetworkingv1beta1.ClientTLSSettings_DISABLE))
 
 		return nil
 	}

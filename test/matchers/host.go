@@ -59,6 +59,12 @@ func extractHosts(actual any) ([]string, error) {
 		return vs.Spec.GetHosts(), nil
 	}
 
+	if dr, err := deref[v1beta1.DestinationRule](actual); err != nil {
+		derefErrors = errors.Join(derefErrors, err)
+	} else {
+		return []string{dr.Spec.GetHost()}, nil
+	}
+
 	if gw, err := deref[v1beta1.Gateway](actual); err != nil {
 		derefErrors = errors.Join(derefErrors, err)
 	} else {
