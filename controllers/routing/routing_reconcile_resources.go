@@ -9,23 +9,24 @@ import (
 	"github.com/opendatahub-io/odh-platform/pkg/cluster"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 func (r *PlatformRoutingReconciler) reconcileResources(ctx context.Context, target *unstructured.Unstructured) error {
-	exportModes, exportModeFound := extractExportModes(target)
 	// TODO shouldn't we make it a predicate for ctrl watch instead?
+	_, exportModeFound := extractExportModes(target)
 	if !exportModeFound {
 		return nil
 	}
 
 	r.log.Info("Reconciling resources for target", "target", target)
 
-	exportedSvc, errSvcGet := getExportedService(ctx, r.Client, target)
+	exportedServices, errSvcGet := getExportedServices(ctx, r.Client, target)
 	if errSvcGet != nil {
 		if errors.Is(errSvcGet, &NoExportedServicesError{}) {
-			r.log.Info("no exported service found for target", "target", target)
+			r.log.Info("no exported services found for target", "target", target)
 
 			return nil
 		}
@@ -36,6 +37,24 @@ func (r *PlatformRoutingReconciler) reconcileResources(ctx context.Context, targ
 	domain, errDomain := cluster.GetDomain(ctx, r.Client)
 	if errDomain != nil {
 		return fmt.Errorf("could not get domain: %w", errDomain)
+	}
+
+	var errSvcExport []error
+
+	for i := range exportedServices {
+		if errExport := r.exportService(ctx, target, &exportedServices[i], domain); errExport != nil {
+			errSvcExport = append(errSvcExport, errExport)
+		}
+	}
+
+	return errors.Join(errSvcExport...)
+}
+
+func (r *PlatformRoutingReconciler) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
+	// TODO(pr): wrap target with key/exportmode and labels to pass around instead of redoing stuff
+	exportModes, found := extractExportModes(target)
+	if !found {
+		return fmt.Errorf("could not extract export modes from target %s", target.GetName())
 	}
 
 	templateData := spi.RoutingTemplateData{
