@@ -25,7 +25,7 @@ func (r *PlatformRoutingReconciler) reconcileResources(ctx context.Context, targ
 
 	exportedServices, errSvcGet := getExportedServices(ctx, r.Client, target)
 	if errSvcGet != nil {
-		if errors.Is(errSvcGet, &NoExportedServicesError{}) {
+		if errors.Is(errSvcGet, &ExportedServiceNotFoundError{}) {
 			r.log.Info("no exported services found for target", "target", target)
 
 			return nil

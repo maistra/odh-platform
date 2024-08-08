@@ -30,14 +30,14 @@ func getExportedServices(ctx context.Context, cli client.Client, target *unstruc
 
 	// It is possible that the exported services are not yet created when we first receive CREATE event for watched CR
 	// and trigger reconcile. Retry to see if they show up in the cluster.
-	if errRetry := retry.OnError(retry.DefaultBackoff, isNoExportedServicesError, func() error {
+	if errRetry := retry.OnError(retry.DefaultBackoff, isExportedServiceNotFoundError, func() error {
 		exportedSvcList = &corev1.ServiceList{}
 		if errList := cli.List(ctx, exportedSvcList, listOpts...); errList != nil {
 			return fmt.Errorf("could not list exported services: %w", errList)
 		}
 
 		if len(exportedSvcList.Items) == 0 {
-			return &NoExportedServicesError{Target: target}
+			return &ExportedServiceNotFoundError{target: target}
 		}
 
 		return nil
@@ -48,15 +48,15 @@ func getExportedServices(ctx context.Context, cli client.Client, target *unstruc
 	return exportedSvcList.Items, nil
 }
 
-// NoExportedServicesError represents a custom error type for missing exported services.
-type NoExportedServicesError struct {
-	Target client.Object
+// ExportedServiceNotFoundError represents a custom error type for missing exported services.
+type ExportedServiceNotFoundError struct {
+	target client.Object
 }
 
-func (e *NoExportedServicesError) Error() string {
-	return fmt.Sprintf("no exported services found for target %s/%s (%s)", e.Target.GetNamespace(), e.Target.GetName(), e.Target.GetObjectKind().GroupVersionKind().String())
+func (e *ExportedServiceNotFoundError) Error() string {
+	return fmt.Sprintf("no exported services found for target %s/%s (%s)", e.target.GetNamespace(), e.target.GetName(), e.target.GetObjectKind().GroupVersionKind().String())
 }
 
-func isNoExportedServicesError(err error) bool {
-	return errors.Is(err, &NoExportedServicesError{})
+func isExportedServiceNotFoundError(err error) bool {
+	return errors.Is(err, &ExportedServiceNotFoundError{})
 }
