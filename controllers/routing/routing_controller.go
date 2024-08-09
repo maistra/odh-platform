@@ -75,11 +75,16 @@ func (r *PlatformRoutingReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	r.log.Info("triggered routing reconcile", "namespace", req.Namespace, "name", req.Name)
 
 	var errs []error
+
+	if controllerutil.AddFinalizer(sourceRes, metadata.Finalizers.Routing) {
+		if errUpdate := r.Update(ctx, sourceRes); errUpdate != nil {
+			errs = append(errs, errUpdate)
+		}
+	}
+
 	for _, reconciler := range reconcilers {
 		errs = append(errs, reconciler(ctx, sourceRes))
 	}
-
-	controllerutil.AddFinalizer(sourceRes, metadata.Finalizers.Routing)
 
 	if errUpdate := r.Update(ctx, sourceRes); errUpdate != nil {
 		errs = append(errs, errUpdate)
