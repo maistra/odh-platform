@@ -273,12 +273,16 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 					return errGet
 				}
 
-				g.Expect(updatedComponent).To(
-					HaveAnnotations(
-						metadata.Annotations.RoutingAddressesExternal,
-						fmt.Sprintf("%s-%s.%s", svc.Name, svc.Namespace, domain),
-						metadata.Annotations.RoutingAddressesPublic,
-						fmt.Sprintf("%[1]s-%[2]s.%[3]s;%[1]s-%[2]s.%[3]s.svc;%[1]s-%[2]s.%[3]s.svc.cluster.local", svc.Name, svc.Namespace, routingConfiguration.GatewayNamespace),
+				g.Expect(updatedComponent.GetAnnotations()).To(
+					And(
+						HaveKeyWithValue(
+							metadata.Annotations.RoutingAddressesExternal,
+							fmt.Sprintf("%s-%s.%s", svc.Name, svc.Namespace, domain),
+						),
+						HaveKeyWithValue(
+							metadata.Annotations.RoutingAddressesPublic,
+							fmt.Sprintf("%[1]s-%[2]s.%[3]s;%[1]s-%[2]s.%[3]s.svc;%[1]s-%[2]s.%[3]s.svc.cluster.local", svc.Name, svc.Namespace, routingConfiguration.GatewayNamespace),
+						),
 					),
 				)
 
