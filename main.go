@@ -63,9 +63,9 @@ func main() {
 	ctrlLog := ctrl.Log.WithName("controllers").WithName("platform")
 	ctrlLog.Info("creating controller instances", "version", version.Version, "commit", version.Commit, "build-time", version.BuildTime)
 
-	authorizationComponents, errLoad := config.Load(spi.AuthorizationComponent{}, config.GetConfigFile())
-	if errLoad != nil {
-		setupLog.Error(errLoad, "unable to load config from "+config.GetConfigFile())
+	authorizationComponents, errLoadAuthz := config.Load(spi.AuthorizationComponent{}, config.GetConfigFile())
+	if errLoadAuthz != nil {
+		setupLog.Error(errLoadAuthz, "unable to load config from "+config.GetConfigFile())
 		os.Exit(1)
 	}
 
@@ -74,6 +74,7 @@ func main() {
 		Audiences:    config.GetAuthAudience(),
 		ProviderName: config.GetAuthProvider(),
 	}
+
 	for _, component := range authorizationComponents {
 		if err = authorization.NewPlatformAuthorizationReconciler(mgr.GetClient(), ctrlLog, component, authorizationConfig).
 			SetupWithManager(mgr); err != nil {
@@ -82,9 +83,9 @@ func main() {
 		}
 	}
 
-	routingComponents, errLoad := config.Load(spi.RoutingComponent{}, config.GetConfigFile())
-	if errLoad != nil {
-		setupLog.Error(errLoad, "unable to load config from "+config.GetConfigFile())
+	routingComponents, errLoadRouting := config.Load(spi.RoutingComponent{}, config.GetConfigFile())
+	if errLoadRouting != nil {
+		setupLog.Error(errLoadRouting, "unable to load config from "+config.GetConfigFile())
 		os.Exit(1)
 	}
 
