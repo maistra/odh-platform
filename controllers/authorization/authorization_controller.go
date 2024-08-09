@@ -9,8 +9,8 @@ import (
 	"github.com/go-logr/logr"
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
 	platformctrl "github.com/opendatahub-io/odh-platform/controllers"
+	"github.com/opendatahub-io/odh-platform/pkg/authorization"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
-	"github.com/opendatahub-io/odh-platform/pkg/resource/authorization"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	istiosecurityv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
@@ -29,7 +29,7 @@ func NewPlatformAuthorizationReconciler(cli client.Client, log logr.Logger,
 		Client: cli,
 		log: log.WithValues(
 			"controller", ctrlName,
-			"component", component.CustomResourceType.Kind,
+			"component", component.ObjectReference.Kind,
 		),
 		config:         config,
 		authComponent:  component,
@@ -68,7 +68,7 @@ func (r *PlatformAuthorizationReconciler) Reconcile(ctx context.Context, req ctr
 	reconcilers := []platformctrl.SubReconcileFunc{r.reconcileAuthConfig, r.reconcileAuthPolicy, r.reconcilePeerAuthentication}
 
 	sourceRes := &unstructured.Unstructured{}
-	sourceRes.SetGroupVersionKind(r.authComponent.CustomResourceType.GroupVersionKind)
+	sourceRes.SetGroupVersionKind(r.authComponent.ObjectReference.GroupVersionKind)
 
 	if err := r.Client.Get(ctx, req.NamespacedName, sourceRes); err != nil {
 		if k8serr.IsNotFound(err) {
@@ -99,11 +99,11 @@ func (r *PlatformAuthorizationReconciler) SetupWithManager(mgr ctrl.Manager) err
 	// TODO(mvp): define predicates so we do not reconcile unnecessarily
 	//nolint:wrapcheck //reason there is no point in wrapping it
 	return ctrl.NewControllerManagedBy(mgr).
-		Named(ctrlName+"-"+strings.ToLower(r.authComponent.CustomResourceType.Kind)).
+		Named(ctrlName+"-"+strings.ToLower(r.authComponent.ObjectReference.Kind)).
 		For(&metav1.PartialObjectMetadata{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: r.authComponent.CustomResourceType.GroupVersion().String(),
-				Kind:       r.authComponent.CustomResourceType.Kind,
+				APIVersion: r.authComponent.ObjectReference.GroupVersion().String(),
+				Kind:       r.authComponent.ObjectReference.Kind,
 			},
 		}, builder.OnlyMetadata).
 		Owns(&authorinov1beta2.AuthConfig{}).
