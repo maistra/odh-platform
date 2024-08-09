@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
@@ -20,15 +21,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const ctrlName = "authorization"
+
 func NewPlatformAuthorizationReconciler(cli client.Client, log logr.Logger,
-	authComponent spi.AuthorizationComponent, config PlatformAuthorizationConfig) *PlatformAuthorizationReconciler {
+	component spi.AuthorizationComponent, config PlatformAuthorizationConfig) *PlatformAuthorizationReconciler {
 	return &PlatformAuthorizationReconciler{
-		Client:         cli,
-		log:            log,
+		Client: cli,
+		log: log.WithValues(
+			"controller", ctrlName,
+			"component", component.CustomResourceType.Kind,
+		),
 		config:         config,
-		authComponent:  authComponent,
+		authComponent:  component,
 		typeDetector:   authorization.NewAnnotationAuthTypeDetector(metadata.Annotations.AuthEnabled),
-		hostExtractor:  authorization.NewExpressionHostExtractor(authComponent.HostPaths),
+		hostExtractor:  authorization.NewExpressionHostExtractor(component.HostPaths),
 		templateLoader: authorization.NewConfigMapTemplateLoader(cli, authorization.NewStaticTemplateLoader(config.Audiences)),
 	}
 }
@@ -92,6 +98,7 @@ func (r *PlatformAuthorizationReconciler) SetupWithManager(mgr ctrl.Manager) err
 
 	//nolint:wrapcheck //reason there is no point in wrapping it
 	return ctrl.NewControllerManagedBy(mgr).
+		Named(ctrlName+"-"+strings.ToLower(r.authComponent.CustomResourceType.Kind)).
 		For(&metav1.PartialObjectMetadata{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: r.authComponent.CustomResourceType.GroupVersion().String(),
