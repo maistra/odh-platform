@@ -30,8 +30,10 @@ func getClusterDomain(ctx context.Context) string {
 	return domain
 }
 
+// exportCustomResource is responsible for exporting a custom resource by setting the
+// "routing.opendatahub.io/export-mode" annotation to the specified mode.
+// This annotation is used to control the exposure mode (e.g., public, external) of the component.
 func exportCustomResource(ctx context.Context, exportedComponent *unstructured.Unstructured, mode string) {
-	// routing.opendatahub.io/export-mode: "public;external"
 	exposeExternally := metadata.WithAnnotations(metadata.Annotations.RoutingExportMode, mode)
 	_, errExportCR := controllerutil.CreateOrUpdate(
 		ctx, envTest.Client,
@@ -42,17 +44,17 @@ func exportCustomResource(ctx context.Context, exportedComponent *unstructured.U
 	Expect(errExportCR).ToNot(HaveOccurred())
 }
 
+// addRoutingRequirementsToSvc adds routing-related metadata to the servicing being exported.
+// It adds the "routing.opendatahub.io/exported" label to indicate that the service is exported,
+// and it also sets labels for the owner component's name and kind, using
+// "platform.opendatahub.io/owner-name" and "platform.opendatahub.io/owner-kind" respectively.
 func addRoutingRequirementsToSvc(ctx context.Context, exportedSvc *corev1.Service, owningComponent *unstructured.Unstructured) {
-	// routing.opendatahub.io/exported: "true"
 	exportAnnotation := metadata.WithLabels(metadata.Labels.RoutingExported, "true")
-	// platform.opendatahub.io/owner-name: test-component
-	// platform.opendatahub.io/owner-kind: Component
 	ownerLabels := metadata.WithLabels(
 		metadata.Labels.OwnerName, owningComponent.GetName(),
 		metadata.Labels.OwnerKind, owningComponent.GetKind(),
 	)
 
-	// Service created by the component need to have these metadata added, i.e. by its controller
 	_, errExportSvc := controllerutil.CreateOrUpdate(ctx, envTest.Client, exportedSvc, func() error {
 		return metadata.ApplyMetaOptions(exportedSvc, exportAnnotation, ownerLabels)
 	})
