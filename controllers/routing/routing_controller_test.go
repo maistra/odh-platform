@@ -14,6 +14,7 @@ import (
 	"istio.io/client-go/pkg/apis/networking/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -32,6 +33,8 @@ spec:
   name: %[1]s
 `
 
+var domain string
+
 var _ = Describe("Platform routing setup for the component", test.EnvTest(), func() {
 
 	var (
@@ -39,7 +42,6 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		appNs      *corev1.Namespace
 		deployment *appsv1.Deployment
 		svc        *corev1.Service
-		domain     string
 
 		toRemove []client.Object
 	)
@@ -105,7 +107,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			})
 
 			// then
-			externalResourcesShouldExist(ctx, domain, svc)
+			externalResourcesShouldExist(ctx, svc)
 		})
 
 		It("should have new hosts propagated back to watched resource", func(ctx context.Context) {
@@ -264,7 +266,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			})
 
 			// then
-			externalResourcesShouldExist(ctx, domain, svc)
+			externalResourcesShouldExist(ctx, svc)
 			publicResourcesShouldExist(ctx, svc)
 
 			Eventually(func(g Gomega, ctx context.Context) error {
@@ -323,7 +325,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			})
 
 			// then
-			externalResourcesShouldExist(ctx, domain, svc)
+			externalResourcesShouldExist(ctx, svc)
 			publicResourcesShouldExist(ctx, svc)
 
 			// when
@@ -339,48 +341,55 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			})
 
 			// then
-			Eventually(routeExistsFor(svc, domain)).
+			Eventually(routeExistsFor(svc)).
 				WithContext(ctx).
 				WithTimeout(test.DefaultTimeout).
 				WithPolling(test.DefaultPolling).
-				ShouldNot(Succeed())
+				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
 
-			Eventually(ingressVirtualServiceExistsFor(svc, domain)).
+			Eventually(ingressVirtualServiceExistsFor(svc)).
 				WithContext(ctx).
 				WithTimeout(test.DefaultTimeout).
 				WithPolling(test.DefaultPolling).
-				ShouldNot(Succeed())
+				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
 
 			Eventually(publicSvcExistsFor(svc)).
 				WithContext(ctx).
 				WithTimeout(test.DefaultTimeout).
 				WithPolling(test.DefaultPolling).
-				ShouldNot(Succeed())
+				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
 
 			Eventually(publicVirtualSvcExistsFor(svc)).
 				WithContext(ctx).
 				WithTimeout(test.DefaultTimeout).
 				WithPolling(test.DefaultPolling).
-				ShouldNot(Succeed())
+				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
 
 			Eventually(publicGatewayExistsFor(svc)).
 				WithContext(ctx).
 				WithTimeout(test.DefaultTimeout).
 				WithPolling(test.DefaultPolling).
-				ShouldNot(Succeed())
+				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+
+			Eventually(destinationRuleExistsFor(svc)).
+				WithContext(ctx).
+				WithTimeout(test.DefaultTimeout).
+				WithPolling(test.DefaultPolling).
+				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+
 		})
 	})
 
 })
 
-func externalResourcesShouldExist(ctx context.Context, domain string, svc *corev1.Service) {
-	Eventually(routeExistsFor(svc, domain)).
+func externalResourcesShouldExist(ctx context.Context, svc *corev1.Service) {
+	Eventually(routeExistsFor(svc)).
 		WithContext(ctx).
 		WithTimeout(test.DefaultTimeout).
 		WithPolling(test.DefaultPolling).
 		Should(Succeed())
 
-	Eventually(ingressVirtualServiceExistsFor(svc, domain)).
+	Eventually(ingressVirtualServiceExistsFor(svc)).
 		WithContext(ctx).
 		WithTimeout(test.DefaultTimeout).
 		WithPolling(test.DefaultPolling).
@@ -413,7 +422,7 @@ func publicResourcesShouldExist(ctx context.Context, svc *corev1.Service) {
 		Should(Succeed())
 }
 
-func routeExistsFor(exportedSvc *corev1.Service, domain string) func(g Gomega, ctx context.Context) error {
+func routeExistsFor(exportedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
 		svcRoute := &openshiftroutev1.Route{}
 		if errGet := envTest.Get(ctx, types.NamespacedName{
@@ -524,7 +533,7 @@ func destinationRuleExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx con
 	}
 }
 
-func ingressVirtualServiceExistsFor(exportedSvc *corev1.Service, domain string) func(g Gomega, ctx context.Context) error {
+func ingressVirtualServiceExistsFor(exportedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
 		routerVS := &v1beta1.VirtualService{}
 		if errGet := envTest.Get(ctx, types.NamespacedName{
