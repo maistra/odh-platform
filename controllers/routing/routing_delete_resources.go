@@ -24,7 +24,7 @@ func (r *PlatformRoutingReconciler) HandleResourceDeletion(ctx context.Context, 
 	r.log.Info("Handling deletion of dependent resources", "sourceRes", sourceRes)
 
 	for _, exportMode := range exportModes {
-		if err := r.deleteResourcesByLabels(ctx, sourceRes, metadata.ResourceGVKs(exportMode)); err != nil {
+		if err := r.deleteResourcesByLabels(ctx, sourceRes, routingResourceGVKs(exportMode)); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to delete resources for export mode %s: %w", exportMode, err)
 		}
 	}
