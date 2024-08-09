@@ -43,29 +43,6 @@ func Apply(ctx context.Context, cli client.Client, objects []*unstructured.Unstr
 	return nil
 }
 
-// Delete removes the specified resources.
-func Delete(ctx context.Context, cli client.Client, objects []*unstructured.Unstructured) error {
-	for _, source := range objects {
-		target := source.DeepCopy()
-		name := source.GetName()
-		namespace := source.GetNamespace()
-
-		errGet := cli.Get(ctx, k8stypes.NamespacedName{Name: name, Namespace: namespace}, target)
-		if errGet != nil && client.IgnoreNotFound(errGet) == nil {
-			// Resource doesn't exist, nothing to delete
-			continue
-		} else if errGet != nil {
-			return fmt.Errorf("failed to get resource %s/%s: %w", namespace, name, errGet)
-		}
-
-		if errDelete := cli.Delete(ctx, target); errDelete != nil {
-			return fmt.Errorf("failed to delete resource %s/%s: %w", namespace, name, errDelete)
-		}
-	}
-
-	return nil
-}
-
 // patchUsingApplyStrategy performs server-side apply [1] patch to a Kubernetes resource.
 // It treats the provided source as the desired state of the resource and attempts to
 // reconcile the target resource to match this state. The function takes ownership of the

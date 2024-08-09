@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/opendatahub-io/odh-platform/pkg/cluster"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
-	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -26,7 +24,7 @@ func (r *PlatformRoutingReconciler) HandleResourceDeletion(ctx context.Context, 
 	r.log.Info("Handling deletion of dependent resources", "sourceRes", sourceRes)
 
 	for _, exportMode := range exportModes {
-		if err := r.deleteResourcesForExportMode(ctx, sourceRes, exportMode); err != nil {
+		if err := r.deleteResourcesByLabels(ctx, sourceRes, metadata.ResourceGVKs(exportMode)); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to delete resources for export mode %s: %w", exportMode, err)
 		}
 	}
@@ -34,50 +32,32 @@ func (r *PlatformRoutingReconciler) HandleResourceDeletion(ctx context.Context, 
 	return removeFinalizerAndUpdate(ctx, r.Client, sourceRes)
 }
 
-// deleteResourcesForExportMode deletes resources based on the given export mode.
-func (r *PlatformRoutingReconciler) deleteResourcesForExportMode(ctx context.Context, target *unstructured.Unstructured, exportMode spi.RouteType) error {
-	switch exportMode {
-	case spi.ExternalRoute:
-		return r.deleteResourcesByLabels(ctx, target, metadata.ExternalGVKs())
-	case spi.PublicRoute:
-		return r.deleteResourcesByLabels(ctx, target, metadata.PublicGVKs())
-	}
-
-	return nil
-}
-
 func (r *PlatformRoutingReconciler) deleteResourcesByLabels(ctx context.Context, target *unstructured.Unstructured, gvkList []schema.GroupVersionKind) error {
 	ownerName := target.GetName()
 	ownerKind := target.GetObjectKind().GroupVersionKind().Kind
+	ownerUID := string(target.GetUID())
 
 	labelSelector := client.MatchingLabels{
 		metadata.Labels.OwnerName: ownerName,
 		metadata.Labels.OwnerKind: ownerKind,
+		metadata.Labels.OwnerUID:  ownerUID,
 	}
-
-	var resourcesToDelete []*unstructured.Unstructured
 
 	for _, gvk := range gvkList {
-		resourceList := &unstructured.UnstructuredList{}
-		resourceList.SetGroupVersionKind(gvk)
-		err := r.Client.List(ctx, resourceList, client.InNamespace(r.config.GatewayNamespace), labelSelector)
+		resource := &unstructured.Unstructured{}
+		resource.SetGroupVersionKind(gvk)
 
-		if err != nil {
-			return fmt.Errorf("error listing resources: %w", err)
+		deleteOptions := []client.DeleteAllOfOption{
+			client.InNamespace(r.config.GatewayNamespace),
+			labelSelector,
 		}
 
-		for _, resource := range resourceList.Items {
-			resourceCopy := resource.DeepCopy()
-			resourcesToDelete = append(resourcesToDelete, resourceCopy)
+		if err := r.Client.DeleteAllOf(ctx, resource, deleteOptions...); err != nil {
+			return fmt.Errorf("failed to delete resources of kind %s: %w", gvk.Kind, err)
 		}
 	}
 
-	var deletionErr error
-	if err := cluster.Delete(ctx, r.Client, resourcesToDelete); err != nil {
-		deletionErr = fmt.Errorf("failed to delete resources: %w", err)
-	}
-
-	return deletionErr
+	return nil
 }
 
 func removeFinalizerAndUpdate(ctx context.Context, cli client.Client, sourceRes *unstructured.Unstructured) (ctrl.Result, error) {

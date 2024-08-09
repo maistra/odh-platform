@@ -6,7 +6,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gstruct"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/test"
 	. "github.com/opendatahub-io/odh-platform/test/matchers"
@@ -16,7 +15,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
@@ -74,7 +72,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			toRemove = append(toRemove, config)
 		}
 
-		domain = test.GetClusterDomain(ctx, envTest.Client)
+		domain = getClusterDomain(ctx, envTest.Client)
 	})
 
 	AfterEach(func(_ context.Context) {
@@ -92,19 +90,22 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 
 			// when routing through platform mesh
 			By("adding component service to platform routing", func() {
+				// before updating component, ensure finalizers have been set
+				component = ensureFinalizersSet(ctx, component, envTest.Client)
+
 				// required annotation for watched custom resource:
 				// 	routing.opendatahub.io/export-mode: "external"
-				exportCustomResource(ctx, component, "external")
+				exportCustomResource(ctx, component, "external", envTest.Client)
 
 				// required labels for the exported service:
 				// 	routing.opendatahub.io/exported: "true"
 				// 	platform.opendatahub.io/owner-name: test-component
 				// 	platform.opendatahub.io/owner-kind: Component
-				addRoutingRequirementsToSvc(ctx, svc, component)
+				addRoutingRequirementsToSvc(ctx, svc, component, envTest.Client)
 			})
 
 			// then
-			externalResourcesShouldExist(svc, domain, ctx)
+			externalResourcesShouldExist(ctx, domain, svc)
 		})
 
 		It("should have new hosts propagated back to watched resource", func(ctx context.Context) {
@@ -116,15 +117,18 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 
 			// when routing through platform mesh
 			By("adding component service to platform routing", func() {
+				// before updating component, ensure finalizers have been set
+				component = ensureFinalizersSet(ctx, component, envTest.Client)
+
 				// required annotation for watched custom resource:
 				// 	routing.opendatahub.io/export-mode: "external"
-				exportCustomResource(ctx, component, "external")
+				exportCustomResource(ctx, component, "external", envTest.Client)
 
 				// required labels for the exported service:
 				// 	routing.opendatahub.io/exported: "true"
 				// 	platform.opendatahub.io/owner-name: test-component
 				// 	platform.opendatahub.io/owner-kind: Component
-				addRoutingRequirementsToSvc(ctx, svc, component)
+				addRoutingRequirementsToSvc(ctx, svc, component, envTest.Client)
 			})
 
 			// then
@@ -163,41 +167,22 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 
 			// when routing through platform mesh
 			By("adding component service to platform routing", func() {
+				// before updating component, ensure finalizers have been set
+				component = ensureFinalizersSet(ctx, component, envTest.Client)
+
 				// required annotation for watched custom resource:
 				// 	routing.opendatahub.io/export-mode: "public"
-				exportCustomResource(ctx, component, "public")
+				exportCustomResource(ctx, component, "public", envTest.Client)
 
 				// required labels for the exported service:
 				// 	routing.opendatahub.io/exported: "true"
 				// 	platform.opendatahub.io/owner-name: test-component
 				// 	platform.opendatahub.io/owner-kind: Component
-				addRoutingRequirementsToSvc(ctx, svc, component)
+				addRoutingRequirementsToSvc(ctx, svc, component, envTest.Client)
 			})
 
 			// then
-			Eventually(publicSvcExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(Succeed())
-
-			Eventually(publicGatewayExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(Succeed())
-
-			Eventually(publicVirtualSvcExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(Succeed())
-
-			Eventually(destinationRuleExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(Succeed())
+			publicResourcesShouldExist(ctx, svc)
 
 		})
 
@@ -210,15 +195,18 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 
 			// when routing through platform mesh
 			By("adding component service to platform routing", func() {
+				// before updating component, ensure finalizers have been set
+				component = ensureFinalizersSet(ctx, component, envTest.Client)
+
 				// required annotation for watched custom resource:
 				// 	routing.opendatahub.io/export-mode: "public"
-				exportCustomResource(ctx, component, "public")
+				exportCustomResource(ctx, component, "public", envTest.Client)
 
 				// required labels for the exported service:
 				// 	routing.opendatahub.io/exported: "true"
 				// 	platform.opendatahub.io/owner-name: test-component
 				// 	platform.opendatahub.io/owner-kind: Component
-				addRoutingRequirementsToSvc(ctx, svc, component)
+				addRoutingRequirementsToSvc(ctx, svc, component, envTest.Client)
 			})
 
 			// then
@@ -261,20 +249,23 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 
 			// when routing through platform mesh
 			By("adding component service to platform routing", func() {
+				// before updating component, ensure finalizers have been set
+				component = ensureFinalizersSet(ctx, component, envTest.Client)
+
 				// required annotation for watched custom resource:
 				// 	routing.opendatahub.io/export-mode: "public;external"
-				exportCustomResource(ctx, component, "public;external")
+				exportCustomResource(ctx, component, "public;external", envTest.Client)
 
 				// required labels for the exported service:
 				// 	routing.opendatahub.io/exported: "true"
 				// 	platform.opendatahub.io/owner-name: test-component
 				// 	platform.opendatahub.io/owner-kind: Component
-				addRoutingRequirementsToSvc(ctx, svc, component)
+				addRoutingRequirementsToSvc(ctx, svc, component, envTest.Client)
 			})
 
 			// then
-			externalResourcesShouldExist(svc, domain, ctx)
-			publicResourcesShouldExist(svc, ctx)
+			externalResourcesShouldExist(ctx, domain, svc)
+			publicResourcesShouldExist(ctx, svc)
 
 			Eventually(func(g Gomega, ctx context.Context) error {
 				updatedComponent := component.DeepCopy()
@@ -313,12 +304,23 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 
 			// when
 			By("adding routing requirements on the resource and related svc", func() {
-				component = test.AddRoutingRequirements(ctx, component, svc, "public;external", envTest.Client)
+				// before updating component, ensure finalizers have been set
+				component = ensureFinalizersSet(ctx, component, envTest.Client)
+
+				// required annotation for watched custom resource:
+				// 	routing.opendatahub.io/export-mode: "public;external"
+				exportCustomResource(ctx, component, "public;external", envTest.Client)
+
+				// required labels for the exported service:
+				// 	routing.opendatahub.io/exported: "true"
+				// 	platform.opendatahub.io/owner-name: test-component
+				// 	platform.opendatahub.io/owner-kind: Component
+				addRoutingRequirementsToSvc(ctx, svc, component, envTest.Client)
 			})
 
 			// then
-			externalResourcesShouldExist(svc, domain, ctx)
-			publicResourcesShouldExist(svc, ctx)
+			externalResourcesShouldExist(ctx, domain, svc)
+			publicResourcesShouldExist(ctx, svc)
 
 			// when
 			By("deleting the component", func() {
@@ -368,7 +370,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 
 })
 
-func externalResourcesShouldExist(svc *corev1.Service, domain string, ctx context.Context) {
+func externalResourcesShouldExist(ctx context.Context, domain string, svc *corev1.Service) {
 	Eventually(routeExistsFor(svc, domain)).
 		WithContext(ctx).
 		WithTimeout(test.DefaultTimeout).
@@ -382,7 +384,7 @@ func externalResourcesShouldExist(svc *corev1.Service, domain string, ctx contex
 		Should(Succeed())
 }
 
-func publicResourcesShouldExist(svc *corev1.Service, ctx context.Context) {
+func publicResourcesShouldExist(ctx context.Context, svc *corev1.Service) {
 	Eventually(publicSvcExistsFor(svc)).
 		WithContext(ctx).
 		WithTimeout(test.DefaultTimeout).
@@ -395,75 +397,17 @@ func publicResourcesShouldExist(svc *corev1.Service, ctx context.Context) {
 		WithPolling(test.DefaultPolling).
 		Should(Succeed())
 
+	Eventually(publicVirtualSvcExistsFor(svc)).
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(Succeed())
+
 	Eventually(destinationRuleExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(Succeed())
-
-			Eventually(func(g Gomega, ctx context.Context) error {
-				updatedComponent := component.DeepCopy()
-				if errGet := envTest.Get(ctx, client.ObjectKeyFromObject(updatedComponent), updatedComponent); errGet != nil {
-					return errGet
-				}
-
-				g.Expect(updatedComponent.GetAnnotations()).To(
-					And(
-						HaveKeyWithValue(
-							metadata.Annotations.RoutingAddressesExternal,
-							fmt.Sprintf("%s-%s.%s", svc.Name, svc.Namespace, domain),
-						),
-						HaveKeyWithValue(
-							metadata.Annotations.RoutingAddressesPublic,
-							fmt.Sprintf("%[1]s-%[2]s.%[3]s;%[1]s-%[2]s.%[3]s.svc;%[1]s-%[2]s.%[3]s.svc.cluster.local", svc.Name, svc.Namespace, routingConfiguration.GatewayNamespace),
-						),
-					),
-				)
-
-				return nil
-			}).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(Succeed())
-
-		})
-
-	})
-
-	PWhen("component is deleted all routing resources should be removed", func() {
-
-	})
-
-})
-
-func exportCustomResource(ctx context.Context, exportedComponent *unstructured.Unstructured, mode string) {
-	// routing.opendatahub.io/export-mode: "public;external"
-	exposeExternally := metadata.WithAnnotations(metadata.Annotations.RoutingExportMode, mode)
-	_, errExportCR := controllerutil.CreateOrUpdate(
-		ctx, envTest.Client,
-		exportedComponent,
-		func() error {
-			return metadata.ApplyMetaOptions(exportedComponent, exposeExternally)
-		})
-	Expect(errExportCR).ToNot(HaveOccurred())
-}
-
-func addRoutingRequirementsToSvc(ctx context.Context, exportedSvc *corev1.Service, owningComponent *unstructured.Unstructured) {
-	// routing.opendatahub.io/exported: "true"
-	exportAnnotation := metadata.WithLabels(metadata.Labels.RoutingExported, "true")
-	// platform.opendatahub.io/owner-name: test-component
-	// platform.opendatahub.io/owner-kind: Component
-	ownerLabels := metadata.WithLabels(
-		metadata.Labels.OwnerName, owningComponent.GetName(),
-		metadata.Labels.OwnerKind, owningComponent.GetKind(),
-	)
-
-	// Service created by the component need to have these metadata added, i.e. by its controller
-	_, errExportSvc := controllerutil.CreateOrUpdate(ctx, envTest.Client, exportedSvc, func() error {
-		return metadata.ApplyMetaOptions(exportedSvc, exportAnnotation, ownerLabels)
-	})
-	Expect(errExportSvc).ToNot(HaveOccurred())
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(Succeed())
 }
 
 func routeExistsFor(exportedSvc *corev1.Service, domain string) func(g Gomega, ctx context.Context) error {

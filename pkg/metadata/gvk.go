@@ -1,6 +1,9 @@
 package metadata
 
-import "k8s.io/apimachinery/pkg/runtime/schema"
+import (
+	"github.com/opendatahub-io/odh-platform/pkg/spi"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+)
 
 func ExternalGVKs() []schema.GroupVersionKind {
 	return []schema.GroupVersionKind{
@@ -16,4 +19,15 @@ func PublicGVKs() []schema.GroupVersionKind {
 		{Group: "networking.istio.io", Version: "v1beta1", Kind: "VirtualService"},
 		{Group: "networking.istio.io", Version: "v1beta1", Kind: "DestinationRule"},
 	}
+}
+
+func ResourceGVKs(exportMode spi.RouteType) []schema.GroupVersionKind {
+	switch exportMode {
+	case spi.ExternalRoute:
+		return ExternalGVKs()
+	case spi.PublicRoute:
+		return PublicGVKs()
+	}
+
+	return nil
 }

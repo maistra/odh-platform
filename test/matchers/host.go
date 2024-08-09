@@ -5,7 +5,6 @@ import (
 
 	"github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/onsi/gomega"
-	"github.com/onsi/gomega/format"
 	"github.com/onsi/gomega/types"
 	openshiftroutev1 "github.com/openshift/api/route/v1"
 	"istio.io/client-go/pkg/apis/networking/v1beta1"
