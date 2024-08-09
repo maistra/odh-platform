@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	platformctrl "github.com/opendatahub-io/odh-platform/controllers"
@@ -19,11 +20,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewPlatformRoutingReconciler(cli client.Client, log logr.Logger, routingComponent spi.RoutingComponent, config PlatformRoutingConfiguration) *PlatformRoutingReconciler {
+const ctrlName = "routing"
+
+func NewPlatformRoutingReconciler(cli client.Client, log logr.Logger, component spi.RoutingComponent, config PlatformRoutingConfiguration) *PlatformRoutingReconciler {
 	return &PlatformRoutingReconciler{
-		Client:         cli,
-		log:            log,
-		component:      routingComponent,
+		Client: cli,
+		log: log.WithValues(
+			"controller", ctrlName,
+			"component", component.CustomResourceType.Kind,
+		),
+		component:      component,
 		config:         config,
 		templateLoader: routing.NewStaticTemplateLoader(),
 	}
@@ -85,6 +91,7 @@ func (r *PlatformRoutingReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	//nolint:wrapcheck //reason there is no point in wrapping it
 	return ctrl.NewControllerManagedBy(mgr).
+		Named(ctrlName+"-"+strings.ToLower(r.component.CustomResourceType.Kind)).
 		For(&metav1.PartialObjectMetadata{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: r.component.CustomResourceType.GroupVersion().String(),

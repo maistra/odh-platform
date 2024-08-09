@@ -39,7 +39,7 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 
 	opts := zap.Options{
-		Development: true,
+		Development: true, // TODO: expose as flag to alternate the mode for production instance.
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
@@ -56,13 +56,12 @@ func main() {
 		},
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
+		setupLog.Error(err, "unable to create manager")
 		os.Exit(1)
 	}
 
-	ctrlLog := ctrl.Log.WithName("controllers").
-		WithName("odh-platform")
-	ctrlLog.Info("creating controller instance", "version", version.Version, "commit", version.Commit, "build-time", version.BuildTime)
+	ctrlLog := ctrl.Log.WithName("controllers").WithName("platform")
+	ctrlLog.Info("creating controller instances", "version", version.Version, "commit", version.Commit, "build-time", version.BuildTime)
 
 	authorizationComponents, errLoad := config.Load(spi.AuthorizationComponent{}, config.GetConfigFile())
 	if errLoad != nil {
@@ -78,7 +77,7 @@ func main() {
 	for _, component := range authorizationComponents {
 		if err = authorization.NewPlatformAuthorizationReconciler(mgr.GetClient(), ctrlLog, component, authorizationConfig).
 			SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "odh-platform-"+component.CustomResourceType.Kind)
+			setupLog.Error(err, "unable to create controller", "controller", "authorization", "component", component.CustomResourceType.Kind)
 			os.Exit(1)
 		}
 	}
@@ -104,7 +103,7 @@ func main() {
 			routingConfig,
 		).
 			SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "odh-platform-"+component.CustomResourceType.Kind)
+			setupLog.Error(err, "unable to create controller", "controller", "routing", "component", component.CustomResourceType.Kind)
 			os.Exit(1)
 		}
 	}
