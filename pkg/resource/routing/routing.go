@@ -27,8 +27,8 @@ func NewStaticTemplateLoader() spi.RoutingTemplateLoader {
 	return &staticTemplateLoader{}
 }
 
-func (s *staticTemplateLoader) Load(_ context.Context, routeType spi.RouteType, key types.NamespacedName, data spi.RoutingTemplateData) ([]unstructured.Unstructured, error) {
-	resources := []unstructured.Unstructured{}
+func (s *staticTemplateLoader) Load(_ context.Context, routeType spi.RouteType, key types.NamespacedName, data spi.RoutingTemplateData) ([]*unstructured.Unstructured, error) {
+	var resources []*unstructured.Unstructured
 
 	templateContent := publicRouteTemplate
 	if routeType == spi.ExternalRoute {
@@ -37,15 +37,15 @@ func (s *staticTemplateLoader) Load(_ context.Context, routeType spi.RouteType, 
 
 	resolvedTemplates, err := s.resolveTemplate(templateContent, data)
 	if err != nil {
-		return []unstructured.Unstructured{}, fmt.Errorf("could not resolve auth template: %w", err)
+		return nil, fmt.Errorf("could not resolve routing template: %w", err)
 	}
 
 	resolvedSplitTemplates := strings.Split(string(resolvedTemplates), "---")
 	for _, resolvedTemplate := range resolvedSplitTemplates {
-		resource := unstructured.Unstructured{}
+		resource := &unstructured.Unstructured{}
 
-		if errConvert := schema.ConvertToStructuredResource([]byte(resolvedTemplate), &resource); errConvert != nil {
-			return []unstructured.Unstructured{}, fmt.Errorf("could not load auth template: %w", err)
+		if errConvert := schema.ConvertToStructuredResource([]byte(resolvedTemplate), resource); errConvert != nil {
+			return nil, fmt.Errorf("could not load routing template: %w", err)
 		}
 
 		resources = append(resources, resource)

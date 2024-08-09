@@ -9,36 +9,6 @@ import (
 	"github.com/onsi/gomega/types"
 )
 
-// HaveHosts is a custom matcher to verify hosts in AuthConfigs.
-func HaveHosts(expectedHosts ...string) types.GomegaMatcher {
-	return &authConfigHostsMatcher{expectedHosts: expectedHosts}
-}
-
-type authConfigHostsMatcher struct {
-	expectedHosts []string
-}
-
-func (matcher *authConfigHostsMatcher) Match(actual any) (bool, error) {
-	if actual == nil {
-		return false, nil
-	}
-
-	authConfig, ok := actual.(*authorinov1beta2.AuthConfig)
-	if !ok {
-		return false, fmt.Errorf("expected AuthConfig. Got:\n%s", format.Object(actual, 1))
-	}
-
-	return gomega.Equal(matcher.expectedHosts).Match(authConfig.Spec.Hosts)
-}
-
-func (matcher *authConfigHostsMatcher) FailureMessage(actual any) string {
-	return format.Message(actual, "to have hosts", matcher.expectedHosts)
-}
-
-func (matcher *authConfigHostsMatcher) NegatedFailureMessage(actual any) string {
-	return format.Message(actual, "not to have hosts", matcher.expectedHosts)
-}
-
 // HaveKubernetesTokenReview is a custom matcher to verify Kubernetes Token Review configuration in AuthConfigs.
 func HaveKubernetesTokenReview() types.GomegaMatcher {
 	return &kubernetesTokenReviewMatcher{}
@@ -51,8 +21,8 @@ func (matcher *kubernetesTokenReviewMatcher) Match(actual any) (bool, error) {
 		return false, nil
 	}
 
-	authConfig, ok := actual.(*authorinov1beta2.AuthConfig)
-	if !ok {
+	authConfig, err := deref[authorinov1beta2.AuthConfig](actual)
+	if err != nil {
 		return false, fmt.Errorf("expected AuthConfig. Got:\n%s", format.Object(actual, 1))
 	}
 
@@ -86,8 +56,8 @@ func (matcher *authConfigMethodMatcher) Match(actual any) (bool, error) {
 		return false, nil
 	}
 
-	authConfig, ok := actual.(*authorinov1beta2.AuthConfig)
-	if !ok {
+	authConfig, err := deref[authorinov1beta2.AuthConfig](actual)
+	if err != nil {
 		return false, fmt.Errorf("expected AuthConfig. Got:\n%s", format.Object(actual, 1))
 	}
 

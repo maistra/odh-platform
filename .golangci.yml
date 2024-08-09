@@ -90,6 +90,7 @@ linters-settings:
   varnamelen: 
     ignore-names:
       - g # g Gomega
+      - vs # VirtualService
 linters:
   enable-all: true
   disable:

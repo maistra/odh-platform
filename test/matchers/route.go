@@ -40,32 +40,3 @@ func (r *routeSvcMatcher) FailureMessage(actual any) string {
 func (r *routeSvcMatcher) NegatedFailureMessage(actual any) string {
 	return format.Message(actual, "not to be attached to service named", r.expectedSvcName)
 }
-
-func HaveHostPrefix(name string) types.GomegaMatcher {
-	return &routeHostPrefix{expectedHostPrefix: name}
-}
-
-type routeHostPrefix struct {
-	expectedHostPrefix string
-}
-
-func (matcher *routeHostPrefix) Match(actual any) (bool, error) {
-	if actual == nil {
-		return true, nil
-	}
-
-	route, errDeref := deref[openshiftroutev1.Route](actual)
-	if errDeref != nil {
-		return false, errDeref
-	}
-
-	return gomega.HavePrefix(matcher.expectedHostPrefix).Match(route.Spec.Host)
-}
-
-func (matcher *routeHostPrefix) FailureMessage(actual any) string {
-	return format.Message(actual, "to have host prefix", matcher.expectedHostPrefix)
-}
-
-func (matcher *routeHostPrefix) NegatedFailureMessage(actual any) string {
-	return format.Message(actual, "to not have host prefix", matcher.expectedHostPrefix)
-}

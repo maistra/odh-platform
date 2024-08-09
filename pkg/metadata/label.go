@@ -8,10 +8,13 @@ var Labels = struct { //nolint:gochecknoglobals //reason: anonymous struct is us
 	AppName      string
 	AppVersion   string
 	AppManagedBy string
-	// OwnerName is the name of the owner of the resource combined with its namespace separated by a dash if applicable.
+	// OwnerName is the name of the owner of the resource.
 	OwnerName string
 	// OwnerKind is the kind of the owner of the resource.
-	OwnerKind       string
+	OwnerKind string
+	// OwnerUID is the UID of the owner of the resource. It is internally set by the platform
+	// to enable accurate garbage collection of the resources cross-namespace.
+	OwnerUID        string
 	RoutingExported string
 }{
 	AppPartOf:       "app.kubernetes.io/part-of",
@@ -21,6 +24,7 @@ var Labels = struct { //nolint:gochecknoglobals //reason: anonymous struct is us
 	AppManagedBy:    "app.kubernetes.io/managed-by",
 	OwnerName:       "platform.opendatahub.io/owner-name",
 	OwnerKind:       "platform.opendatahub.io/owner-kind",
+	OwnerUID:        "platform.opendatahub.io/owner-uid",
 	RoutingExported: "routing.opendatahub.io/exported",
 }
 

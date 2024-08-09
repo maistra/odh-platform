@@ -1,12 +1,13 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name:  # identity of the service being exposed
+  name: {{ .PublicServiceName }}-route # identity of the service being exposed
   namespace: {{ .GatewayNamespace }}
 spec:
   to:
     kind: Service
     name: {{ .IngressService }}
+  host: {{ .PublicServiceName }}.{{ .Domain }}
   port:
     targetPort: https
   tls:
@@ -29,4 +30,4 @@ spec:
     - destination:
         host: {{ .ServiceName }}.{{ .ServiceNamespace }}.svc.cluster.local   # srv k8s
         port:
-          number: 8080 # port number on mesh service
+          number: {{ .ServiceTargetPort }}

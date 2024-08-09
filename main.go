@@ -88,7 +88,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	routingConfig := routing.PlatformRoutingConfiguration{
+	routingConfig := spi.PlatformRoutingConfiguration{
 		IngressSelectorLabel: config.GetIngressSelectorKey(),
 		IngressSelectorValue: config.GetIngressSelectorValue(),
 		IngressService:       config.GetGatewayService(),

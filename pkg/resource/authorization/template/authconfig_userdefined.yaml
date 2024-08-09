@@ -24,7 +24,7 @@ spec:
           group:
             value: ""
           resource:
-            value: services
+            value: services # TODO(mvp) switch to target protected resource
           namespace:
             value: {{ .Namespace }}
           subresource:

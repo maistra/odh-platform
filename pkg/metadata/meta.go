@@ -21,10 +21,10 @@ func ApplyMetaOptions(obj metav1.Object, opts ...Options) error {
 	return nil
 }
 
-// WithOwnerLabels sets the owner labels on the object based on source object.
-// Those labels can be used to find all related resources across the cluster
-// which are owned by the source object by leveraging label selectors.
-// This can be particularly useful for garbage collection when source object is namespace-scoped
+// WithOwnerLabels makes source object an owner of the target resource using labels.
+// Those labels can be used to find all related resources across the cluster which
+// are owned by the source object using label selectors which simplifies query to kube-apiserver.
+// This is particularly useful for garbage collection when source object is namespace-scoped
 // and related resources are created in a different namespace or are cluster-scoped.
 func WithOwnerLabels(source client.Object) Options {
 	ownerName := source.GetName()
@@ -33,6 +33,7 @@ func WithOwnerLabels(source client.Object) Options {
 	return WithLabels(
 		Labels.OwnerName, ownerName,
 		Labels.OwnerKind, ownerKind,
+		Labels.OwnerUID, string(source.GetUID()),
 	)
 }
 

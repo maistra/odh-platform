@@ -97,17 +97,24 @@ func (a RoutingComponent) Load(configPath string) ([]RoutingComponent, error) {
 	return routes, nil
 }
 
-type RoutingTemplateData struct {
-	PublicServiceName string // [service-name]-[service-namespace]
-	ServiceName       string // service-name
-	ServiceNamespace  string // service-namespace
-	GatewayNamespace  string // gateway-namespace
-	Domain            string // app.crc.testing
+type PlatformRoutingConfiguration struct {
+	IngressSelectorLabel,
+	IngressSelectorValue,
+	IngressService,
+	GatewayNamespace string
+}
 
-	// Infra
-	IngressSelectorLabel string // istio
-	IngressSelectorValue string // rhoai-gateway
-	IngressService       string // rhoai-router-ingress
+// TODO(mvp) revise the stuct name - is it only for templates?
+type RoutingTemplateData struct {
+	PlatformRoutingConfiguration
+
+	PublicServiceName string // [service-name]-[service-namespace]
+	ServiceName       string
+	ServiceNamespace  string
+
+	ServiceTargetPort string
+
+	Domain string
 }
 
 // RoutingTemplateLoader provides a way to differentiate the Route template used based on
@@ -115,7 +122,7 @@ type RoutingTemplateData struct {
 //   - Namespace / Resource name
 //   - Loader source
 type RoutingTemplateLoader interface {
-	Load(ctx context.Context, routeType RouteType, key types.NamespacedName, data RoutingTemplateData) ([]unstructured.Unstructured, error)
+	Load(ctx context.Context, routeType RouteType, key types.NamespacedName, data RoutingTemplateData) ([]*unstructured.Unstructured, error)
 }
 
 type ResourceSchema struct {

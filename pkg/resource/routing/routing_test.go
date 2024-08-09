@@ -16,15 +16,16 @@ var _ = Describe("Resource functions", test.Unit(), func() {
 	Context("Template Loader", func() {
 
 		data := spi.RoutingTemplateData{
+			PlatformRoutingConfiguration: spi.PlatformRoutingConfiguration{
+				GatewayNamespace:     "opendatahub",
+				IngressSelectorLabel: "istio",
+				IngressSelectorValue: "rhoai-gateway",
+				IngressService:       "rhoai-router-ingress",
+			},
 			PublicServiceName: "registry-office",
 			ServiceName:       "registry",
 			ServiceNamespace:  "office",
-			GatewayNamespace:  "opendatahub",
 			Domain:            "app-crc.testing",
-
-			IngressSelectorLabel: "istio",
-			IngressSelectorValue: "rhoai-gateway",
-			IngressService:       "rhoai-router-ingress",
 		}
 
 		It("should load public resources", func() {
