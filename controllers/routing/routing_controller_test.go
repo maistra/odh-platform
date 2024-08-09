@@ -408,80 +408,6 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 
 })
 
-func simpleSvcDeployment(ctx context.Context, nsName, svcName string) (*appsv1.Deployment, *corev1.Service) {
-	service := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      svcName,
-			Namespace: nsName,
-			Labels: map[string]string{
-				"app":     svcName,
-				"service": svcName,
-			},
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{
-				"app": svcName,
-			},
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "http",
-					Port:       8080,
-					TargetPort: intstr.FromInt32(8000),
-				},
-			},
-		},
-	}
-
-	Expect(envTest.Create(ctx, service)).To(Succeed())
-
-	deployment := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      svcName,
-			Namespace: nsName,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: ptr.To[int32](1),
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app":     svcName,
-					"version": "v1",
-				},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						"sidecar.istio.io/inject": "true",
-					},
-					Labels: map[string]string{
-						"app":     svcName,
-						"version": "v1",
-					},
-				},
-				Spec: corev1.PodSpec{
-					ServiceAccountName: svcName,
-					Containers: []corev1.Container{
-						{
-							Name:  "httpbin",
-							Image: "kennethreitz/httpbin",
-							Command: []string{
-								"gunicorn", "--access-logfile", "-", "-b", "[::]:8000", "httpbin:app",
-							},
-							Ports: []corev1.ContainerPort{
-								{
-									ContainerPort: 8000,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	Expect(envTest.Create(ctx, deployment)).To(Succeed())
-
-	return deployment, service
-}
-
 func routeExistsFor(exportedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
 		svcRoute := &openshiftroutev1.Route{}
@@ -613,4 +539,78 @@ func ingressVirtualServiceExistsFor(exportedSvc *corev1.Service) func(g Gomega, 
 
 func componentResource(name, namespace string) []byte {
 	return []byte(fmt.Sprintf(watchedCR, name, namespace))
+}
+
+func simpleSvcDeployment(ctx context.Context, nsName, svcName string) (*appsv1.Deployment, *corev1.Service) {
+	service := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      svcName,
+			Namespace: nsName,
+			Labels: map[string]string{
+				"app":     svcName,
+				"service": svcName,
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: map[string]string{
+				"app": svcName,
+			},
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "http",
+					Port:       8080,
+					TargetPort: intstr.FromInt32(8000),
+				},
+			},
+		},
+	}
+
+	Expect(envTest.Create(ctx, service)).To(Succeed())
+
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      svcName,
+			Namespace: nsName,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: ptr.To[int32](1),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app":     svcName,
+					"version": "v1",
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"sidecar.istio.io/inject": "true",
+					},
+					Labels: map[string]string{
+						"app":     svcName,
+						"version": "v1",
+					},
+				},
+				Spec: corev1.PodSpec{
+					ServiceAccountName: svcName,
+					Containers: []corev1.Container{
+						{
+							Name:  "httpbin",
+							Image: "kennethreitz/httpbin",
+							Command: []string{
+								"gunicorn", "--access-logfile", "-", "-b", "[::]:8000", "httpbin:app",
+							},
+							Ports: []corev1.ContainerPort{
+								{
+									ContainerPort: 8000,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	Expect(envTest.Create(ctx, deployment)).To(Succeed())
+
+	return deployment, service
 }
