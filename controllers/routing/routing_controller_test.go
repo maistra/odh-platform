@@ -72,7 +72,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			toRemove = append(toRemove, config)
 		}
 
-		domain = getClusterDomain(ctx, envTest.Client)
+		domain = getClusterDomain(ctx)
 	})
 
 	AfterEach(func(_ context.Context) {
@@ -91,17 +91,17 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// when routing through platform mesh
 			By("adding component service to platform routing", func() {
 				// before updating component, ensure finalizers have been set
-				component = ensureFinalizersSet(ctx, component, envTest.Client)
+				component = ensureFinalizersSet(ctx, component)
 
 				// required annotation for watched custom resource:
 				// 	routing.opendatahub.io/export-mode: "external"
-				exportCustomResource(ctx, component, "external", envTest.Client)
+				exportCustomResource(ctx, component, "external")
 
 				// required labels for the exported service:
 				// 	routing.opendatahub.io/exported: "true"
 				// 	platform.opendatahub.io/owner-name: test-component
 				// 	platform.opendatahub.io/owner-kind: Component
-				addRoutingRequirementsToSvc(ctx, svc, component, envTest.Client)
+				addRoutingRequirementsToSvc(ctx, svc, component)
 			})
 
 			// then
@@ -118,17 +118,17 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// when routing through platform mesh
 			By("adding component service to platform routing", func() {
 				// before updating component, ensure finalizers have been set
-				component = ensureFinalizersSet(ctx, component, envTest.Client)
+				component = ensureFinalizersSet(ctx, component)
 
 				// required annotation for watched custom resource:
 				// 	routing.opendatahub.io/export-mode: "external"
-				exportCustomResource(ctx, component, "external", envTest.Client)
+				exportCustomResource(ctx, component, "external")
 
 				// required labels for the exported service:
 				// 	routing.opendatahub.io/exported: "true"
 				// 	platform.opendatahub.io/owner-name: test-component
 				// 	platform.opendatahub.io/owner-kind: Component
-				addRoutingRequirementsToSvc(ctx, svc, component, envTest.Client)
+				addRoutingRequirementsToSvc(ctx, svc, component)
 			})
 
 			// then
@@ -168,17 +168,17 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// when routing through platform mesh
 			By("adding component service to platform routing", func() {
 				// before updating component, ensure finalizers have been set
-				component = ensureFinalizersSet(ctx, component, envTest.Client)
+				component = ensureFinalizersSet(ctx, component)
 
 				// required annotation for watched custom resource:
 				// 	routing.opendatahub.io/export-mode: "public"
-				exportCustomResource(ctx, component, "public", envTest.Client)
+				exportCustomResource(ctx, component, "public")
 
 				// required labels for the exported service:
 				// 	routing.opendatahub.io/exported: "true"
 				// 	platform.opendatahub.io/owner-name: test-component
 				// 	platform.opendatahub.io/owner-kind: Component
-				addRoutingRequirementsToSvc(ctx, svc, component, envTest.Client)
+				addRoutingRequirementsToSvc(ctx, svc, component)
 			})
 
 			// then
@@ -196,17 +196,17 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// when routing through platform mesh
 			By("adding component service to platform routing", func() {
 				// before updating component, ensure finalizers have been set
-				component = ensureFinalizersSet(ctx, component, envTest.Client)
+				component = ensureFinalizersSet(ctx, component)
 
 				// required annotation for watched custom resource:
 				// 	routing.opendatahub.io/export-mode: "public"
-				exportCustomResource(ctx, component, "public", envTest.Client)
+				exportCustomResource(ctx, component, "public")
 
 				// required labels for the exported service:
 				// 	routing.opendatahub.io/exported: "true"
 				// 	platform.opendatahub.io/owner-name: test-component
 				// 	platform.opendatahub.io/owner-kind: Component
-				addRoutingRequirementsToSvc(ctx, svc, component, envTest.Client)
+				addRoutingRequirementsToSvc(ctx, svc, component)
 			})
 
 			// then
@@ -250,17 +250,17 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// when routing through platform mesh
 			By("adding component service to platform routing", func() {
 				// before updating component, ensure finalizers have been set
-				component = ensureFinalizersSet(ctx, component, envTest.Client)
+				component = ensureFinalizersSet(ctx, component)
 
 				// required annotation for watched custom resource:
 				// 	routing.opendatahub.io/export-mode: "public;external"
-				exportCustomResource(ctx, component, "public;external", envTest.Client)
+				exportCustomResource(ctx, component, "public;external")
 
 				// required labels for the exported service:
 				// 	routing.opendatahub.io/exported: "true"
 				// 	platform.opendatahub.io/owner-name: test-component
 				// 	platform.opendatahub.io/owner-kind: Component
-				addRoutingRequirementsToSvc(ctx, svc, component, envTest.Client)
+				addRoutingRequirementsToSvc(ctx, svc, component)
 			})
 
 			// then
@@ -305,17 +305,17 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// when
 			By("adding routing requirements on the resource and related svc", func() {
 				// before updating component, ensure finalizers have been set
-				component = ensureFinalizersSet(ctx, component, envTest.Client)
+				component = ensureFinalizersSet(ctx, component)
 
 				// required annotation for watched custom resource:
 				// 	routing.opendatahub.io/export-mode: "public;external"
-				exportCustomResource(ctx, component, "public;external", envTest.Client)
+				exportCustomResource(ctx, component, "public;external")
 
 				// required labels for the exported service:
 				// 	routing.opendatahub.io/exported: "true"
 				// 	platform.opendatahub.io/owner-name: test-component
 				// 	platform.opendatahub.io/owner-kind: Component
-				addRoutingRequirementsToSvc(ctx, svc, component, envTest.Client)
+				addRoutingRequirementsToSvc(ctx, svc, component)
 			})
 
 			// then

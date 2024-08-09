@@ -14,12 +14,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-func getClusterDomain(ctx context.Context, cli client.Client) string {
+func getClusterDomain(ctx context.Context) string {
 	var domain string
 
 	Eventually(func(ctx context.Context) error {
 		var err error
-		domain, err = cluster.GetDomain(ctx, cli)
+		domain, err = cluster.GetDomain(ctx, envTest.Client)
 
 		return err
 	}).WithContext(ctx).
@@ -30,11 +30,11 @@ func getClusterDomain(ctx context.Context, cli client.Client) string {
 	return domain
 }
 
-func exportCustomResource(ctx context.Context, exportedComponent *unstructured.Unstructured, mode string, cli client.Client) {
+func exportCustomResource(ctx context.Context, exportedComponent *unstructured.Unstructured, mode string) {
 	// routing.opendatahub.io/export-mode: "public;external"
 	exposeExternally := metadata.WithAnnotations(metadata.Annotations.RoutingExportMode, mode)
 	_, errExportCR := controllerutil.CreateOrUpdate(
-		ctx, cli,
+		ctx, envTest.Client,
 		exportedComponent,
 		func() error {
 			return metadata.ApplyMetaOptions(exportedComponent, exposeExternally)
@@ -42,7 +42,7 @@ func exportCustomResource(ctx context.Context, exportedComponent *unstructured.U
 	Expect(errExportCR).ToNot(HaveOccurred())
 }
 
-func addRoutingRequirementsToSvc(ctx context.Context, exportedSvc *corev1.Service, owningComponent *unstructured.Unstructured, cli client.Client) {
+func addRoutingRequirementsToSvc(ctx context.Context, exportedSvc *corev1.Service, owningComponent *unstructured.Unstructured) {
 	// routing.opendatahub.io/exported: "true"
 	exportAnnotation := metadata.WithLabels(metadata.Labels.RoutingExported, "true")
 	// platform.opendatahub.io/owner-name: test-component
@@ -53,16 +53,16 @@ func addRoutingRequirementsToSvc(ctx context.Context, exportedSvc *corev1.Servic
 	)
 
 	// Service created by the component need to have these metadata added, i.e. by its controller
-	_, errExportSvc := controllerutil.CreateOrUpdate(ctx, cli, exportedSvc, func() error {
+	_, errExportSvc := controllerutil.CreateOrUpdate(ctx, envTest.Client, exportedSvc, func() error {
 		return metadata.ApplyMetaOptions(exportedSvc, exportAnnotation, ownerLabels)
 	})
 	Expect(errExportSvc).ToNot(HaveOccurred())
 }
 
-func ensureFinalizersSet(ctx context.Context, owningComponent *unstructured.Unstructured, cli client.Client) *unstructured.Unstructured {
+func ensureFinalizersSet(ctx context.Context, owningComponent *unstructured.Unstructured) *unstructured.Unstructured {
 	// Re-fetch the component from the cluster to get the latest version (ensuring finalizers are set)
 	Eventually(func() error {
-		errGetComponent := cli.Get(ctx, client.ObjectKey{
+		errGetComponent := envTest.Client.Get(ctx, client.ObjectKey{
 			Namespace: owningComponent.GetNamespace(),
 			Name:      owningComponent.GetName(),
 		}, owningComponent)
