@@ -6,7 +6,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gstruct"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/test"
 	. "github.com/opendatahub-io/odh-platform/test/matchers"
@@ -162,11 +161,11 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 					return errGet
 				}
 
-				g.Expect(updatedComponent).ToNot(HaveAnnotations(
-					metadata.Annotations.RoutingAddressesPublic, gstruct.Ignore(),
+				g.Expect(updatedComponent.GetAnnotations()).ToNot(HaveKey(
+					metadata.Annotations.RoutingAddressesPublic,
 				), "public services are not expected to be defined in this mode")
 
-				g.Expect(updatedComponent).To(HaveAnnotations(
+				g.Expect(updatedComponent.GetAnnotations()).To(HaveKeyWithValue(
 					metadata.Annotations.RoutingAddressesExternal, fmt.Sprintf("%s-%s.%s", svc.Name, svc.Namespace, domain),
 				))
 
@@ -280,13 +279,13 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 					return errGet
 				}
 
-				g.Expect(updatedComponent).ToNot(
-					HaveAnnotations(
-						metadata.Annotations.RoutingAddressesExternal, gstruct.Ignore(),
+				g.Expect(updatedComponent.GetAnnotations()).ToNot(
+					HaveKey(
+						metadata.Annotations.RoutingAddressesExternal,
 					), "public services are not expected to be defined in this mode")
 
-				g.Expect(updatedComponent).To(
-					HaveAnnotations(
+				g.Expect(updatedComponent.GetAnnotations()).To(
+					HaveKeyWithValue(
 						metadata.Annotations.RoutingAddressesPublic,
 						fmt.Sprintf("%[1]s-%[2]s.%[3]s;%[1]s-%[2]s.%[3]s.svc;%[1]s-%[2]s.%[3]s.svc.cluster.local", svc.Name, svc.Namespace, routingConfiguration.GatewayNamespace),
 					),
@@ -379,12 +378,16 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 					return errGet
 				}
 
-				g.Expect(updatedComponent).To(
-					HaveAnnotations(
-						metadata.Annotations.RoutingAddressesExternal,
-						fmt.Sprintf("%s-%s.%s", svc.Name, svc.Namespace, domain),
-						metadata.Annotations.RoutingAddressesPublic,
-						fmt.Sprintf("%[1]s-%[2]s.%[3]s;%[1]s-%[2]s.%[3]s.svc;%[1]s-%[2]s.%[3]s.svc.cluster.local", svc.Name, svc.Namespace, routingConfiguration.GatewayNamespace),
+				g.Expect(updatedComponent.GetAnnotations()).To(
+					And(
+						HaveKeyWithValue(
+							metadata.Annotations.RoutingAddressesExternal,
+							fmt.Sprintf("%s-%s.%s", svc.Name, svc.Namespace, domain),
+						),
+						HaveKeyWithValue(
+							metadata.Annotations.RoutingAddressesPublic,
+							fmt.Sprintf("%[1]s-%[2]s.%[3]s;%[1]s-%[2]s.%[3]s.svc;%[1]s-%[2]s.%[3]s.svc.cluster.local", svc.Name, svc.Namespace, routingConfiguration.GatewayNamespace),
+						),
 					),
 				)
 
@@ -506,12 +509,13 @@ func publicSvcExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx context.C
 			return errGet
 		}
 
-		g.Expect(publicSvc).To(
-			HaveAnnotations(
+		g.Expect(publicSvc.GetAnnotations()).To(
+			HaveKeyWithValue(
 				"service.beta.openshift.io/serving-cert-secret-name",
 				exposedSvc.Name+"-"+exposedSvc.Namespace+"-certs",
 			),
 		)
+
 		g.Expect(publicSvc.Spec.Selector).To(
 			HaveKeyWithValue(routingConfiguration.IngressSelectorLabel, routingConfiguration.IngressSelectorValue),
 		)
