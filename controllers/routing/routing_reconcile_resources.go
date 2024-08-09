@@ -65,7 +65,11 @@ func (r *PlatformRoutingReconciler) exportService(ctx context.Context, target *u
 		Domain:                       domain,
 	}
 
-	withOwnershipLabels := ownershipLabels(target)
+	labelsForCreatedResources := []metadata.Options{
+		// TODO(mvp): add standard labels
+		metadata.WithOwnerLabels(target), // To establish ownership for watched component
+		metadata.WithLabels(metadata.Labels.AppManagedBy, "odh-routing-controller"),
+	}
 
 	targetKey := k8stypes.NamespacedName{Namespace: target.GetNamespace(), Name: target.GetName()}
 
@@ -75,7 +79,7 @@ func (r *PlatformRoutingReconciler) exportService(ctx context.Context, target *u
 			return fmt.Errorf("could not load templates for type %s: %w", exportMode, err)
 		}
 
-		if errApply := cluster.Apply(ctx, r.Client, resources, withOwnershipLabels...); errApply != nil {
+		if errApply := cluster.Apply(ctx, r.Client, resources, labelsForCreatedResources...); errApply != nil {
 			return fmt.Errorf("could not apply routing resources for type %s: %w", exportMode, errApply)
 		}
 	}
@@ -111,14 +115,6 @@ func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.Routi
 	}
 
 	return nil
-}
-
-func ownershipLabels(target *unstructured.Unstructured) []metadata.Options {
-	return []metadata.Options{
-		// TODO(mvp): add standard labels
-		metadata.WithOwnerLabels(target),
-		metadata.WithLabels(metadata.Labels.AppManagedBy, "odh-routing-controller"),
-	}
 }
 
 func extractExportModes(target *unstructured.Unstructured) ([]spi.RouteType, bool) {
