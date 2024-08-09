@@ -37,20 +37,20 @@ func (r *PlatformRoutingReconciler) deleteResourcesByLabels(ctx context.Context,
 	ownerKind := target.GetObjectKind().GroupVersionKind().Kind
 	ownerUID := string(target.GetUID())
 
-	labelSelector := client.MatchingLabels{
+	resourceOwnerLabels := client.MatchingLabels{
 		metadata.Labels.OwnerName: ownerName,
 		metadata.Labels.OwnerKind: ownerKind,
 		metadata.Labels.OwnerUID:  ownerUID,
 	}
 
+	deleteOptions := []client.DeleteAllOfOption{
+		client.InNamespace(r.config.GatewayNamespace),
+		resourceOwnerLabels,
+	}
+
 	for _, gvk := range gvkList {
 		resource := &unstructured.Unstructured{}
 		resource.SetGroupVersionKind(gvk)
-
-		deleteOptions := []client.DeleteAllOfOption{
-			client.InNamespace(r.config.GatewayNamespace),
-			labelSelector,
-		}
 
 		if err := r.Client.DeleteAllOf(ctx, resource, deleteOptions...); err != nil {
 			return fmt.Errorf("failed to delete resources of kind %s: %w", gvk.Kind, err)

@@ -78,7 +78,7 @@ func (r *PlatformRoutingReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	if controllerutil.AddFinalizer(sourceRes, metadata.Finalizers.Routing) {
 		if errUpdate := r.Update(ctx, sourceRes); errUpdate != nil {
-			errs = append(errs, errUpdate)
+			return ctrl.Result{}, fmt.Errorf("failed adding finalizer: %w", errUpdate)
 		}
 	}
 
