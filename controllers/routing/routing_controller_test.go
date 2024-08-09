@@ -15,6 +15,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
@@ -82,29 +83,17 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			Expect(errCreate).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
-			// when
-			By("adding routing requirements on the resource and related svc", func() {
-				// routing.opendatahub.io/exported: "true"
-				exportAnnotation := metadata.WithLabels(metadata.Labels.RoutingExported, "true")
-				// platform.opendatahub.io/owner-name: test-component
-				// platform.opendatahub.io/owner-kind: Component
-				ownerLabels := metadata.WithOwnerLabels(component)
+			// when routing through platform mesh
+			By("adding component service to platform routing", func() {
+				// required annotation for watched custom resource:
+				// 	routing.opendatahub.io/export-mode: "external"
+				exportCustomResource(ctx, component, "external")
 
-				// Service created by the component need to have these metadata added, i.e. by its controller
-				_, errExportSvc := controllerutil.CreateOrUpdate(ctx, envTest.Client, svc, func() error {
-					return metadata.ApplyMetaOptions(svc, exportAnnotation, ownerLabels)
-				})
-				Expect(errExportSvc).ToNot(HaveOccurred())
-
-				// routing.opendatahub.io/export-mode: "external"
-				exposeExternally := metadata.WithAnnotations(metadata.Annotations.RoutingExportMode, "external")
-				_, errExportCR := controllerutil.CreateOrUpdate(
-					ctx, envTest.Client,
-					component,
-					func() error {
-						return metadata.ApplyMetaOptions(component, exposeExternally)
-					})
-				Expect(errExportCR).ToNot(HaveOccurred())
+				// required labels for the exported service:
+				// 	routing.opendatahub.io/exported: "true"
+				// 	platform.opendatahub.io/owner-name: test-component
+				// 	platform.opendatahub.io/owner-kind: Component
+				addRoutingRequirementsToSvc(ctx, svc, component)
 			})
 
 			// then
@@ -129,29 +118,17 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			Expect(errCreate).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
-			// when
-			By("adding routing requirements on the watched resource and related svc", func() {
-				// routing.opendatahub.io/exported: "true"
-				exportAnnotation := metadata.WithLabels(metadata.Labels.RoutingExported, "true")
-				// platform.opendatahub.io/owner-name: test-component
-				// platform.opendatahub.io/owner-kind: Component
-				ownerLabels := metadata.WithOwnerLabels(component)
+			// when routing through platform mesh
+			By("adding component service to platform routing", func() {
+				// required annotation for watched custom resource:
+				// 	routing.opendatahub.io/export-mode: "external"
+				exportCustomResource(ctx, component, "external")
 
-				// Service created by the component need to have these metadata added, i.e. by its controller
-				_, errExportSvc := controllerutil.CreateOrUpdate(ctx, envTest.Client, svc, func() error {
-					return metadata.ApplyMetaOptions(svc, exportAnnotation, ownerLabels)
-				})
-				Expect(errExportSvc).ToNot(HaveOccurred())
-
-				// routing.opendatahub.io/export-mode: "external"
-				exposeExternally := metadata.WithAnnotations(metadata.Annotations.RoutingExportMode, "external")
-				_, errExportCR := controllerutil.CreateOrUpdate(
-					ctx, envTest.Client,
-					component,
-					func() error {
-						return metadata.ApplyMetaOptions(component, exposeExternally)
-					})
-				Expect(errExportCR).ToNot(HaveOccurred())
+				// required labels for the exported service:
+				// 	routing.opendatahub.io/exported: "true"
+				// 	platform.opendatahub.io/owner-name: test-component
+				// 	platform.opendatahub.io/owner-kind: Component
+				addRoutingRequirementsToSvc(ctx, svc, component)
 			})
 
 			// then
@@ -188,29 +165,17 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			Expect(errCreate).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
-			// when
-			By("adding routing requirements on the resource and related svc", func() {
-				// routing.opendatahub.io/exported: "true"
-				exportAnnotation := metadata.WithLabels(metadata.Labels.RoutingExported, "true")
-				// platform.opendatahub.io/owner-name: test-component
-				// platform.opendatahub.io/owner-kind: Component
-				ownerLabels := metadata.WithOwnerLabels(component)
+			// when routing through platform mesh
+			By("adding component service to platform routing", func() {
+				// required annotation for watched custom resource:
+				// 	routing.opendatahub.io/export-mode: "public"
+				exportCustomResource(ctx, component, "public")
 
-				// Service created by the component need to have these metadata added, i.e. by its controller
-				_, errExportSvc := controllerutil.CreateOrUpdate(ctx, envTest.Client, svc, func() error {
-					return metadata.ApplyMetaOptions(svc, exportAnnotation, ownerLabels)
-				})
-				Expect(errExportSvc).ToNot(HaveOccurred())
-
-				// routing.opendatahub.io/export-mode: "public"
-				exposeExternally := metadata.WithAnnotations(metadata.Annotations.RoutingExportMode, "public")
-				_, errExportCR := controllerutil.CreateOrUpdate(
-					ctx, envTest.Client,
-					component,
-					func() error {
-						return metadata.ApplyMetaOptions(component, exposeExternally)
-					})
-				Expect(errExportCR).ToNot(HaveOccurred())
+				// required labels for the exported service:
+				// 	routing.opendatahub.io/exported: "true"
+				// 	platform.opendatahub.io/owner-name: test-component
+				// 	platform.opendatahub.io/owner-kind: Component
+				addRoutingRequirementsToSvc(ctx, svc, component)
 			})
 
 			// then
@@ -247,29 +212,17 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			Expect(errCreate).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
-			// when
-			By("adding routing requirements on the resource and related svc", func() {
-				// routing.opendatahub.io/exported: "true"
-				exportSvc := metadata.WithLabels(metadata.Labels.RoutingExported, "true")
-				// platform.opendatahub.io/owner-name: test-component
-				// platform.opendatahub.io/owner-kind: Component
-				ownerLabels := metadata.WithOwnerLabels(component)
+			// when routing through platform mesh
+			By("adding component service to platform routing", func() {
+				// required annotation for watched custom resource:
+				// 	routing.opendatahub.io/export-mode: "public"
+				exportCustomResource(ctx, component, "public")
 
-				// Service created by the component need to have these metadata added, i.e. by its controller
-				_, errExportSvc := controllerutil.CreateOrUpdate(ctx, envTest.Client, svc, func() error {
-					return metadata.ApplyMetaOptions(svc, exportSvc, ownerLabels)
-				})
-				Expect(errExportSvc).ToNot(HaveOccurred())
-
-				// routing.opendatahub.io/export-mode: "public"
-				exposeExternally := metadata.WithAnnotations(metadata.Annotations.RoutingExportMode, "public")
-				_, errExportCR := controllerutil.CreateOrUpdate(
-					ctx, envTest.Client,
-					component,
-					func() error {
-						return metadata.ApplyMetaOptions(component, exposeExternally)
-					})
-				Expect(errExportCR).ToNot(HaveOccurred())
+				// required labels for the exported service:
+				// 	routing.opendatahub.io/exported: "true"
+				// 	platform.opendatahub.io/owner-name: test-component
+				// 	platform.opendatahub.io/owner-kind: Component
+				addRoutingRequirementsToSvc(ctx, svc, component)
 			})
 
 			// then
@@ -310,29 +263,17 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			Expect(errCreate).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
-			// when
-			By("adding routing requirements on the resource and related svc", func() {
-				// routing.opendatahub.io/exported: "true"
-				exportAnnotation := metadata.WithLabels(metadata.Labels.RoutingExported, "true")
-				// platform.opendatahub.io/owner-name: test-component
-				// platform.opendatahub.io/owner-kind: Component
-				ownerLabels := metadata.WithOwnerLabels(component)
+			// when routing through platform mesh
+			By("adding component service to platform routing", func() {
+				// required annotation for watched custom resource:
+				// 	routing.opendatahub.io/export-mode: "public;external"
+				exportCustomResource(ctx, component, "public;external")
 
-				// Service created by the component need to have these metadata added, i.e. by its controller
-				_, errExportSvc := controllerutil.CreateOrUpdate(ctx, envTest.Client, svc, func() error {
-					return metadata.ApplyMetaOptions(svc, exportAnnotation, ownerLabels)
-				})
-				Expect(errExportSvc).ToNot(HaveOccurred())
-
-				// routing.opendatahub.io/export-mode: "public;external"
-				exposeExternally := metadata.WithAnnotations(metadata.Annotations.RoutingExportMode, "public;external")
-				_, errExportCR := controllerutil.CreateOrUpdate(
-					ctx, envTest.Client,
-					component,
-					func() error {
-						return metadata.ApplyMetaOptions(component, exposeExternally)
-					})
-				Expect(errExportCR).ToNot(HaveOccurred())
+				// required labels for the exported service:
+				// 	routing.opendatahub.io/exported: "true"
+				// 	platform.opendatahub.io/owner-name: test-component
+				// 	platform.opendatahub.io/owner-kind: Component
+				addRoutingRequirementsToSvc(ctx, svc, component)
 			})
 
 			// then
@@ -407,6 +348,35 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 	})
 
 })
+
+func exportCustomResource(ctx context.Context, exportedComponent *unstructured.Unstructured, mode string) {
+	// routing.opendatahub.io/export-mode: "public;external"
+	exposeExternally := metadata.WithAnnotations(metadata.Annotations.RoutingExportMode, mode)
+	_, errExportCR := controllerutil.CreateOrUpdate(
+		ctx, envTest.Client,
+		exportedComponent,
+		func() error {
+			return metadata.ApplyMetaOptions(exportedComponent, exposeExternally)
+		})
+	Expect(errExportCR).ToNot(HaveOccurred())
+}
+
+func addRoutingRequirementsToSvc(ctx context.Context, exportedSvc *corev1.Service, owningComponent *unstructured.Unstructured) {
+	// routing.opendatahub.io/exported: "true"
+	exportAnnotation := metadata.WithLabels(metadata.Labels.RoutingExported, "true")
+	// platform.opendatahub.io/owner-name: test-component
+	// platform.opendatahub.io/owner-kind: Component
+	ownerLabels := metadata.WithLabels(
+		metadata.Labels.OwnerName, owningComponent.GetName(),
+		metadata.Labels.OwnerKind, owningComponent.GetKind(),
+	)
+
+	// Service created by the component need to have these metadata added, i.e. by its controller
+	_, errExportSvc := controllerutil.CreateOrUpdate(ctx, envTest.Client, exportedSvc, func() error {
+		return metadata.ApplyMetaOptions(exportedSvc, exportAnnotation, ownerLabels)
+	})
+	Expect(errExportSvc).ToNot(HaveOccurred())
+}
 
 func routeExistsFor(exportedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
