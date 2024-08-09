@@ -5,7 +5,6 @@ import (
 
 	"github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/onsi/gomega"
-	"github.com/onsi/gomega/format"
 	"github.com/onsi/gomega/types"
 	openshiftroutev1 "github.com/openshift/api/route/v1"
 	"istio.io/client-go/pkg/apis/networking/v1beta1"
@@ -37,11 +36,11 @@ func (matcher *hostsMatcher) Match(actual any) (bool, error) {
 }
 
 func (matcher *hostsMatcher) FailureMessage(actual any) string {
-	return format.Message(actual, "to have host prefix", matcher.expectedHosts)
+	return gomega.ContainElements(matcher.expectedHosts).FailureMessage(actual)
 }
 
 func (matcher *hostsMatcher) NegatedFailureMessage(actual any) string {
-	return format.Message(actual, "to not have host prefix", matcher.expectedHosts)
+	return gomega.ContainElements(matcher.expectedHosts).FailureMessage(actual)
 }
 
 func extractHosts(actual any) ([]string, error) {
