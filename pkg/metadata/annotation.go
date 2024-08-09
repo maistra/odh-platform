@@ -10,6 +10,6 @@ var Annotations = struct { //nolint:gochecknoglobals //reason: anonymous struct 
 	AuthEnabled:              "security.opendatahub.io/enable-auth",
 	AuthorizationGroup:       "security.opendatahub.io/authorization-group",
 	RoutingExportMode:        "routing.opendatahub.io/export-mode",
-	RoutingAddressesPublic:   "routing.opendatahub.io/addresses-public",
-	RoutingAddressesExternal: "routing.opendatahub.io/addresses-external",
+	RoutingAddressesPublic:   "routing.opendatahub.io/public-addresses",
+	RoutingAddressesExternal: "routing.opendatahub.io/external-addresses",
 }
