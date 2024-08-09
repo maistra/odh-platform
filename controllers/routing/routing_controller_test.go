@@ -335,8 +335,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 				}, component)
 				Expect(errGetComponent).ToNot(HaveOccurred())
 
-				errDelete := envTest.Client.Delete(ctx, component)
-				Expect(errDelete).ToNot(HaveOccurred())
+				Expect(envTest.Client.Delete(ctx, component)).To(Succeed())
 			})
 
 			// then

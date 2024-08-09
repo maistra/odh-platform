@@ -67,7 +67,7 @@ func removeFinalizerAndUpdate(ctx context.Context, cli client.Client, sourceRes 
 		controllerutil.RemoveFinalizer(sourceRes, finalizer)
 
 		if err := cli.Update(ctx, sourceRes); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to update resource to remove finalizer: %w", err)
+			return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
 		}
 	}
 
