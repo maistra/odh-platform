@@ -2,7 +2,6 @@ package routing_test
 
 import (
 	"context"
-	"errors"
 
 	. "github.com/onsi/gomega"
 	"github.com/opendatahub-io/odh-platform/pkg/cluster"
@@ -10,7 +9,6 @@ import (
 	"github.com/opendatahub-io/odh-platform/test"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -30,20 +28,6 @@ func getClusterDomain(ctx context.Context) string {
 	return domain
 }
 
-// exportCustomResource is responsible for exporting a custom resource by setting the
-// "routing.opendatahub.io/export-mode" annotation to the specified mode.
-// This annotation is used to control the exposure mode (e.g., public, external) of the component.
-func exportCustomResource(ctx context.Context, exportedComponent *unstructured.Unstructured, mode string) {
-	exposeExternally := metadata.WithAnnotations(metadata.Annotations.RoutingExportMode, mode)
-	_, errExportCR := controllerutil.CreateOrUpdate(
-		ctx, envTest.Client,
-		exportedComponent,
-		func() error {
-			return metadata.ApplyMetaOptions(exportedComponent, exposeExternally)
-		})
-	Expect(errExportCR).ToNot(HaveOccurred())
-}
-
 // addRoutingRequirementsToSvc adds routing-related metadata to the servicing being exported.
 // It adds the "routing.opendatahub.io/exported" label to indicate that the service is exported,
 // and it also sets labels for the owner component's name and kind, using
@@ -61,27 +45,18 @@ func addRoutingRequirementsToSvc(ctx context.Context, exportedSvc *corev1.Servic
 	Expect(errExportSvc).ToNot(HaveOccurred())
 }
 
-func ensureFinalizersSet(ctx context.Context, owningComponent *unstructured.Unstructured) *unstructured.Unstructured {
-	// Re-fetch the component from the cluster to get the latest version (ensuring finalizers are set)
-	Eventually(func() error {
-		errGetComponent := envTest.Client.Get(ctx, client.ObjectKey{
-			Namespace: owningComponent.GetNamespace(),
-			Name:      owningComponent.GetName(),
-		}, owningComponent)
+func createAndExportComponent(ctx context.Context, componentName, mode, appNs string) (*unstructured.Unstructured, error) {
+	component, errCreate := test.CreateUnstructured(componentResource(componentName, appNs))
+	Expect(errCreate).ToNot(HaveOccurred())
 
-		if errGetComponent != nil {
-			return errGetComponent
-		}
+	// set component's "routing.opendatahub.io/export-mode" annotation to the specified mode.
+	annotations := component.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
 
-		if len(owningComponent.GetFinalizers()) == 0 {
-			return errors.New("finalizers are not yet set")
-		}
+	annotations[metadata.Annotations.RoutingExportMode] = mode
+	component.SetAnnotations(annotations)
 
-		return nil
-	}).WithContext(ctx).
-		WithTimeout(test.DefaultTimeout).
-		WithPolling(test.DefaultPolling).
-		Should(Succeed())
-
-	return owningComponent
+	return component, envTest.Client.Create(ctx, component)
 }

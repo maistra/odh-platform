@@ -38,6 +38,15 @@ func CreateResource(ctx context.Context, cli client.Client, data []byte) (*unstr
 	return unstrObj, cli.Create(ctx, unstrObj)
 }
 
+func CreateUnstructured(data []byte) (*unstructured.Unstructured, error) {
+	unstrObj := &unstructured.Unstructured{}
+	if err := yaml.Unmarshal(data, unstrObj); err != nil {
+		return nil, fmt.Errorf("Error unmarshalling YAML to unstructured: %w\n", err)
+	}
+
+	return unstrObj, nil
+}
+
 func ProjectRoot() string {
 	rootDir := ""
 

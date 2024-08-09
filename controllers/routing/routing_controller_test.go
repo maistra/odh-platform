@@ -85,26 +85,17 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 
 		It("should have external routing resources created", func(ctx context.Context) {
 			// given
-			component, errCreate := test.CreateResource(ctx, envTest.Client,
-				componentResource("exported-test-component", appNs.Name))
-			Expect(errCreate).ToNot(HaveOccurred())
+			// required annotation for watched custom resource:
+			// 	routing.opendatahub.io/export-mode: "external"
+			component, createErr := createAndExportComponent(ctx, "exported-test-component", "external", appNs.Name)
+			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
-			// when routing through platform mesh
-			By("adding component service to platform routing", func() {
-				// before updating component, ensure finalizers have been set
-				component = ensureFinalizersSet(ctx, component)
-
-				// required annotation for watched custom resource:
-				// 	routing.opendatahub.io/export-mode: "external"
-				exportCustomResource(ctx, component, "external")
-
-				// required labels for the exported service:
-				// 	routing.opendatahub.io/exported: "true"
-				// 	platform.opendatahub.io/owner-name: test-component
-				// 	platform.opendatahub.io/owner-kind: Component
-				addRoutingRequirementsToSvc(ctx, svc, component)
-			})
+			// required labels for the exported service:
+			// 	routing.opendatahub.io/exported: "true"
+			// 	platform.opendatahub.io/owner-name: test-component
+			// 	platform.opendatahub.io/owner-kind: Component
+			addRoutingRequirementsToSvc(ctx, svc, component)
 
 			// then
 			externalResourcesShouldExist(ctx, svc)
@@ -112,26 +103,17 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 
 		It("should have new hosts propagated back to watched resource", func(ctx context.Context) {
 			// given
-			component, errCreate := test.CreateResource(ctx, envTest.Client,
-				componentResource("exported-test-component", appNs.Name))
-			Expect(errCreate).ToNot(HaveOccurred())
+			// required annotation for watched custom resource:
+			// 	routing.opendatahub.io/export-mode: "external"
+			component, createErr := createAndExportComponent(ctx, "exported-test-component", "external", appNs.Name)
+			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
-			// when routing through platform mesh
-			By("adding component service to platform routing", func() {
-				// before updating component, ensure finalizers have been set
-				component = ensureFinalizersSet(ctx, component)
-
-				// required annotation for watched custom resource:
-				// 	routing.opendatahub.io/export-mode: "external"
-				exportCustomResource(ctx, component, "external")
-
-				// required labels for the exported service:
-				// 	routing.opendatahub.io/exported: "true"
-				// 	platform.opendatahub.io/owner-name: test-component
-				// 	platform.opendatahub.io/owner-kind: Component
-				addRoutingRequirementsToSvc(ctx, svc, component)
-			})
+			// required labels for the exported service:
+			// 	routing.opendatahub.io/exported: "true"
+			// 	platform.opendatahub.io/owner-name: test-component
+			// 	platform.opendatahub.io/owner-kind: Component
+			addRoutingRequirementsToSvc(ctx, svc, component)
 
 			// then
 			Eventually(func(g Gomega, ctx context.Context) error {
@@ -162,26 +144,17 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 
 		It("should have routing resources for out-of-mesh access created", func(ctx context.Context) {
 			// given
-			component, errCreate := test.CreateResource(ctx, envTest.Client,
-				componentResource("public-test-component", appNs.Name))
-			Expect(errCreate).ToNot(HaveOccurred())
+			// required annotation for watched custom resource:
+			// 	routing.opendatahub.io/export-mode: "external"
+			component, createErr := createAndExportComponent(ctx, "public-test-component", "public", appNs.Name)
+			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
-			// when routing through platform mesh
-			By("adding component service to platform routing", func() {
-				// before updating component, ensure finalizers have been set
-				component = ensureFinalizersSet(ctx, component)
-
-				// required annotation for watched custom resource:
-				// 	routing.opendatahub.io/export-mode: "public"
-				exportCustomResource(ctx, component, "public")
-
-				// required labels for the exported service:
-				// 	routing.opendatahub.io/exported: "true"
-				// 	platform.opendatahub.io/owner-name: test-component
-				// 	platform.opendatahub.io/owner-kind: Component
-				addRoutingRequirementsToSvc(ctx, svc, component)
-			})
+			// required labels for the exported service:
+			// 	routing.opendatahub.io/exported: "true"
+			// 	platform.opendatahub.io/owner-name: test-component
+			// 	platform.opendatahub.io/owner-kind: Component
+			addRoutingRequirementsToSvc(ctx, svc, component)
 
 			// then
 			publicResourcesShouldExist(ctx, svc)
@@ -190,26 +163,17 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 
 		It("should have new hosts propagated back to watched resource by the controller", func(ctx context.Context) {
 			// given
-			component, errCreate := test.CreateResource(ctx, envTest.Client,
-				componentResource("public-test-component", appNs.Name))
-			Expect(errCreate).ToNot(HaveOccurred())
+			// required annotation for watched custom resource:
+			// 	routing.opendatahub.io/export-mode: "external"
+			component, createErr := createAndExportComponent(ctx, "public-test-component", "public", appNs.Name)
+			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
-			// when routing through platform mesh
-			By("adding component service to platform routing", func() {
-				// before updating component, ensure finalizers have been set
-				component = ensureFinalizersSet(ctx, component)
-
-				// required annotation for watched custom resource:
-				// 	routing.opendatahub.io/export-mode: "public"
-				exportCustomResource(ctx, component, "public")
-
-				// required labels for the exported service:
-				// 	routing.opendatahub.io/exported: "true"
-				// 	platform.opendatahub.io/owner-name: test-component
-				// 	platform.opendatahub.io/owner-kind: Component
-				addRoutingRequirementsToSvc(ctx, svc, component)
-			})
+			// required labels for the exported service:
+			// 	routing.opendatahub.io/exported: "true"
+			// 	platform.opendatahub.io/owner-name: test-component
+			// 	platform.opendatahub.io/owner-kind: Component
+			addRoutingRequirementsToSvc(ctx, svc, component)
 
 			// then
 			Eventually(func(g Gomega, ctx context.Context) error {
@@ -244,26 +208,17 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 
 		It("should have both external and cluster-local resources created", func(ctx context.Context) {
 			// given
-			component, errCreate := test.CreateResource(ctx, envTest.Client,
-				componentResource("public-and-external-test-component", appNs.Name))
-			Expect(errCreate).ToNot(HaveOccurred())
+			// required annotation for watched custom resource:
+			// 	routing.opendatahub.io/export-mode: "external"
+			component, createErr := createAndExportComponent(ctx, "public-and-external-test-component", "public;external", appNs.Name)
+			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
-			// when routing through platform mesh
-			By("adding component service to platform routing", func() {
-				// before updating component, ensure finalizers have been set
-				component = ensureFinalizersSet(ctx, component)
-
-				// required annotation for watched custom resource:
-				// 	routing.opendatahub.io/export-mode: "public;external"
-				exportCustomResource(ctx, component, "public;external")
-
-				// required labels for the exported service:
-				// 	routing.opendatahub.io/exported: "true"
-				// 	platform.opendatahub.io/owner-name: test-component
-				// 	platform.opendatahub.io/owner-kind: Component
-				addRoutingRequirementsToSvc(ctx, svc, component)
-			})
+			// required labels for the exported service:
+			// 	routing.opendatahub.io/exported: "true"
+			// 	platform.opendatahub.io/owner-name: test-component
+			// 	platform.opendatahub.io/owner-kind: Component
+			addRoutingRequirementsToSvc(ctx, svc, component)
 
 			// then
 			externalResourcesShouldExist(ctx, svc)
@@ -303,26 +258,18 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 
 		It("should remove the routing resources when both public;external", func(ctx context.Context) {
 			// given
-			component, errCreate := test.CreateResource(ctx, envTest.Client,
-				componentResource("public-and-external-test-deletion", appNs.Name))
-			Expect(errCreate).ToNot(HaveOccurred())
+			// required annotation for watched custom resource:
+			// 	routing.opendatahub.io/export-mode: "external"
+			component, createErr := createAndExportComponent(ctx, "public-and-external-test-component",
+				"public;external", appNs.Name)
+			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
-			// when
-			By("adding routing requirements on the resource and related svc", func() {
-				// before updating component, ensure finalizers have been set
-				component = ensureFinalizersSet(ctx, component)
-
-				// required annotation for watched custom resource:
-				// 	routing.opendatahub.io/export-mode: "public;external"
-				exportCustomResource(ctx, component, "public;external")
-
-				// required labels for the exported service:
-				// 	routing.opendatahub.io/exported: "true"
-				// 	platform.opendatahub.io/owner-name: test-component
-				// 	platform.opendatahub.io/owner-kind: Component
-				addRoutingRequirementsToSvc(ctx, svc, component)
-			})
+			// required labels for the exported service:
+			// 	routing.opendatahub.io/exported: "true"
+			// 	platform.opendatahub.io/owner-name: test-component
+			// 	platform.opendatahub.io/owner-kind: Component
+			addRoutingRequirementsToSvc(ctx, svc, component)
 
 			// then
 			externalResourcesShouldExist(ctx, svc)
