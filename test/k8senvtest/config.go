@@ -2,6 +2,8 @@ package k8senvtest
 
 import (
 	"context"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -9,6 +11,7 @@ import (
 	"github.com/opendatahub-io/odh-platform/controllers"
 	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -44,6 +47,15 @@ func Configure(options ...Option) *Config {
 	return &Config{
 		envTestOptions: options,
 	}
+}
+
+func (c *Client) UsingExistingCluster() bool {
+	envValue, exists := os.LookupEnv("USE_EXISTING_CLUSTER")
+	if exists {
+		return strings.EqualFold(envValue, "true")
+	}
+
+	return ptr.Deref(c.UseExistingCluster, false)
 }
 
 // WithControllers register controllers under tests required for the test suite.
