@@ -1,18 +1,19 @@
 module github.com/opendatahub-io/odh-platform
 
 go 1.21
+toolchain go1.22.5
 
 require (
 	github.com/go-logr/logr v1.4.2
 	github.com/kuadrant/authorino v0.17.2
 	github.com/openshift/api v0.0.0-20230918194705-55e9a6dcc436 // pins to be aligned with ODH Operator (k8s and golang versions)
 	go.uber.org/zap v1.26.0
-	istio.io/api v1.20.2-0.20231213020515-8655fab91d5d
-	istio.io/client-go v1.20.2
-	k8s.io/api v0.28.3
+	istio.io/api v1.22.3-0.20240703105953-437a88321a16
+	istio.io/client-go v1.22.3
+	k8s.io/api v0.29.0
 	k8s.io/apiextensions-apiserver v0.28.3
-	k8s.io/apimachinery v0.28.3
-	k8s.io/client-go v0.28.3
+	k8s.io/apimachinery v0.29.0
+	k8s.io/client-go v0.29.0
 	k8s.io/code-generator v0.28.3
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
 	sigs.k8s.io/controller-runtime v0.16.3
@@ -82,8 +83,7 @@ require (
 	golang.org/x/tools v0.21.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20231002182017-d307bd883b97 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20230920204549-e6e6cdab5c13 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240318140521-94a12d6c2237 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
