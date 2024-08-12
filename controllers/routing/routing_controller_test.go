@@ -145,7 +145,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		It("should have routing resources for out-of-mesh access created", func(ctx context.Context) {
 			// given
 			// required annotation for watched custom resource:
-			// 	routing.opendatahub.io/export-mode: "external"
+			// 	routing.opendatahub.io/export-mode: "public"
 			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-test-component", "public", appNs.Name)
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
@@ -164,7 +164,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		It("should have new hosts propagated back to watched resource by the controller", func(ctx context.Context) {
 			// given
 			// required annotation for watched custom resource:
-			// 	routing.opendatahub.io/export-mode: "external"
+			// 	routing.opendatahub.io/export-mode: "public"
 			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-test-component", "public", appNs.Name)
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
@@ -209,7 +209,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		It("should have both external and cluster-local resources created", func(ctx context.Context) {
 			// given
 			// required annotation for watched custom resource:
-			// 	routing.opendatahub.io/export-mode: "external"
+			// 	routing.opendatahub.io/export-mode: "public;external"
 			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-test-component", "public;external", appNs.Name)
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
@@ -259,7 +259,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		It("should remove the routing resources when both public;external", func(ctx context.Context) {
 			// given
 			// required annotation for watched custom resource:
-			// 	routing.opendatahub.io/export-mode: "external"
+			// 	routing.opendatahub.io/export-mode: "public;external"
 			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-test-component",
 				"public;external", appNs.Name)
 			Expect(createErr).ToNot(HaveOccurred())
