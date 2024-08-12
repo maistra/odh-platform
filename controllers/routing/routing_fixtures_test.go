@@ -46,7 +46,7 @@ func addRoutingRequirementsToSvc(ctx context.Context, exportedSvc *corev1.Servic
 	Expect(errExportSvc).ToNot(HaveOccurred())
 }
 
-func createComponentRequiringWiring(ctx context.Context, componentName, mode, appNs string) (*unstructured.Unstructured, error) {
+func createComponentRequiringPlatformRouting(ctx context.Context, componentName, mode, appNs string) (*unstructured.Unstructured, error) {
 	component, errCreate := test.CreateUnstructured(componentResource(componentName, appNs))
 	Expect(errCreate).ToNot(HaveOccurred())
 
