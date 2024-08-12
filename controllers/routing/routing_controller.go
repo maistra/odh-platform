@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-logr/logr"
 	platformctrl "github.com/opendatahub-io/odh-platform/controllers"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/routing"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	openshiftroutev1 "github.com/openshift/api/route/v1"
@@ -18,6 +19,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const ctrlName = "routing"
@@ -66,11 +68,20 @@ func (r *PlatformRoutingReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, fmt.Errorf("failed getting resource: %w", err)
 	}
 
-	// TODO(mvp) if !sourceRes.GetDeletionTimestamp().IsZero() { handle removal of dependant resources }
+	if !sourceRes.GetDeletionTimestamp().IsZero() {
+		return r.HandleResourceDeletion(ctx, sourceRes)
+	}
 
 	r.log.Info("triggered routing reconcile", "namespace", req.Namespace, "name", req.Name)
 
 	var errs []error
+
+	if controllerutil.AddFinalizer(sourceRes, metadata.Finalizers.Routing) {
+		if errUpdate := r.Update(ctx, sourceRes); errUpdate != nil {
+			return ctrl.Result{}, fmt.Errorf("failed adding finalizer: %w", errUpdate)
+		}
+	}
+
 	for _, reconciler := range reconcilers {
 		errs = append(errs, reconciler(ctx, sourceRes))
 	}
