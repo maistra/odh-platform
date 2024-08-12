@@ -3,7 +3,7 @@ package authorization_test
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/opendatahub-io/odh-platform/pkg/resource/authorization"
+	"github.com/opendatahub-io/odh-platform/pkg/authorization"
 	"github.com/opendatahub-io/odh-platform/test"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )

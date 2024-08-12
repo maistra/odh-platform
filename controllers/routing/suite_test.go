@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/opendatahub-io/odh-platform/controllers/routing"
+	"github.com/opendatahub-io/odh-platform/pkg/platform"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"github.com/opendatahub-io/odh-platform/test"
 	"github.com/opendatahub-io/odh-platform/test/k8senvtest"
@@ -40,11 +41,13 @@ var _ = SynchronizedBeforeSuite(func() {
 		nil,
 		ctrl.Log.WithName("controllers").WithName("platform"),
 		spi.RoutingComponent{
-			CustomResourceType: spi.ResourceSchema{
-				GroupVersionKind: schema.GroupVersionKind{
-					Version: "v1",
-					Group:   "opendatahub.io",
-					Kind:    "Component",
+			RoutingTarget: platform.RoutingTarget{
+				ObjectReference: platform.ObjectReference{
+					GroupVersionKind: schema.GroupVersionKind{
+						Version: "v1",
+						Group:   "opendatahub.io",
+						Kind:    "Component",
+					},
 				},
 			},
 		},

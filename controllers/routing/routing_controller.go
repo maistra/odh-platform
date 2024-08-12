@@ -8,8 +8,7 @@ import (
 
 	"github.com/go-logr/logr"
 	platformctrl "github.com/opendatahub-io/odh-platform/controllers"
-	"github.com/opendatahub-io/odh-platform/pkg/metadata"
-	"github.com/opendatahub-io/odh-platform/pkg/resource/routing"
+	"github.com/opendatahub-io/odh-platform/pkg/routing"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	openshiftroutev1 "github.com/openshift/api/route/v1"
 	istionetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
@@ -29,7 +28,7 @@ func NewPlatformRoutingReconciler(cli client.Client, log logr.Logger, component 
 		Client: cli,
 		log: log.WithValues(
 			"controller", ctrlName,
-			"component", component.CustomResourceType.Kind,
+			"component", component.ObjectReference.Kind,
 		),
 		component:      component,
 		config:         config,
@@ -56,7 +55,7 @@ func (r *PlatformRoutingReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	reconcilers := []platformctrl.SubReconcileFunc{r.reconcileResources}
 
 	sourceRes := &unstructured.Unstructured{}
-	sourceRes.SetGroupVersionKind(r.component.CustomResourceType.GroupVersionKind)
+	sourceRes.SetGroupVersionKind(r.component.ObjectReference.GroupVersionKind)
 
 	if err := r.Client.Get(ctx, req.NamespacedName, sourceRes); err != nil {
 		if k8serr.IsNotFound(err) {
@@ -102,11 +101,11 @@ func (r *PlatformRoutingReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// TODO(mvp) define predicates for labels, annotation and generation changes
 	//nolint:wrapcheck //reason there is no point in wrapping it
 	return ctrl.NewControllerManagedBy(mgr).
-		Named(ctrlName+"-"+strings.ToLower(r.component.CustomResourceType.Kind)).
+		Named(ctrlName+"-"+strings.ToLower(r.component.ObjectReference.Kind)).
 		For(&metav1.PartialObjectMetadata{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: r.component.CustomResourceType.GroupVersion().String(),
-				Kind:       r.component.CustomResourceType.Kind,
+				APIVersion: r.component.ObjectReference.GroupVersion().String(),
+				Kind:       r.component.ObjectReference.Kind,
 			},
 		}, builder.OnlyMetadata).
 		Owns(&istionetworkingv1beta1.DestinationRule{}).
