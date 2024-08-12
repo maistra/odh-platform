@@ -24,15 +24,15 @@ func (r *PlatformRoutingReconciler) HandleResourceDeletion(ctx context.Context, 
 	r.log.Info("Handling deletion of dependent resources", "sourceRes", sourceRes)
 
 	for _, exportMode := range exportModes {
-		if err := r.deleteResourcesByLabels(ctx, sourceRes, routingResourceGVKs(exportMode)); err != nil {
+		if err := r.deleteOwnedResources(ctx, sourceRes, routingResourceGVKs(exportMode)); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to delete resources for export mode %s: %w", exportMode, err)
 		}
 	}
 
-	return removeFinalizerAndUpdate(ctx, r.Client, sourceRes)
+	return removeFinalizer(ctx, r.Client, sourceRes)
 }
 
-func (r *PlatformRoutingReconciler) deleteResourcesByLabels(ctx context.Context, target *unstructured.Unstructured, gvkList []schema.GroupVersionKind) error {
+func (r *PlatformRoutingReconciler) deleteOwnedResources(ctx context.Context, target *unstructured.Unstructured, gvkList []schema.GroupVersionKind) error {
 	ownerName := target.GetName()
 	ownerKind := target.GetObjectKind().GroupVersionKind().Kind
 	ownerUID := string(target.GetUID())
@@ -60,7 +60,8 @@ func (r *PlatformRoutingReconciler) deleteResourcesByLabels(ctx context.Context,
 	return nil
 }
 
-func removeFinalizerAndUpdate(ctx context.Context, cli client.Client, sourceRes *unstructured.Unstructured) (ctrl.Result, error) {
+// removeFinalizer is called after a successful cleanup, it removes the finalizer from the resource in the cluster.
+func removeFinalizer(ctx context.Context, cli client.Client, sourceRes *unstructured.Unstructured) (ctrl.Result, error) {
 	finalizer := metadata.Finalizers.Routing
 
 	if controllerutil.ContainsFinalizer(sourceRes, finalizer) {

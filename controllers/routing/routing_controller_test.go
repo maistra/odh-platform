@@ -74,7 +74,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			toRemove = append(toRemove, ingressConfig)
 		}
 
-		domain = getClusterDomain(ctx)
+		domain = getClusterDomain(ctx, envTest.Client)
 	})
 
 	AfterEach(func(_ context.Context) {
@@ -87,7 +87,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// given
 			// required annotation for watched custom resource:
 			// 	routing.opendatahub.io/export-mode: "external"
-			component, createErr := createAndExportComponent(ctx, "exported-test-component", "external", appNs.Name)
+			component, createErr := createComponentRequiringWiring(ctx, "exported-test-component", "external", appNs.Name)
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
@@ -105,7 +105,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// given
 			// required annotation for watched custom resource:
 			// 	routing.opendatahub.io/export-mode: "external"
-			component, createErr := createAndExportComponent(ctx, "exported-test-component", "external", appNs.Name)
+			component, createErr := createComponentRequiringWiring(ctx, "exported-test-component", "external", appNs.Name)
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
@@ -146,7 +146,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// given
 			// required annotation for watched custom resource:
 			// 	routing.opendatahub.io/export-mode: "external"
-			component, createErr := createAndExportComponent(ctx, "public-test-component", "public", appNs.Name)
+			component, createErr := createComponentRequiringWiring(ctx, "public-test-component", "public", appNs.Name)
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
@@ -165,7 +165,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// given
 			// required annotation for watched custom resource:
 			// 	routing.opendatahub.io/export-mode: "external"
-			component, createErr := createAndExportComponent(ctx, "public-test-component", "public", appNs.Name)
+			component, createErr := createComponentRequiringWiring(ctx, "public-test-component", "public", appNs.Name)
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
@@ -210,7 +210,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// given
 			// required annotation for watched custom resource:
 			// 	routing.opendatahub.io/export-mode: "external"
-			component, createErr := createAndExportComponent(ctx, "public-and-external-test-component", "public;external", appNs.Name)
+			component, createErr := createComponentRequiringWiring(ctx, "public-and-external-test-component", "public;external", appNs.Name)
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
@@ -260,7 +260,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// given
 			// required annotation for watched custom resource:
 			// 	routing.opendatahub.io/export-mode: "external"
-			component, createErr := createAndExportComponent(ctx, "public-and-external-test-component",
+			component, createErr := createComponentRequiringWiring(ctx, "public-and-external-test-component",
 				"public;external", appNs.Name)
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)

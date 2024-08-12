@@ -9,15 +9,16 @@ import (
 	"github.com/opendatahub-io/odh-platform/test"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-func getClusterDomain(ctx context.Context) string {
+func getClusterDomain(ctx context.Context, cli client.Client) string {
 	var domain string
 
 	Eventually(func(ctx context.Context) error {
 		var err error
-		domain, err = cluster.GetDomain(ctx, envTest.Client)
+		domain, err = cluster.GetDomain(ctx, cli)
 
 		return err
 	}).WithContext(ctx).
@@ -45,7 +46,7 @@ func addRoutingRequirementsToSvc(ctx context.Context, exportedSvc *corev1.Servic
 	Expect(errExportSvc).ToNot(HaveOccurred())
 }
 
-func createAndExportComponent(ctx context.Context, componentName, mode, appNs string) (*unstructured.Unstructured, error) {
+func createComponentRequiringWiring(ctx context.Context, componentName, mode, appNs string) (*unstructured.Unstructured, error) {
 	component, errCreate := test.CreateUnstructured(componentResource(componentName, appNs))
 	Expect(errCreate).ToNot(HaveOccurred())
 
