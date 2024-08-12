@@ -55,7 +55,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		Expect(envTest.Client.Create(ctx, routerNs)).To(Succeed())
 
 		base := "app-ns"
-		testNamespaceName := fmt.Sprintf("%s%s", base, utilrand.String(7))
+		testNamespaceName := fmt.Sprintf("%s-%s", base, utilrand.String(7))
 
 		appNs = &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
@@ -69,9 +69,9 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		toRemove = []client.Object{routerNs, deployment, svc}
 
 		if !envTest.UsingExistingCluster() {
-			config, errIngress := test.DefaultIngressControllerConfig(ctx, envTest.Client)
+			ingressConfig, errIngress := test.DefaultIngressControllerConfig(ctx, envTest.Client)
 			Expect(errIngress).ToNot(HaveOccurred())
-			toRemove = append(toRemove, config)
+			toRemove = append(toRemove, ingressConfig)
 		}
 
 		domain = getClusterDomain(ctx)

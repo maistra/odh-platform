@@ -28,7 +28,7 @@ func getClusterDomain(ctx context.Context) string {
 	return domain
 }
 
-// addRoutingRequirementsToSvc adds routing-related metadata to the servicing being exported.
+// addRoutingRequirementsToSvc adds routing-related metadata to the Service being exported.
 // It adds the "routing.opendatahub.io/exported" label to indicate that the service is exported,
 // and it also sets labels for the owner component's name and kind, using
 // "platform.opendatahub.io/owner-name" and "platform.opendatahub.io/owner-kind" respectively.
