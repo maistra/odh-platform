@@ -11,13 +11,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func Apply(ctx context.Context, cli client.Client, objects []*unstructured.Unstructured, metaOptions ...metadata.Options) error {
+func Apply(ctx context.Context, cli client.Client, objects []*unstructured.Unstructured, metaOptions ...metadata.Option) error {
 	for _, source := range objects {
-		for _, opt := range metaOptions {
-			if err := opt(source); err != nil {
-				return err
-			}
-		}
+		metadata.ApplyMetaOptions(source, metaOptions...)
 
 		target := source.DeepCopy()
 

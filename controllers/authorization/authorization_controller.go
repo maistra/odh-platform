@@ -11,6 +11,7 @@ import (
 	platformctrl "github.com/opendatahub-io/odh-platform/controllers"
 	"github.com/opendatahub-io/odh-platform/pkg/authorization"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
 	"github.com/opendatahub-io/odh-platform/pkg/routing"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	istiosecurityv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
@@ -35,11 +36,11 @@ func NewPlatformAuthorizationController(cli client.Client, log logr.Logger,
 		),
 		config:        config,
 		authComponent: component,
-		typeDetector:  authorization.NewAnnotationAuthTypeDetector(metadata.Annotations.AuthEnabled),
+		typeDetector:  authorization.NewAnnotationAuthTypeDetector(annotations.AuthEnabled("").Key()),
 		// TODO: Evaluate passing in the hostExtractor to avoid coupling the authorizaiton/routing packages
 		hostExtractor: authorization.UnifiedHostExtractor(
 			authorization.NewPathExpressionExtractor(component.HostPaths),
-			routing.NewAnnotationHostExtractor(";", metadata.Annotations.RoutingAddressesExternal, metadata.Annotations.RoutingAddressesPublic)),
+			routing.NewAnnotationHostExtractor(";", metadata.Keys(annotations.RoutingAddressesExternal(""), annotations.RoutingAddressesPublic(""))...)),
 		templateLoader: authorization.NewConfigMapTemplateLoader(cli, authorization.NewStaticTemplateLoader(config.Audiences)),
 	}
 }

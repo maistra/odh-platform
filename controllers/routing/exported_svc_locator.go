@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/opendatahub-io/odh-platform/pkg/metadata"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/util/retry"
@@ -13,17 +13,13 @@ import (
 )
 
 func getExportedServices(ctx context.Context, cli client.Client, target *unstructured.Unstructured) ([]corev1.Service, error) {
-	ownerName := target.GetName()
-	ownerKind := target.GetObjectKind().GroupVersionKind().Kind
-
 	listOpts := []client.ListOption{
 		client.InNamespace(target.GetNamespace()),
-		// TODO(mvp): centralize label creation
-		client.MatchingLabels{
-			metadata.Labels.RoutingExported: "true",
-			metadata.Labels.OwnerName:       ownerName,
-			metadata.Labels.OwnerKind:       ownerKind,
-		},
+		labels.MatchingLabels(
+			labels.RoutingExported("true"),
+			labels.OwnerName(target.GetName()),
+			labels.OwnerKind(target.GetObjectKind().GroupVersionKind().Kind),
+		),
 	}
 
 	var exportedSvcList *corev1.ServiceList

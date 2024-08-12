@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
 	"istio.io/api/security/v1beta1"
 	istiotypev1beta1 "istio.io/api/type/v1beta1"
 	istiosecurityv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
@@ -70,7 +71,6 @@ func createAuthzPolicy(ports []string, workloadSelector map[string]string, provi
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        target.GetName(),
 			Namespace:   target.GetNamespace(),
-			Labels:      metadata.ApplyStandard(target.GetLabels()),
 			Annotations: map[string]string{},
 			OwnerReferences: []metav1.OwnerReference{
 				targetToOwnerRef(target),
@@ -107,6 +107,8 @@ func createAuthzPolicy(ports []string, workloadSelector map[string]string, provi
 		}
 		policy.Spec.Rules = append(policy.Spec.Rules, &rule)
 	}
+
+	metadata.ApplyMetaOptions(policy, labels.StandardLabelsFrom(target)...)
 
 	return policy
 }
