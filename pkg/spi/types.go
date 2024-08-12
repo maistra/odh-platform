@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
+	"github.com/opendatahub-io/odh-platform/pkg/platform"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -23,10 +23,7 @@ const (
 )
 
 type AuthorizationComponent struct {
-	CustomResourceType ResourceSchema    `json:"schema"`
-	WorkloadSelector   map[string]string `json:"workloadSelector"` // label key value
-	Ports              []string          `json:"ports"`            // port numbers
-	HostPaths          []string          `json:"hostPaths"`        // json path expression e.g. status.url
+	platform.ProtectedResource
 }
 
 // TODO: the config file will contain more then just AuthorizationComponents now.. adjust to read it multiple times pr Type or load it all at once..?
@@ -76,12 +73,10 @@ const (
 )
 
 type RoutingComponent struct {
-	CustomResourceType ResourceSchema `json:"schema"`
+	platform.RoutingTarget
 }
 
-// TODO: the config file will contain more then just AuthorizationComponents now.. adjust to read it multiple times pr Type or load it all at once..?
-// TODO: move the config load and save into a sub package and lazy share with operator.
-func (a RoutingComponent) Load(configPath string) ([]RoutingComponent, error) {
+func (r RoutingComponent) Load(configPath string) ([]RoutingComponent, error) {
 	content, err := os.ReadFile(configPath + string(filepath.Separator) + "routing")
 	if err != nil {
 		return []RoutingComponent{}, fmt.Errorf("could not read config file [%s]: %w", configPath, err)
@@ -123,11 +118,4 @@ type RoutingTemplateData struct {
 //   - Loader source
 type RoutingTemplateLoader interface {
 	Load(ctx context.Context, routeType RouteType, key types.NamespacedName, data RoutingTemplateData) ([]*unstructured.Unstructured, error)
-}
-
-type ResourceSchema struct {
-	// GroupVersionKind specifies the group, version, and kind of the resource.
-	schema.GroupVersionKind `json:"gvk,omitempty"`
-	// Resources is the type of resource being protected, e.g., "pods", "services".
-	Resources string `json:"resources,omitempty"`
 }

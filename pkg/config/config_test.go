@@ -19,13 +19,13 @@ var _ = Describe("Loading capabilities", test.Unit(), func() {
 			configPath := filepath.Join(test.ProjectRoot(), "test", "data", "config")
 
 			authorizationComponents, err := config.Load(spi.AuthorizationComponent{}, configPath)
-
 			Expect(err).To(Succeed())
-			Expect(authorizationComponents).To(ContainElement(
-				MatchFields(IgnoreExtras, Fields{
+			Expect(authorizationComponents).To(ContainElement(MatchFields(IgnoreExtras, Fields{
+				"ProtectedResource": MatchFields(IgnoreExtras, Fields{
 					"Ports":     ContainElement("9192"),
 					"HostPaths": ContainElement("status.url"),
-				})))
+				}),
+			})))
 		})
 	})
 
