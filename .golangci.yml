@@ -105,6 +105,7 @@ linters:
 
     # Temporarily ignored due to "wip"
     - godox
+    - gomoddirectives # we need replace to be aligned with ODH Operator
 
     # Deprecated
     - gomnd
