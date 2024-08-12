@@ -14,7 +14,7 @@ import (
 	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
-func (r *PlatformRoutingReconciler) reconcileResources(ctx context.Context, target *unstructured.Unstructured) error {
+func (r *PlatformRoutingController) reconcileResources(ctx context.Context, target *unstructured.Unstructured) error {
 	// TODO shouldn't we make it a predicate for ctrl watch instead?
 	_, exportModeFound := extractExportModes(target)
 	if !exportModeFound {
@@ -50,7 +50,7 @@ func (r *PlatformRoutingReconciler) reconcileResources(ctx context.Context, targ
 	return errors.Join(errSvcExport...)
 }
 
-func (r *PlatformRoutingReconciler) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
+func (r *PlatformRoutingController) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
 	exportModes, found := extractExportModes(target)
 	if !found {
 		return fmt.Errorf("could not extract export modes from target %s", target.GetName())

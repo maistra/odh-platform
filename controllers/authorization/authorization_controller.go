@@ -23,9 +23,9 @@ import (
 
 const ctrlName = "authorization"
 
-func NewPlatformAuthorizationReconciler(cli client.Client, log logr.Logger,
-	component spi.AuthorizationComponent, config PlatformAuthorizationConfig) *PlatformAuthorizationReconciler {
-	return &PlatformAuthorizationReconciler{
+func NewPlatformAuthorizationController(cli client.Client, log logr.Logger,
+	component spi.AuthorizationComponent, config PlatformAuthorizationConfig) *PlatformAuthorizationController {
+	return &PlatformAuthorizationController{
 		Client: cli,
 		log: log.WithValues(
 			"controller", ctrlName,
@@ -48,8 +48,8 @@ type PlatformAuthorizationConfig struct {
 	ProviderName string
 }
 
-// PlatformAuthorizationReconciler holds the controller configuration.
-type PlatformAuthorizationReconciler struct {
+// PlatformAuthorizationController holds the controller configuration.
+type PlatformAuthorizationController struct {
 	client.Client
 	log            logr.Logger
 	config         PlatformAuthorizationConfig
@@ -64,7 +64,7 @@ type PlatformAuthorizationReconciler struct {
 // +kubebuilder:rbac:groups=security.istio.io,resources=peerauthentications,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile ensures that the namespace has all required resources needed to be part of the Service Mesh of Open Data Hub.
-func (r *PlatformAuthorizationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *PlatformAuthorizationController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reconcilers := []platformctrl.SubReconcileFunc{r.reconcileAuthConfig, r.reconcileAuthPolicy, r.reconcilePeerAuthentication}
 
 	sourceRes := &unstructured.Unstructured{}
@@ -90,7 +90,7 @@ func (r *PlatformAuthorizationReconciler) Reconcile(ctx context.Context, req ctr
 	return ctrl.Result{}, errors.Join(errs...)
 }
 
-func (r *PlatformAuthorizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *PlatformAuthorizationController) SetupWithManager(mgr ctrl.Manager) error {
 	if r.Client == nil {
 		// Ensures client is set - fall back to the one defined for the passed manager
 		r.Client = mgr.GetClient()

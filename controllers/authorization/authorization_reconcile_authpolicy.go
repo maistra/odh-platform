@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *PlatformAuthorizationReconciler) reconcileAuthPolicy(ctx context.Context, target *unstructured.Unstructured) error {
+func (r *PlatformAuthorizationController) reconcileAuthPolicy(ctx context.Context, target *unstructured.Unstructured) error {
 	desired := createAuthzPolicy(r.authComponent.Ports, r.authComponent.WorkloadSelector, r.config.ProviderName, target)
 	found := &istiosecurityv1beta1.AuthorizationPolicy{}
 	justCreated := false

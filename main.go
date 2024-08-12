@@ -76,7 +76,7 @@ func main() {
 	}
 
 	for _, component := range authorizationComponents {
-		if err = authorization.NewPlatformAuthorizationReconciler(mgr.GetClient(), ctrlLog, component, authorizationConfig).
+		if err = authorization.NewPlatformAuthorizationController(mgr.GetClient(), ctrlLog, component, authorizationConfig).
 			SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "authorization", "component", component.ObjectReference.Kind)
 			os.Exit(1)
@@ -97,7 +97,7 @@ func main() {
 	}
 
 	for _, component := range routingComponents {
-		if err = routing.NewPlatformRoutingReconciler(
+		if err = routing.NewPlatformRoutingController(
 			mgr.GetClient(),
 			ctrlLog,
 			component,
