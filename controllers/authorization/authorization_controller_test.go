@@ -3,7 +3,6 @@ package authorization_test
 import (
 	"context"
 	"fmt"
-	"time"
 
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
 	. "github.com/onsi/ginkgo/v2"
@@ -88,7 +87,7 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 			Expect(createdAuthConfig).NotTo(HaveKubernetesTokenReview())
 
 			return nil
-		}, 10*time.Second, 2*time.Second).Should(Succeed())
+		}, test.DefaultTimeout, test.DefaultPolling).Should(Succeed())
 	})
 
 	It("should create a non-anonymous AuthConfig resource when annotation is specified", func(ctx context.Context) {
@@ -120,7 +119,7 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 			Expect(createdAuthConfig).To(HaveKubernetesTokenReview())
 
 			return nil
-		}, 10*time.Second, 2*time.Second).Should(Succeed())
+		}, test.DefaultTimeout, test.DefaultPolling).Should(Succeed())
 	})
 
 	It("should create an AuthorizationPolicy when a Component is created", func(ctx context.Context) {
@@ -138,7 +137,7 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 			Expect(createdAuthPolicy.Spec.GetAction()).To(Equal(v1beta1.AuthorizationPolicy_CUSTOM))
 
 			return nil
-		}, 10*time.Second, 2*time.Second).Should(Succeed())
+		}, test.DefaultTimeout, test.DefaultPolling).Should(Succeed())
 	})
 
 	It("should create a PeerAuthentication when a Component is created", func(ctx context.Context) {
@@ -156,14 +155,38 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 			Expect(createdPeerAuth.Spec.GetMtls().GetMode()).To(Equal(v1beta1.PeerAuthentication_MutualTLS_PERMISSIVE))
 
 			return nil
-		}, 10*time.Second, 2*time.Second).Should(Succeed())
+		}, test.DefaultTimeout, test.DefaultPolling).Should(Succeed())
 	})
 
-	// TODO: fill out stubs once owner-name labels are propagated to auth resources
-	PIt("should have ownerReference on all created auth resources", func(ctx context.Context) {
-		// get all three resources by owner name label
+	// Using k8s envtest we are not able to test actual garbage collection of resources. [1]
+	// Therefore, we ensure we have correct ownerRefs set.
+	//
+	// [1] https://book.kubebuilder.io/reference/envtest#testing-considerations
+	It("should have ownerReference on all created auth resources", func(ctx context.Context) {
+		Eventually(func() error {
+			createdPeerAuth := &istiosecurityv1beta1.PeerAuthentication{}
+			err := envTest.Client.Get(ctx, types.NamespacedName{
+				Name:      resourceName,
+				Namespace: testNamespaceName,
+			}, createdPeerAuth)
 
-		// use matchers.owner.go to ensure that correct ownerReference is set on all of them
+			if err != nil {
+				return err
+			}
+
+			ctrl := true
+			expectedOwnerRef := metav1.OwnerReference{
+				APIVersion: createdComponent.GetAPIVersion(),
+				Kind:       createdComponent.GetKind(),
+				Name:       createdComponent.GetName(),
+				UID:        createdComponent.GetUID(),
+				Controller: &ctrl,
+			}
+
+			Expect(createdPeerAuth.OwnerReferences).To(ContainElement(expectedOwnerRef))
+
+			return nil
+		}, test.DefaultTimeout, test.DefaultPolling).Should(Succeed())
 	})
 })
 
