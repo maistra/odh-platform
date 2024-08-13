@@ -17,7 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 type Config struct {
@@ -96,9 +95,6 @@ func (e *Config) Start(ctx context.Context) *Client {
 	mgr, errMgr := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:         envTest.Scheme,
 		LeaderElection: false,
-		Metrics: metricsserver.Options{
-			BindAddress: "0",
-		},
 	})
 	gomega.Expect(errMgr).NotTo(gomega.HaveOccurred())
 

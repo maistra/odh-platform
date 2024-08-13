@@ -15,7 +15,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 //nolint:gochecknoglobals //reason: used only here
@@ -51,9 +50,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "odh-platform",
-		Metrics: metricsserver.Options{
-			BindAddress: metricsAddr,
-		},
+		MetricsBindAddress:     "0",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to create manager")
