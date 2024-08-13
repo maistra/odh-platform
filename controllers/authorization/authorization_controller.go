@@ -26,6 +26,7 @@ const ctrlName = "authorization"
 func NewPlatformAuthorizationController(cli client.Client, log logr.Logger,
 	component spi.AuthorizationComponent, config PlatformAuthorizationConfig) *PlatformAuthorizationController {
 	return &PlatformAuthorizationController{
+		active: true,
 		Client: cli,
 		log: log.WithValues(
 			"controller", ctrlName,
@@ -51,6 +52,7 @@ type PlatformAuthorizationConfig struct {
 // PlatformAuthorizationController holds the controller configuration.
 type PlatformAuthorizationController struct {
 	client.Client
+	active         bool
 	log            logr.Logger
 	config         PlatformAuthorizationConfig
 	authComponent  spi.AuthorizationComponent
@@ -65,6 +67,12 @@ type PlatformAuthorizationController struct {
 
 // Reconcile ensures that the namespace has all required resources needed to be part of the Service Mesh of Open Data Hub.
 func (r *PlatformAuthorizationController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	if !r.active {
+		r.log.V(5).Info("controller is not active")
+
+		return ctrl.Result{}, nil
+	}
+
 	reconcilers := []platformctrl.SubReconcileFunc{r.reconcileAuthConfig, r.reconcileAuthPolicy, r.reconcilePeerAuthentication}
 
 	sourceRes := &unstructured.Unstructured{}
@@ -110,6 +118,14 @@ func (r *PlatformAuthorizationController) SetupWithManager(mgr ctrl.Manager) err
 		Owns(&istiosecurityv1beta1.AuthorizationPolicy{}).
 		Owns(&istiosecurityv1beta1.PeerAuthentication{}).
 		Complete(r)
+}
+
+func (r *PlatformAuthorizationController) Activate() {
+	r.active = true
+}
+
+func (r *PlatformAuthorizationController) Deactivate() {
+	r.active = false
 }
 
 func targetToOwnerRef(obj *unstructured.Unstructured) metav1.OwnerReference {
