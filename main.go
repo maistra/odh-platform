@@ -66,7 +66,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	authorizationConfig := authorization.PlatformAuthorizationConfig{
+	authorizationConfig := spi.PlatformAuthorizationConfig{
 		Label:        config.GetAuthorinoLabel(),
 		Audiences:    config.GetAuthAudience(),
 		ProviderName: config.GetAuthProvider(),

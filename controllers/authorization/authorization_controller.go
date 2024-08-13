@@ -24,7 +24,7 @@ import (
 const ctrlName = "authorization"
 
 func NewPlatformAuthorizationController(cli client.Client, log logr.Logger,
-	component spi.AuthorizationComponent, config PlatformAuthorizationConfig) *PlatformAuthorizationController {
+	component spi.AuthorizationComponent, config spi.PlatformAuthorizationConfig) *PlatformAuthorizationController {
 	return &PlatformAuthorizationController{
 		Client: cli,
 		log: log.WithValues(
@@ -39,20 +39,11 @@ func NewPlatformAuthorizationController(cli client.Client, log logr.Logger,
 	}
 }
 
-type PlatformAuthorizationConfig struct {
-	// Label in a format of key=value. It's used to target created AuthConfig by Authorino instance.
-	Label string
-	// Audiences is a list of audiences that will be used in the AuthConfig template when performing TokenReview.
-	Audiences []string
-	// ProviderName is the name of the registered external authorization provider in Service Mesh.
-	ProviderName string
-}
-
 // PlatformAuthorizationController holds the controller configuration.
 type PlatformAuthorizationController struct {
 	client.Client
 	log            logr.Logger
-	config         PlatformAuthorizationConfig
+	config         spi.PlatformAuthorizationConfig
 	authComponent  spi.AuthorizationComponent
 	typeDetector   spi.AuthTypeDetector
 	hostExtractor  spi.HostExtractor

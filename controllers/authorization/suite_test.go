@@ -48,7 +48,7 @@ var _ = SynchronizedBeforeSuite(func(ctx context.Context) {
 					HostPaths:        []string{"spec.host"},
 				},
 			},
-			authorization.PlatformAuthorizationConfig{
+			spi.PlatformAuthorizationConfig{
 				Label:        config.GetAuthorinoLabel(),
 				Audiences:    config.GetAuthAudience(),
 				ProviderName: config.GetAuthProvider(),
