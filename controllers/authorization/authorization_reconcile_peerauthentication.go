@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *PlatformAuthorizationReconciler) reconcilePeerAuthentication(ctx context.Context, target *unstructured.Unstructured) error {
+func (r *PlatformAuthorizationController) reconcilePeerAuthentication(ctx context.Context, target *unstructured.Unstructured) error {
 	desired := createPeerAuthentication(r.authComponent.WorkloadSelector, target)
 	found := &istiosecurityv1beta1.PeerAuthentication{}
 	justCreated := false

@@ -24,8 +24,8 @@ import (
 
 const ctrlName = "routing"
 
-func NewPlatformRoutingReconciler(cli client.Client, log logr.Logger, component spi.RoutingComponent, config spi.PlatformRoutingConfiguration) *PlatformRoutingReconciler {
-	return &PlatformRoutingReconciler{
+func NewPlatformRoutingController(cli client.Client, log logr.Logger, component spi.RoutingComponent, config spi.PlatformRoutingConfiguration) *PlatformRoutingController {
+	return &PlatformRoutingController{
 		Client: cli,
 		log: log.WithValues(
 			"controller", ctrlName,
@@ -37,8 +37,8 @@ func NewPlatformRoutingReconciler(cli client.Client, log logr.Logger, component 
 	}
 }
 
-// PlatformRoutingReconciler holds the controller configuration.
-type PlatformRoutingReconciler struct {
+// PlatformRoutingController holds the controller configuration.
+type PlatformRoutingController struct {
 	client.Client
 	log            logr.Logger
 	component      spi.RoutingComponent
@@ -52,7 +52,7 @@ type PlatformRoutingReconciler struct {
 // +kubebuilder:rbac:groups="networking.istio.io",resources=destinationrule,verbs=*
 
 // Reconcile ensures that the namespace has all required resources needed to be part of the Service Mesh of Open Data Hub.
-func (r *PlatformRoutingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *PlatformRoutingController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reconcilers := []platformctrl.SubReconcileFunc{r.reconcileResources}
 
 	sourceRes := &unstructured.Unstructured{}
@@ -93,7 +93,7 @@ func (r *PlatformRoutingReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	return ctrl.Result{}, errors.Join(errs...)
 }
 
-func (r *PlatformRoutingReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *PlatformRoutingController) SetupWithManager(mgr ctrl.Manager) error {
 	if r.Client == nil {
 		// Ensures client is set - fall back to the one defined for the passed manager
 		r.Client = mgr.GetClient()

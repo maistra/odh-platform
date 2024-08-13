@@ -37,7 +37,7 @@ var _ = SynchronizedBeforeSuite(func() {
 		return
 	}
 
-	routingCtrl := routing.NewPlatformRoutingReconciler(
+	routingCtrl := routing.NewPlatformRoutingController(
 		nil,
 		ctrl.Log.WithName("controllers").WithName("platform"),
 		spi.RoutingComponent{

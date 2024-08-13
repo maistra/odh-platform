@@ -13,7 +13,7 @@ import (
 )
 
 // HandleResourceDeletion handles the removal of dependent resources when the target resource is being deleted.
-func (r *PlatformRoutingReconciler) HandleResourceDeletion(ctx context.Context, sourceRes *unstructured.Unstructured) (ctrl.Result, error) {
+func (r *PlatformRoutingController) HandleResourceDeletion(ctx context.Context, sourceRes *unstructured.Unstructured) (ctrl.Result, error) {
 	exportModes, found := extractExportModes(sourceRes)
 	if !found {
 		r.log.Info("No export modes found, skipping deletion logic", "sourceRes", sourceRes)
@@ -32,7 +32,7 @@ func (r *PlatformRoutingReconciler) HandleResourceDeletion(ctx context.Context, 
 	return removeFinalizer(ctx, r.Client, sourceRes)
 }
 
-func (r *PlatformRoutingReconciler) deleteOwnedResources(ctx context.Context, target *unstructured.Unstructured, gvkList []schema.GroupVersionKind) error {
+func (r *PlatformRoutingController) deleteOwnedResources(ctx context.Context, target *unstructured.Unstructured, gvkList []schema.GroupVersionKind) error {
 	ownerName := target.GetName()
 	ownerKind := target.GetObjectKind().GroupVersionKind().Kind
 	ownerUID := string(target.GetUID())

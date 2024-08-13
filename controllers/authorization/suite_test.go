@@ -30,7 +30,7 @@ var _ = SynchronizedBeforeSuite(func(ctx context.Context) {
 	}
 
 	envTest, cancelFunc = test.StartWithControllers(
-		authorization.NewPlatformAuthorizationReconciler(
+		authorization.NewPlatformAuthorizationController(
 			nil,
 			ctrl.Log.WithName("controllers").WithName("platform"),
 			spi.AuthorizationComponent{
