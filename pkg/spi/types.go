@@ -29,6 +29,7 @@ type AuthorizationComponent struct {
 // TODO: the config file will contain more then just AuthorizationComponents now.. adjust to read it multiple times pr Type or load it all at once..?
 // TODO: move the config load and save into a sub package and lazy share with operator.
 func (a AuthorizationComponent) Load(configPath string) ([]AuthorizationComponent, error) {
+	// TODO(mvp): rework/simplify types
 	content, err := os.ReadFile(configPath + string(filepath.Separator) + "authorization")
 	if err != nil {
 		return []AuthorizationComponent{}, fmt.Errorf("could not read config file [%s]: %w", configPath, err)

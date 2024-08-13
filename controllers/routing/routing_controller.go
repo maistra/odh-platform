@@ -26,6 +26,7 @@ const ctrlName = "routing"
 
 func NewPlatformRoutingController(cli client.Client, log logr.Logger, component spi.RoutingComponent, config spi.PlatformRoutingConfiguration) *PlatformRoutingController {
 	return &PlatformRoutingController{
+		active: true,
 		Client: cli,
 		log: log.WithValues(
 			"controller", ctrlName,
@@ -40,6 +41,7 @@ func NewPlatformRoutingController(cli client.Client, log logr.Logger, component 
 // PlatformRoutingController holds the controller configuration.
 type PlatformRoutingController struct {
 	client.Client
+	active         bool
 	log            logr.Logger
 	component      spi.RoutingComponent
 	templateLoader spi.RoutingTemplateLoader
@@ -53,6 +55,12 @@ type PlatformRoutingController struct {
 
 // Reconcile ensures that the namespace has all required resources needed to be part of the Service Mesh of Open Data Hub.
 func (r *PlatformRoutingController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	if !r.active {
+		r.log.V(5).Info("controller is not active")
+
+		return ctrl.Result{}, nil
+	}
+
 	reconcilers := []platformctrl.SubReconcileFunc{r.reconcileResources}
 
 	sourceRes := &unstructured.Unstructured{}
@@ -114,4 +122,12 @@ func (r *PlatformRoutingController) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&istionetworkingv1beta1.Gateway{}).
 		Owns(&openshiftroutev1.Route{}).
 		Complete(r)
+}
+
+func (r *PlatformRoutingController) Activate() {
+	r.active = true
+}
+
+func (r *PlatformRoutingController) Deactivate() {
+	r.active = false
 }
