@@ -359,7 +359,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			externalResourcesShouldExist(ctx, svc)
 			publicResourcesShouldExist(ctx, svc)
 
-			By("removing the export annotation", func() {
+			By("removing the external from the export annotation", func() {
 				errGetComponent := envTest.Client.Get(ctx, client.ObjectKey{
 					Namespace: component.GetNamespace(),
 					Name:      component.GetName(),
