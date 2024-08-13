@@ -72,6 +72,20 @@ const (
 	ExternalRoute RouteType = "external"
 )
 
+func AllRouteTypes() []RouteType {
+	return []RouteType{PublicRoute, ExternalRoute}
+}
+
+func ContainsRouteType(slice []RouteType, item RouteType) bool {
+	for _, sliceItem := range slice {
+		if sliceItem == item {
+			return true
+		}
+	}
+
+	return false
+}
+
 type RoutingComponent struct {
 	platform.RoutingTarget
 }

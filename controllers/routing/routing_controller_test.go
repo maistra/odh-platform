@@ -288,42 +288,95 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			})
 
 			// then
-			Eventually(routeExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+			externalResourcesShouldNotExist(ctx, svc)
 
-			Eventually(ingressVirtualServiceExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+			publicResourcesShouldNotExist(ctx, svc)
 
-			Eventually(publicSvcExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+		})
+	})
 
-			Eventually(publicVirtualSvcExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+	When("export annotation is removed from previously exported component", func() {
 
-			Eventually(publicGatewayExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+		It("should remove all created routing resources", func(ctx context.Context) {
+			// given
+			// required annotation for watched custom resource:
+			// 	routing.opendatahub.io/export-mode: "public;external"
+			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-remove-annotation",
+				"public;external", appNs.Name)
+			Expect(createErr).ToNot(HaveOccurred())
 
-			Eventually(destinationRuleExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+			// required labels for the exported service:
+			// 	routing.opendatahub.io/exported: "true"
+			// 	platform.opendatahub.io/owner-name: test-component
+			// 	platform.opendatahub.io/owner-kind: Component
+			addRoutingRequirementsToSvc(ctx, svc, component)
 
+			// then
+			externalResourcesShouldExist(ctx, svc)
+			publicResourcesShouldExist(ctx, svc)
+
+			// when
+			By("removing the export annotation", func() {
+				// Re-fetch the component from the cluster to get the latest version
+				errGetComponent := envTest.Client.Get(ctx, client.ObjectKey{
+					Namespace: component.GetNamespace(),
+					Name:      component.GetName(),
+				}, component)
+				Expect(errGetComponent).ToNot(HaveOccurred())
+
+				annotations := component.GetAnnotations()
+				delete(annotations, metadata.Annotations.RoutingExportMode)
+				component.SetAnnotations(annotations)
+
+				// Update the component in the cluster
+				errUpdateComponent := envTest.Client.Update(ctx, component)
+				Expect(errUpdateComponent).To(Succeed())
+			})
+
+			// then
+			externalResourcesShouldNotExist(ctx, svc)
+			publicResourcesShouldNotExist(ctx, svc)
+		})
+	})
+
+	When("export annotation is changed on existing exported component", func() {
+
+		It("should remove all routing resources from removed", func(ctx context.Context) {
+			// given
+			// required annotation for watched custom resource:
+			// 	routing.opendatahub.io/export-mode: "public;external"
+			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-change-annotation",
+				"public;external", appNs.Name)
+			Expect(createErr).ToNot(HaveOccurred())
+
+			// required labels for the exported service:
+			// 	routing.opendatahub.io/exported: "true"
+			// 	platform.opendatahub.io/owner-name: test-component
+			// 	platform.opendatahub.io/owner-kind: Component
+			addRoutingRequirementsToSvc(ctx, svc, component)
+
+			// then
+			externalResourcesShouldExist(ctx, svc)
+			publicResourcesShouldExist(ctx, svc)
+
+			By("removing the export annotation", func() {
+				errGetComponent := envTest.Client.Get(ctx, client.ObjectKey{
+					Namespace: component.GetNamespace(),
+					Name:      component.GetName(),
+				}, component)
+				Expect(errGetComponent).ToNot(HaveOccurred())
+
+				annotations := component.GetAnnotations()
+				annotations[metadata.Annotations.RoutingExportMode] = "public"
+				component.SetAnnotations(annotations)
+
+				errUpdateComponent := envTest.Client.Update(ctx, component)
+				Expect(errUpdateComponent).To(Succeed())
+			})
+
+			// then
+			externalResourcesShouldNotExist(ctx, svc)
+			publicResourcesShouldExist(ctx, svc)
 		})
 	})
 
@@ -367,6 +420,46 @@ func publicResourcesShouldExist(ctx context.Context, svc *corev1.Service) {
 		WithTimeout(test.DefaultTimeout).
 		WithPolling(test.DefaultPolling).
 		Should(Succeed())
+}
+
+func externalResourcesShouldNotExist(ctx context.Context, svc *corev1.Service) {
+	Eventually(routeExistsFor(svc)).
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+
+	Eventually(ingressVirtualServiceExistsFor(svc)).
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+}
+
+func publicResourcesShouldNotExist(ctx context.Context, svc *corev1.Service) {
+	Eventually(publicSvcExistsFor(svc)).
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+
+	Eventually(publicVirtualSvcExistsFor(svc)).
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+
+	Eventually(publicGatewayExistsFor(svc)).
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+
+	Eventually(destinationRuleExistsFor(svc)).
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(WithTransform(k8serr.IsNotFound, BeTrue()))
 }
 
 func routeExistsFor(exportedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {

@@ -17,8 +17,17 @@ import (
 func (r *PlatformRoutingController) reconcileResources(ctx context.Context, target *unstructured.Unstructured) error {
 	// TODO shouldn't we make it a predicate for ctrl watch instead?
 	_, exportModeFound := extractExportModes(target)
+
 	if !exportModeFound {
-		return nil
+		r.log.Info("No export mode found for target")
+
+		// deleting resources in case annotation previously existed
+		err := r.deleteOwnedResources(ctx, target, routingResourceGVKs(spi.ExternalRoute))
+		if err != nil {
+			return err
+		}
+
+		return r.deleteOwnedResources(ctx, target, routingResourceGVKs(spi.PublicRoute))
 	}
 
 	r.log.Info("Reconciling resources for target", "target", target)
@@ -72,6 +81,15 @@ func (r *PlatformRoutingController) exportService(ctx context.Context, target *u
 	}
 
 	targetKey := k8stypes.NamespacedName{Namespace: target.GetNamespace(), Name: target.GetName()}
+
+	for _, routeType := range spi.AllRouteTypes() {
+		if !spi.ContainsRouteType(exportModes, routeType) {
+			err := r.deleteOwnedResources(ctx, target, routingResourceGVKs(routeType))
+			if err != nil {
+				r.log.Error(err, "could not delete owned resources", "target", targetKey, "routeType", routeType)
+			}
+		}
+	}
 
 	for _, exportMode := range exportModes {
 		resources, err := r.templateLoader.Load(ctx, exportMode, targetKey, templateData)
