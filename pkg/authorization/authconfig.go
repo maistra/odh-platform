@@ -153,7 +153,7 @@ func UnifiedHostExtractor(extractors ...spi.HostExtractor) spi.HostExtractor { /
 		return unique
 	}
 
-	isURI := func(host string) bool {
+	isSupportedURL := func(host string) bool {
 		return strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://")
 	}
 
@@ -161,7 +161,7 @@ func UnifiedHostExtractor(extractors ...spi.HostExtractor) spi.HostExtractor { /
 		var errAllParse []error
 
 		for _, foundHost := range foundHosts {
-			if isURI(foundHost) {
+			if isSupportedURL(foundHost) {
 				parsedURL, errParse := url.Parse(foundHost)
 				if errParse != nil {
 					errAllParse = append(errAllParse, fmt.Errorf("failed to parse URL %s: %w", foundHost, errParse))
