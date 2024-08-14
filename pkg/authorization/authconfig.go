@@ -179,23 +179,23 @@ func UnifiedHostExtractor(extractors ...spi.HostExtractor) spi.HostExtractor { /
 	return func(target *unstructured.Unstructured) ([]string, error) {
 		var errAll []error
 
-		extractedHosts := []string{}
+		combinedExtractedHosts := []string{}
 
 		for _, extractor := range extractors {
-			extractedDelegateHosts, err := extractor(target)
+			extractedHosts, err := extractor(target)
 			if err != nil {
 				errAll = append(errAll, err)
 
 				continue
 			}
 
-			extractedHosts, err = appendHosts(extractedHosts, extractedDelegateHosts...)
+			combinedExtractedHosts, err = appendHosts(combinedExtractedHosts, extractedHosts...)
 			if err != nil {
 				errAll = append(errAll, err)
 			}
 		}
 
-		return unique(extractedHosts), errors.Join(errAll...)
+		return unique(combinedExtractedHosts), errors.Join(errAll...)
 	}
 }
 
