@@ -51,7 +51,7 @@ type PlatformRoutingController struct {
 // +kubebuilder:rbac:groups="route.openshift.io",resources=routes,verbs=*
 // +kubebuilder:rbac:groups="networking.istio.io",resources=virtualservices,verbs=*
 // +kubebuilder:rbac:groups="networking.istio.io",resources=gateways,verbs=*
-// +kubebuilder:rbac:groups="networking.istio.io",resources=destinationrule,verbs=*
+// +kubebuilder:rbac:groups="networking.istio.io",resources=destinationrules,verbs=*
 
 // Reconcile ensures that the namespace has all required resources needed to be part of the Service Mesh of Open Data Hub.
 func (r *PlatformRoutingController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {

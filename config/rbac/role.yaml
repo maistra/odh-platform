@@ -20,7 +20,7 @@ rules:
 - apiGroups:
   - networking.istio.io
   resources:
-  - destinationrule
+  - destinationrules
   verbs:
   - '*'
 - apiGroups:
