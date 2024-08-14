@@ -199,7 +199,7 @@ func UnifiedHostExtractor(extractors ...spi.HostExtractor) spi.HostExtractor { /
 	}
 }
 
-func NewExpressionHostExtractor(paths []string) spi.HostExtractor {
+func NewPathExpressionExtractor(paths []string) spi.HostExtractor {
 	extractHosts := func(target *unstructured.Unstructured, splitPath []string) ([]string, error) {
 		// extracting as string
 		if foundHost, found, err := unstructured.NestedString(target.Object, splitPath...); err == nil && found {

@@ -38,7 +38,7 @@ func NewPlatformAuthorizationController(cli client.Client, log logr.Logger,
 		typeDetector:  authorization.NewAnnotationAuthTypeDetector(metadata.Annotations.AuthEnabled),
 		// TODO: Evaluate passing in the hostExtractor to avoid coupling the authorizaiton/routing packages
 		hostExtractor: authorization.UnifiedHostExtractor(
-			authorization.NewExpressionHostExtractor(component.HostPaths),
+			authorization.NewPathExpressionExtractor(component.HostPaths),
 			routing.NewAnnotationHostExtractor(";", metadata.Annotations.RoutingAddressesExternal, metadata.Annotations.RoutingAddressesPublic)),
 		templateLoader: authorization.NewConfigMapTemplateLoader(cli, authorization.NewStaticTemplateLoader(config.Audiences)),
 	}

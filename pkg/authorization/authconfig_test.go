@@ -14,7 +14,7 @@ var _ = Describe("AuthConfig functions", test.Unit(), func() {
 
 		It("should extract host from unstructured via paths as string", func() {
 			// given
-			extractor := authorization.NewExpressionHostExtractor([]string{"status.url"})
+			extractor := authorization.NewPathExpressionExtractor([]string{"status.url"})
 			target := unstructured.Unstructured{
 				Object: map[string]interface{}{
 					"status": map[string]interface{}{
@@ -33,7 +33,7 @@ var _ = Describe("AuthConfig functions", test.Unit(), func() {
 
 		It("should extract host from unstructured via paths as slice of strings", func() {
 			// given
-			extractor := authorization.NewExpressionHostExtractor([]string{"status.url"})
+			extractor := authorization.NewPathExpressionExtractor([]string{"status.url"})
 			target := unstructured.Unstructured{
 				Object: map[string]interface{}{},
 			}
@@ -50,7 +50,7 @@ var _ = Describe("AuthConfig functions", test.Unit(), func() {
 		It("should return unique list", func() {
 
 			// given
-			extractor := authorization.NewExpressionHostExtractor([]string{"status.url"})
+			extractor := authorization.NewPathExpressionExtractor([]string{"status.url"})
 			target := unstructured.Unstructured{
 				Object: map[string]interface{}{},
 			}
