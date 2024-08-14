@@ -133,7 +133,7 @@ func (k *annotationAuthTypeDetector) Detect(_ context.Context, res *unstructured
 	return spi.Anonymous, nil
 }
 
-func UnifiedHostExtractor(extractors ...spi.HostExtractor) spi.HostExtractor { //nolint:gocognit //reason Inlined functions to avoid surface pollution
+func UnifiedHostExtractor(extractors ...spi.HostExtractor) spi.HostExtractor { //nolint:gocognit //reason Inlined functions to avoid package pollution, "function scoped"
 	unique := func(in []string) []string {
 		set := map[string]bool{}
 
