@@ -54,7 +54,7 @@ var _ = Describe("AuthConfig functions", test.Unit(), func() {
 			target := unstructured.Unstructured{
 				Object: map[string]interface{}{},
 			}
-			unstructured.SetNestedStringSlice(target.Object, []string{"test.com", "http://test.com"}, "status", "url")
+			unstructured.SetNestedStringSlice(target.Object, []string{"test.com", "http://test.com", "https://test.com"}, "status", "url")
 
 			// when
 			hosts, err := authorization.UnifiedHostExtractor(extractor)(&target)
