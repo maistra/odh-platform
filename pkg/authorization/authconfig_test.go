@@ -60,7 +60,7 @@ var _ = Describe("AuthConfig functions", test.Unit(), func() {
 			hosts, err := authorization.UnifiedHostExtractor(extractor)(&target)
 			// then
 			Expect(err).To(Not(HaveOccurred()))
-			Expect(hosts).To(ContainElements("test.com"))
+			Expect(hosts).To(HaveExactElements("test.com"))
 
 		})
 	})
