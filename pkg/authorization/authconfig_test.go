@@ -14,7 +14,7 @@ var _ = Describe("AuthConfig functions", test.Unit(), func() {
 
 		It("should extract host from unstructured via paths as string", func() {
 			// given
-			extractor := authorization.NewExpressionHostExtractor([]string{"status.url"})
+			extractor := authorization.NewPathExpressionExtractor([]string{"status.url"})
 			target := unstructured.Unstructured{
 				Object: map[string]interface{}{
 					"status": map[string]interface{}{
@@ -24,29 +24,45 @@ var _ = Describe("AuthConfig functions", test.Unit(), func() {
 			}
 
 			// when
-			hosts, err := extractor.Extract(&target)
+			hosts, err := extractor(&target)
 
 			// then
 			Expect(err).To(Not(HaveOccurred()))
-			Expect(hosts).To(HaveExactElements("test.com"))
+			Expect(hosts).To(HaveExactElements("http://test.com"))
 		})
 
 		It("should extract host from unstructured via paths as slice of strings", func() {
 			// given
-			extractor := authorization.NewExpressionHostExtractor([]string{"status.url"})
+			extractor := authorization.NewPathExpressionExtractor([]string{"status.url"})
 			target := unstructured.Unstructured{
 				Object: map[string]interface{}{},
 			}
 			unstructured.SetNestedStringSlice(target.Object, []string{"test.com", "test2.com"}, "status", "url")
 
 			// when
-			hosts, err := extractor.Extract(&target)
+			hosts, err := extractor(&target)
 
 			// then
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(hosts).To(ContainElements("test.com", "test2.com"))
 		})
 
+		It("should return unique list", func() {
+
+			// given
+			extractor := authorization.NewPathExpressionExtractor([]string{"status.url"})
+			target := unstructured.Unstructured{
+				Object: map[string]interface{}{},
+			}
+			unstructured.SetNestedStringSlice(target.Object, []string{"test.com", "http://test.com", "https://test.com"}, "status", "url")
+
+			// when
+			hosts, err := authorization.UnifiedHostExtractor(extractor)(&target)
+			// then
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(hosts).To(HaveExactElements("test.com"))
+
+		})
 	})
 
 })
