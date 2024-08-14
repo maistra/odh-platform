@@ -135,22 +135,22 @@ func (k *annotationAuthTypeDetector) Detect(_ context.Context, res *unstructured
 
 func UnifiedHostExtractor(extractors ...spi.HostExtractor) spi.HostExtractor { //nolint:gocognit //reason Inlined functions to avoid surface pollution
 	unique := func(in []string) []string {
-		store := map[string]bool{}
+		set := map[string]bool{}
 
-		for _, v := range in {
-			store[v] = true
+		for _, elem := range in {
+			set[elem] = true
 		}
 
-		keys := make([]string, len(store))
+		unique := make([]string, len(set))
 
 		i := 0
 
-		for v := range store {
-			keys[i] = v
+		for elem := range set {
+			unique[i] = elem
 			i++
 		}
 
-		return keys
+		return unique
 	}
 
 	isURI := func(host string) bool {
