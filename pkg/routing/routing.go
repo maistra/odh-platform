@@ -69,3 +69,18 @@ func (s *staticTemplateLoader) resolveTemplate(tmpl []byte, data spi.RoutingTemp
 
 	return buf.Bytes(), nil
 }
+
+func NewAnnotationHostExtractor(separator string, annotations ...string) spi.HostExtractor {
+	return func(target *unstructured.Unstructured) ([]string, error) {
+		hosts := []string{}
+
+		for _, annotation := range annotations {
+			if val, found := target.GetAnnotations()[annotation]; found {
+				hs := strings.Split(val, separator)
+				hosts = append(hosts, hs...)
+			}
+		}
+
+		return hosts, nil
+	}
+}

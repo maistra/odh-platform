@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed" // needed for go:embed directive
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -132,92 +133,103 @@ func (k *annotationAuthTypeDetector) Detect(_ context.Context, res *unstructured
 	return spi.Anonymous, nil
 }
 
-type expressionHostExtractor struct {
-	paths []string
+func UnifiedHostExtractor(extractors ...spi.HostExtractor) spi.HostExtractor { //nolint:gocognit //reason Inlined functions to avoid surface pollution
+	unique := func(in []string) []string {
+		store := map[string]bool{}
+
+		for _, v := range in {
+			store[v] = true
+		}
+
+		keys := make([]string, len(store))
+
+		i := 0
+
+		for v := range store {
+			keys[i] = v
+			i++
+		}
+
+		return keys
+	}
+
+	isURI := func(host string) bool {
+		return strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://")
+	}
+
+	appendHosts := func(hosts []string, foundHosts ...string) ([]string, error) {
+		var errAllParse []error
+
+		for _, foundHost := range foundHosts {
+			if isURI(foundHost) {
+				parsedURL, errParse := url.Parse(foundHost)
+				if errParse != nil {
+					errAllParse = append(errAllParse, fmt.Errorf("failed to parse URL %s: %w", foundHost, errParse))
+				}
+
+				hosts = append(hosts, parsedURL.Host)
+			} else {
+				hosts = append(hosts, foundHost)
+			}
+		}
+
+		return hosts, errors.Join(errAllParse...)
+	}
+
+	return func(target *unstructured.Unstructured) ([]string, error) {
+		var errAll []error
+
+		extractedHosts := []string{}
+
+		for _, extractor := range extractors {
+			extractedDelegateHosts, err := extractor(target)
+			if err != nil {
+				errAll = append(errAll, err)
+
+				continue
+			}
+
+			extractedHosts, err = appendHosts(extractedHosts, extractedDelegateHosts...)
+			if err != nil {
+				errAll = append(errAll, err)
+			}
+		}
+
+		return unique(extractedHosts), errors.Join(errAll...)
+	}
 }
 
 func NewExpressionHostExtractor(paths []string) spi.HostExtractor {
-	return &expressionHostExtractor{paths: paths}
-}
-
-func (k *expressionHostExtractor) Extract(target *unstructured.Unstructured) ([]string, error) {
-	hosts := []string{}
-
-	for _, path := range k.paths {
-		splitPath := strings.Split(path, ".")
-		extractedHosts, err := extractHosts(target, splitPath)
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to extract hosts at path %s: %w", path, err)
+	extractHosts := func(target *unstructured.Unstructured, splitPath []string) ([]string, error) {
+		// extracting as string
+		if foundHost, found, err := unstructured.NestedString(target.Object, splitPath...); err == nil && found {
+			return []string{foundHost}, nil
 		}
 
-		parsedHosts, errAppend := appendHosts(hosts, extractedHosts...)
-
-		if errAppend != nil {
-			return nil, fmt.Errorf("failed to append hosts %v: %w", extractedHosts, errAppend)
+		// extracting as slice of strings
+		if foundHosts, found, err := unstructured.NestedStringSlice(target.Object, splitPath...); err == nil && found {
+			return foundHosts, nil
 		}
 
-		hosts = parsedHosts
+		return nil, fmt.Errorf("neither string nor slice of strings found at path %v", splitPath)
 	}
 
-	u := unique(hosts)
-	if len(u) == 0 {
-		return []string{"unknown.host.com"}, nil
-	}
+	return func(target *unstructured.Unstructured) ([]string, error) {
+		var errExtract []error
 
-	return u, nil
-}
+		hosts := []string{}
 
-func extractHosts(target *unstructured.Unstructured, splitPath []string) ([]string, error) {
-	// extracting as string
-	if foundHost, found, err := unstructured.NestedString(target.Object, splitPath...); err == nil && found {
-		return []string{foundHost}, nil
-	}
+		for _, path := range paths {
+			splitPath := strings.Split(path, ".")
+			extractedHosts, err := extractHosts(target, splitPath)
 
-	// extracting as slice of strings
-	if foundHosts, found, err := unstructured.NestedStringSlice(target.Object, splitPath...); err == nil && found {
-		return foundHosts, nil
-	}
-
-	return nil, fmt.Errorf("neither string nor slice of strings found at path %v", splitPath)
-}
-
-func unique(in []string) []string {
-	store := map[string]bool{}
-
-	for _, v := range in {
-		store[v] = true
-	}
-
-	keys := make([]string, len(store))
-
-	i := 0
-
-	for v := range store {
-		keys[i] = v
-		i++
-	}
-
-	return keys
-}
-
-func appendHosts(hosts []string, foundHosts ...string) ([]string, error) {
-	for _, foundHost := range foundHosts {
-		if isURI(foundHost) {
-			parsedURL, errParse := url.Parse(foundHost)
-			if errParse != nil {
-				return nil, fmt.Errorf("failed to parse URL %s: %w", foundHost, errParse)
+			if err != nil {
+				errExtract = append(errExtract, fmt.Errorf("failed to extract hosts at path %s: %w", path, err))
 			}
 
-			hosts = append(hosts, parsedURL.Host)
-		} else {
-			hosts = append(hosts, foundHost)
+			hosts = append(hosts, extractedHosts...)
 		}
+
+		return hosts, errors.Join(errExtract...)
 	}
-
-	return hosts, nil
-}
-
-func isURI(host string) bool {
-	return strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://")
 }
