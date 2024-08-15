@@ -13,7 +13,6 @@ D -->|Watches| C
 C -->|Upon creation| D
 D -->|Creates| E[Authorino AuthConfigs]
 D -->|Creates| F[Istio AuthorizationPolicies]
-D -->|Creates| G[Istio PeerAuthentications]
 H[ODH Component] -->|Creates instance of| C
 ```
 
@@ -39,10 +38,8 @@ D -->|Creates| E[Authorization Resources]
 subgraph Authorization Resources
 E1[Authorino AuthConfigs]
 E2[Istio AuthorizationPolicies]
-E3[Istio PeerAuthentications]
 E --> E1
 E --> E2
-E --> E3
 end
 ```
 
