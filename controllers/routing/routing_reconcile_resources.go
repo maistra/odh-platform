@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -124,7 +123,7 @@ func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.Routi
 func (r *PlatformRoutingController) patch(ctx context.Context, target *unstructured.Unstructured) error {
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		currentRes := &unstructured.Unstructured{}
-		currentRes.SetGroupVersionKind(sourceRes.GroupVersionKind())
+		currentRes.SetGroupVersionKind(target.GroupVersionKind())
 
 		if err := r.Client.Get(ctx, client.ObjectKeyFromObject(target), currentRes); err != nil {
 			return fmt.Errorf("failed re-fetching resource: %w", err)
