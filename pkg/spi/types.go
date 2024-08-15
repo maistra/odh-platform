@@ -46,9 +46,7 @@ func (a AuthorizationComponent) Load(configPath string) ([]AuthorizationComponen
 }
 
 // HostExtractor attempts to extract Hosts from the given resource.
-type HostExtractor interface {
-	Extract(res *unstructured.Unstructured) ([]string, error)
-}
+type HostExtractor func(res *unstructured.Unstructured) ([]string, error)
 
 // AuthTypeDetector attempts to determine the AuthType for the given resource
 // Possible implementations might check annotations or labels or possible related objects / config.

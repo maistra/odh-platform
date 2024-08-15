@@ -131,7 +131,7 @@ func (r *PlatformAuthorizationController) createAuthConfigTemplate(ctx context.C
 }
 
 func (r *PlatformAuthorizationController) extractHosts(target *unstructured.Unstructured) ([]string, error) {
-	hosts, err := r.hostExtractor.Extract(target)
+	hosts, err := r.hostExtractor(target)
 	if err != nil {
 		return nil, fmt.Errorf("could not extract host: %w", err)
 	}
