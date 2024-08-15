@@ -121,18 +121,18 @@ func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.Routi
 	return nil
 }
 
-func (r *PlatformRoutingController) patchResourceMetadata(ctx context.Context, req ctrl.Request, sourceRes *unstructured.Unstructured) error {
+func (r *PlatformRoutingController) patch(ctx context.Context, target *unstructured.Unstructured) error {
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		currentRes := &unstructured.Unstructured{}
 		currentRes.SetGroupVersionKind(sourceRes.GroupVersionKind())
 
-		if err := r.Client.Get(ctx, req.NamespacedName, currentRes); err != nil {
+		if err := r.Client.Get(ctx, client.ObjectKeyFromObject(target), currentRes); err != nil {
 			return fmt.Errorf("failed re-fetching resource: %w", err)
 		}
 
 		patch := client.MergeFrom(currentRes)
-		if errPatch := r.Client.Patch(ctx, sourceRes, patch); errPatch != nil {
-			return fmt.Errorf("failed to patch resource with updated annotations: %w", errPatch)
+		if errPatch := r.Client.Patch(ctx, target, patch); errPatch != nil {
+			return fmt.Errorf("failed to patch: %w", errPatch)
 		}
 
 		return nil
@@ -145,32 +145,13 @@ func (r *PlatformRoutingController) patchResourceMetadata(ctx context.Context, r
 	return nil
 }
 
-func (r *PlatformRoutingController) addResourceFinalizer(ctx context.Context, req ctrl.Request, sourceRes *unstructured.Unstructured) error {
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		currentRes := &unstructured.Unstructured{}
-		currentRes.SetGroupVersionKind(sourceRes.GroupVersionKind())
-
-		if err := r.Client.Get(ctx, req.NamespacedName, sourceRes); err != nil {
-			return fmt.Errorf("failed re-fetching resource: %w", err)
-		}
-
-		if controllerutil.AddFinalizer(sourceRes, finalizerName) {
-			patch := client.MergeFrom(currentRes)
-			if err := r.Client.Patch(ctx, sourceRes, patch); err != nil {
-				return fmt.Errorf("failed to patch resource with finalizer: %w", err)
-			}
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed adding finalizer with retry: %w", err)
+func (r *PlatformRoutingController) addFinalizer(ctx context.Context, target *unstructured.Unstructured) error {
+	if controllerutil.AddFinalizer(target, finalizerName) {
+		return r.patch(ctx, target)
 	}
 
 	return nil
 }
-
 func extractExportModes(target *unstructured.Unstructured) ([]spi.RouteType, bool) {
 	exportModes, exportModeFound := target.GetAnnotations()[metadata.Annotations.RoutingExportMode]
 	if !exportModeFound {

@@ -85,17 +85,15 @@ func (r *PlatformRoutingController) Reconcile(ctx context.Context, req ctrl.Requ
 
 	var errs []error
 
-	addFinalizerErr := r.addResourceFinalizer(ctx, req, sourceRes)
-
-	if addFinalizerErr != nil {
-		return ctrl.Result{}, fmt.Errorf("failed adding finalizer with retry: %w", addFinalizerErr)
+if errFinalizer := r.addFinalizer(ctx, sourceRes); errFinalizer != nil {
+		return ctrl.Result{}, fmt.Errorf("failed adding finalizer: %w", errFinalizer)
 	}
 
 	for _, reconciler := range reconcilers {
 		errs = append(errs, reconciler(ctx, sourceRes))
 	}
 
-	errs = append(errs, r.patchResourceMetadata(ctx, req, sourceRes))
+	errs = append(errs, r.patch(ctx, sourceRes))
 
 	return ctrl.Result{}, errors.Join(errs...)
 }
