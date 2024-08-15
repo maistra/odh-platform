@@ -121,7 +121,6 @@ func (r *PlatformAuthorizationController) SetupWithManager(mgr ctrl.Manager) err
 		}, builder.OnlyMetadata).
 		Owns(&authorinov1beta2.AuthConfig{}).
 		Owns(&istiosecurityv1beta1.AuthorizationPolicy{}).
-		Owns(&istiosecurityv1beta1.PeerAuthentication{}).
 		Complete(r)
 }
 
