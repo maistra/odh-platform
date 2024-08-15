@@ -8,6 +8,7 @@ import (
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -57,6 +58,30 @@ func patchUsingApplyStrategy(ctx context.Context, cli client.Client, source, tar
 
 	if errPatch := cli.Patch(ctx, target, client.RawPatch(k8stypes.ApplyPatchType, data), client.ForceOwnership, client.FieldOwner("odh-platform")); errPatch != nil {
 		return fmt.Errorf("failed to apply patch to %s: %w", source.GroupVersionKind().String(), errPatch)
+	}
+
+	return nil
+}
+
+func Patch(ctx context.Context, cli client.Client, target *unstructured.Unstructured) error {
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		currentRes := &unstructured.Unstructured{}
+		currentRes.SetGroupVersionKind(target.GroupVersionKind())
+
+		if err := cli.Get(ctx, client.ObjectKeyFromObject(target), currentRes); err != nil {
+			return fmt.Errorf("failed re-fetching resource: %w", err)
+		}
+
+		patch := client.MergeFrom(currentRes)
+		if errPatch := cli.Patch(ctx, target, patch); errPatch != nil {
+			return fmt.Errorf("failed to patch: %w", errPatch)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to patch resource metadata with retry: %w", err)
 	}
 
 	return nil

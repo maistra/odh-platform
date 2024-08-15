@@ -12,8 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8stypes "k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/retry"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -120,37 +118,16 @@ func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.Routi
 	return nil
 }
 
-func (r *PlatformRoutingController) patch(ctx context.Context, target *unstructured.Unstructured) error {
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		currentRes := &unstructured.Unstructured{}
-		currentRes.SetGroupVersionKind(target.GroupVersionKind())
-
-		if err := r.Client.Get(ctx, client.ObjectKeyFromObject(target), currentRes); err != nil {
-			return fmt.Errorf("failed re-fetching resource: %w", err)
-		}
-
-		patch := client.MergeFrom(currentRes)
-		if errPatch := r.Client.Patch(ctx, target, patch); errPatch != nil {
-			return fmt.Errorf("failed to patch: %w", errPatch)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to patch resource metadata with retry: %w", err)
-	}
-
-	return nil
-}
-
-func (r *PlatformRoutingController) addFinalizer(ctx context.Context, target *unstructured.Unstructured) error {
+func (r *PlatformRoutingController) ensureResourceHasFinalizer(ctx context.Context, target *unstructured.Unstructured) error {
 	if controllerutil.AddFinalizer(target, finalizerName) {
-		return r.patch(ctx, target)
+		if err := cluster.Patch(ctx, r.Client, target); err != nil {
+			return fmt.Errorf("failed to patch finalizer to resource %s/%s: %w", target.GetNamespace(), target.GetName(), err)
+		}
 	}
 
 	return nil
 }
+
 func extractExportModes(target *unstructured.Unstructured) ([]spi.RouteType, bool) {
 	exportModes, exportModeFound := target.GetAnnotations()[metadata.Annotations.RoutingExportMode]
 	if !exportModeFound {

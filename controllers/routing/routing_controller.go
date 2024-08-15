@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-logr/logr"
 	platformctrl "github.com/opendatahub-io/odh-platform/controllers"
+	"github.com/opendatahub-io/odh-platform/pkg/cluster"
 	"github.com/opendatahub-io/odh-platform/pkg/routing"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	openshiftroutev1 "github.com/openshift/api/route/v1"
@@ -85,7 +86,7 @@ func (r *PlatformRoutingController) Reconcile(ctx context.Context, req ctrl.Requ
 
 	var errs []error
 
-	if errFinalizer := r.addFinalizer(ctx, sourceRes); errFinalizer != nil {
+	if errFinalizer := r.ensureResourceHasFinalizer(ctx, sourceRes); errFinalizer != nil {
 		return ctrl.Result{}, fmt.Errorf("failed adding finalizer: %w", errFinalizer)
 	}
 
@@ -93,7 +94,7 @@ func (r *PlatformRoutingController) Reconcile(ctx context.Context, req ctrl.Requ
 		errs = append(errs, reconciler(ctx, sourceRes))
 	}
 
-	errs = append(errs, r.patch(ctx, sourceRes))
+	errs = append(errs, cluster.Patch(ctx, r.Client, sourceRes))
 
 	return ctrl.Result{}, errors.Join(errs...)
 }
