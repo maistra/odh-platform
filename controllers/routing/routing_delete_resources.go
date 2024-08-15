@@ -62,7 +62,7 @@ func (r *PlatformRoutingController) deleteOwnedResources(ctx context.Context, ta
 
 // removeFinalizer is called after a successful cleanup, it removes the finalizer from the resource in the cluster.
 func removeFinalizer(ctx context.Context, cli client.Client, sourceRes *unstructured.Unstructured) (ctrl.Result, error) {
-	finalizer := metadata.Finalizers.Routing
+	finalizer := finalizerName
 
 	if controllerutil.ContainsFinalizer(sourceRes, finalizer) {
 		controllerutil.RemoveFinalizer(sourceRes, finalizer)

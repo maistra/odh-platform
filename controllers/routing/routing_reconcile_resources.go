@@ -12,6 +12,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func (r *PlatformRoutingController) reconcileResources(ctx context.Context, target *unstructured.Unstructured) error {
@@ -112,6 +116,56 @@ func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.Routi
 
 	if errApply := metadata.ApplyMetaOptions(target, metaOptions...); errApply != nil {
 		return fmt.Errorf("could not propagate hosts back to target %s/%s : %w", target.GetObjectKind().GroupVersionKind().Kind, target.GetName(), errApply)
+	}
+
+	return nil
+}
+
+func (r *PlatformRoutingController) patchResourceMetadata(ctx context.Context, req ctrl.Request, sourceRes *unstructured.Unstructured) error {
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		currentRes := &unstructured.Unstructured{}
+		currentRes.SetGroupVersionKind(sourceRes.GroupVersionKind())
+
+		if err := r.Client.Get(ctx, req.NamespacedName, currentRes); err != nil {
+			return fmt.Errorf("failed re-fetching resource: %w", err)
+		}
+
+		patch := client.MergeFrom(currentRes)
+		if errPatch := r.Client.Patch(ctx, sourceRes, patch); errPatch != nil {
+			return fmt.Errorf("failed to patch resource with updated annotations: %w", errPatch)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to patch resource metadata with retry: %w", err)
+	}
+
+	return nil
+}
+
+func (r *PlatformRoutingController) addResourceFinalizer(ctx context.Context, req ctrl.Request, sourceRes *unstructured.Unstructured) error {
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		currentRes := &unstructured.Unstructured{}
+		currentRes.SetGroupVersionKind(sourceRes.GroupVersionKind())
+
+		if err := r.Client.Get(ctx, req.NamespacedName, sourceRes); err != nil {
+			return fmt.Errorf("failed re-fetching resource: %w", err)
+		}
+
+		if controllerutil.AddFinalizer(sourceRes, finalizerName) {
+			patch := client.MergeFrom(currentRes)
+			if err := r.Client.Patch(ctx, sourceRes, patch); err != nil {
+				return fmt.Errorf("failed to patch resource with finalizer: %w", err)
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed adding finalizer with retry: %w", err)
 	}
 
 	return nil
