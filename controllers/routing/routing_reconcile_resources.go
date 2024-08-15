@@ -72,7 +72,7 @@ func (r *PlatformRoutingController) exportService(ctx context.Context, target *u
 		metadata.WithLabels(metadata.Labels.AppManagedBy, "odh-routing-controller"),
 	}
 
-	targetKey := k8stypes.NamespacedName{Namespace: target.GetNamespace(), Name: target.GetName()}
+	targetKey := client.ObjectKeyFromObject(target)
 
 	for _, exportMode := range exportModes {
 		resources, err := r.templateLoader.Load(ctx, exportMode, targetKey, templateData)
