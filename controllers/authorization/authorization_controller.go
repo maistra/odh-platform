@@ -67,7 +67,6 @@ type PlatformAuthorizationController struct {
 
 // +kubebuilder:rbac:groups=authorino.kuadrant.io,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=security.istio.io,resources=authorizationpolicies,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=security.istio.io,resources=peerauthentications,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile ensures that the namespace has all required resources needed to be part of the Service Mesh of Open Data Hub.
 func (r *PlatformAuthorizationController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -77,7 +76,9 @@ func (r *PlatformAuthorizationController) Reconcile(ctx context.Context, req ctr
 		return ctrl.Result{}, nil
 	}
 
-	reconcilers := []platformctrl.SubReconcileFunc{r.reconcileAuthConfig, r.reconcileAuthPolicy, r.reconcilePeerAuthentication}
+	// NOTE: r.reconcilePeerAuthentication removed in https://github.com/maistra/odh-platform/pull/53
+	// Revert if removal thesis breaks down
+	reconcilers := []platformctrl.SubReconcileFunc{r.reconcileAuthConfig, r.reconcileAuthPolicy}
 
 	sourceRes := &unstructured.Unstructured{}
 	sourceRes.SetGroupVersionKind(r.authComponent.ObjectReference.GroupVersionKind)
