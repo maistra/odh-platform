@@ -140,35 +140,17 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 		}, test.DefaultTimeout, test.DefaultPolling).Should(Succeed())
 	})
 
-	It("should create a PeerAuthentication when a Component is created", func(ctx context.Context) {
-		Eventually(func() error {
-			createdPeerAuth := &istiosecurityv1beta1.PeerAuthentication{}
-			err := envTest.Client.Get(ctx, types.NamespacedName{
-				Name:      resourceName,
-				Namespace: testNamespaceName,
-			}, createdPeerAuth)
-
-			if err != nil {
-				return err
-			}
-
-			Expect(createdPeerAuth.Spec.GetMtls().GetMode()).To(Equal(v1beta1.PeerAuthentication_MutualTLS_PERMISSIVE))
-
-			return nil
-		}, test.DefaultTimeout, test.DefaultPolling).Should(Succeed())
-	})
-
 	// Using k8s envtest we are not able to test actual garbage collection of resources. [1]
 	// Therefore, we ensure we have correct ownerRefs set.
 	//
 	// [1] https://book.kubebuilder.io/reference/envtest#testing-considerations
 	It("should have ownerReference on all created auth resources", func(ctx context.Context) {
 		Eventually(func() error {
-			createdPeerAuth := &istiosecurityv1beta1.PeerAuthentication{}
+			createdResource := &istiosecurityv1beta1.AuthorizationPolicy{}
 			err := envTest.Client.Get(ctx, types.NamespacedName{
 				Name:      resourceName,
 				Namespace: testNamespaceName,
-			}, createdPeerAuth)
+			}, createdResource)
 
 			if err != nil {
 				return err
@@ -183,7 +165,7 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 				Controller: &ctrl,
 			}
 
-			Expect(createdPeerAuth.OwnerReferences).To(ContainElement(expectedOwnerRef))
+			Expect(createdResource.OwnerReferences).To(ContainElement(expectedOwnerRef))
 
 			return nil
 		}, test.DefaultTimeout, test.DefaultPolling).Should(Succeed())
