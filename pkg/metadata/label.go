@@ -16,6 +16,7 @@ var Labels = struct { //nolint:gochecknoglobals //reason: anonymous struct is us
 	// to enable accurate garbage collection of the resources cross-namespace.
 	OwnerUID        string
 	RoutingExported string
+	ExportType      string
 }{
 	AppPartOf:       "app.kubernetes.io/part-of",
 	AppComponent:    "app.kubernetes.io/component",
@@ -26,6 +27,7 @@ var Labels = struct { //nolint:gochecknoglobals //reason: anonymous struct is us
 	OwnerKind:       "platform.opendatahub.io/owner-kind",
 	OwnerUID:        "platform.opendatahub.io/owner-uid",
 	RoutingExported: "routing.opendatahub.io/exported",
+	ExportType:      "routing.opendatahub.io/type",
 }
 
 func ApplyStandard(source map[string]string) map[string]string {

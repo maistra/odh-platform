@@ -14,20 +14,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *PlatformRoutingController) reconcileResources(ctx context.Context, target *unstructured.Unstructured) error {
+func (r *PlatformRoutingController) createRoutingResources(ctx context.Context, target *unstructured.Unstructured) error {
 	// TODO shouldn't we make it a predicate for ctrl watch instead?
-	_, exportModeFound := extractExportModes(target)
+	if !target.GetDeletionTimestamp().IsZero() {
+		return nil
+	}
 
-	if !exportModeFound {
+	exportModes := extractExportModes(target)
+
+	if len(exportModes) == 0 {
 		r.log.Info("No export mode found for target")
 
-		// deleting resources in case annotation previously existed
-		err := r.deleteOwnedResources(ctx, target, routingResourceGVKs(spi.ExternalRoute))
-		if err != nil {
-			return err
-		}
-
-		return r.deleteOwnedResources(ctx, target, routingResourceGVKs(spi.PublicRoute))
+		return nil
 	}
 
 	r.log.Info("Reconciling resources for target", "target", target)
@@ -60,8 +58,8 @@ func (r *PlatformRoutingController) reconcileResources(ctx context.Context, targ
 }
 
 func (r *PlatformRoutingController) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
-	exportModes, found := extractExportModes(target)
-	if !found {
+	exportModes := extractExportModes(target)
+	if len(exportModes) == 0 {
 		return fmt.Errorf("could not extract export modes from target %s", target.GetName())
 	}
 
@@ -82,21 +80,13 @@ func (r *PlatformRoutingController) exportService(ctx context.Context, target *u
 
 	targetKey := client.ObjectKeyFromObject(target)
 
-	for _, routeType := range spi.AllRouteTypes() {
-		if !spi.ContainsRouteType(exportModes, routeType) {
-			err := r.deleteOwnedResources(ctx, target, routingResourceGVKs(routeType))
-			if err != nil {
-				r.log.Error(err, "could not delete owned resources", "target", targetKey, "routeType", routeType)
-			}
-		}
-	}
-
 	for _, exportMode := range exportModes {
 		resources, err := r.templateLoader.Load(ctx, exportMode, targetKey, templateData)
 		if err != nil {
 			return fmt.Errorf("could not load templates for type %s: %w", exportMode, err)
 		}
 
+		labelsForCreatedResources = append(labelsForCreatedResources, metadata.WithLabels(metadata.Labels.ExportType, string(exportMode)))
 		if errApply := cluster.Apply(ctx, r.Client, resources, labelsForCreatedResources...); errApply != nil {
 			return fmt.Errorf("could not apply routing resources for type %s: %w", exportMode, errApply)
 		}
@@ -108,8 +98,8 @@ func (r *PlatformRoutingController) exportService(ctx context.Context, target *u
 func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.RoutingTemplateData) error {
 	var metaOptions []metadata.Options
 
-	exportModes, found := extractExportModes(target)
-	if !found {
+	exportModes := extractExportModes(target)
+	if len(exportModes) == 0 {
 		return fmt.Errorf("could not extract export modes from target %s", target.GetName())
 	}
 
@@ -135,10 +125,10 @@ func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.Routi
 	return nil
 }
 
-func extractExportModes(target *unstructured.Unstructured) ([]spi.RouteType, bool) {
+func extractExportModes(target *unstructured.Unstructured) []spi.RouteType {
 	exportModes, exportModeFound := target.GetAnnotations()[metadata.Annotations.RoutingExportMode]
 	if !exportModeFound {
-		return nil, false
+		return nil
 	}
 
 	exportModesSplit := strings.Split(exportModes, ";")
@@ -148,5 +138,5 @@ func extractExportModes(target *unstructured.Unstructured) ([]spi.RouteType, boo
 		routeTypes[i] = spi.RouteType(exportMode)
 	}
 
-	return routeTypes, true
+	return routeTypes
 }

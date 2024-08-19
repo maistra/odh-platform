@@ -61,7 +61,10 @@ func (r *PlatformRoutingController) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, nil
 	}
 
-	reconcilers := []platformctrl.SubReconcileFunc{r.reconcileResources}
+	reconcilers := []platformctrl.SubReconcileFunc{
+		r.removeUnusedRoutingResources,
+		r.createRoutingResources,
+	}
 
 	sourceRes := &unstructured.Unstructured{}
 	sourceRes.SetGroupVersionKind(r.component.ObjectReference.GroupVersionKind)
@@ -74,10 +77,6 @@ func (r *PlatformRoutingController) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 
 		return ctrl.Result{}, fmt.Errorf("failed getting resource: %w", err)
-	}
-
-	if !sourceRes.GetDeletionTimestamp().IsZero() {
-		return r.HandleResourceDeletion(ctx, sourceRes)
 	}
 
 	r.log.Info("triggered routing reconcile", "namespace", req.Namespace, "name", req.Name)

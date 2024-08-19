@@ -75,14 +75,22 @@ func AllRouteTypes() []RouteType {
 	return []RouteType{PublicRoute, ExternalRoute}
 }
 
-func ContainsRouteType(slice []RouteType, item RouteType) bool {
-	for _, sliceItem := range slice {
-		if sliceItem == item {
-			return true
+func UnusedRouteTypes(exportModes []RouteType) []RouteType {
+	used := make(map[RouteType]bool)
+
+	for _, mode := range exportModes {
+		used[mode] = true
+	}
+
+	var unused []RouteType
+
+	for _, rType := range AllRouteTypes() {
+		if !used[rType] {
+			unused = append(unused, rType)
 		}
 	}
 
-	return false
+	return unused
 }
 
 type RoutingComponent struct {
