@@ -5,21 +5,16 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func getExportedServices(ctx context.Context, cli client.Client, target *unstructured.Unstructured) ([]corev1.Service, error) {
+func getExportedServices(ctx context.Context, cli client.Client, labels map[string]string, target *unstructured.Unstructured) ([]corev1.Service, error) {
 	listOpts := []client.ListOption{
 		client.InNamespace(target.GetNamespace()),
-		labels.MatchingLabels(
-			labels.RoutingExported("true"),
-			labels.OwnerName(target.GetName()),
-			labels.OwnerKind(target.GetObjectKind().GroupVersionKind().Kind),
-		),
+		client.MatchingLabels(labels),
 	}
 
 	var exportedSvcList *corev1.ServiceList

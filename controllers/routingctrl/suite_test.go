@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/opendatahub-io/odh-platform/controllers/routingctrl"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
 	"github.com/opendatahub-io/odh-platform/pkg/platform"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"github.com/opendatahub-io/odh-platform/test"
@@ -37,6 +38,9 @@ var _ = SynchronizedBeforeSuite(func() {
 		return
 	}
 
+	ownerName := labels.OwnerName("{{.metadata.name}}")
+	ownerKind := labels.OwnerKind("{{.kind}}")
+
 	routingCtrl := routingctrl.New(
 		nil,
 		ctrl.Log.WithName("controllers").WithName("platform"),
@@ -49,6 +53,7 @@ var _ = SynchronizedBeforeSuite(func() {
 						Kind:    "Component",
 					},
 				},
+				ServiceSelector: labels.MatchingLabels(ownerName, ownerKind),
 			},
 		},
 		routingConfiguration,
