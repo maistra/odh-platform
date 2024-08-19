@@ -11,7 +11,7 @@ import (
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	k8stypes "k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (r *PlatformRoutingController) reconcileResources(ctx context.Context, target *unstructured.Unstructured) error {
@@ -80,7 +80,7 @@ func (r *PlatformRoutingController) exportService(ctx context.Context, target *u
 		metadata.WithLabels(metadata.Labels.AppManagedBy, "odh-routing-controller"),
 	}
 
-	targetKey := k8stypes.NamespacedName{Namespace: target.GetNamespace(), Name: target.GetName()}
+	targetKey := client.ObjectKeyFromObject(target)
 
 	for _, routeType := range spi.AllRouteTypes() {
 		if !spi.ContainsRouteType(exportModes, routeType) {
