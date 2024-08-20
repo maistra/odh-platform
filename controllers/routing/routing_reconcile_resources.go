@@ -15,8 +15,7 @@ import (
 )
 
 func (r *PlatformRoutingController) createRoutingResources(ctx context.Context, target *unstructured.Unstructured) error {
-	// TODO shouldn't we make it a predicate for ctrl watch instead?
-	if !target.GetDeletionTimestamp().IsZero() {
+	if IsMarkedForDeletion(target) {
 		return nil
 	}
 
@@ -60,7 +59,7 @@ func (r *PlatformRoutingController) createRoutingResources(ctx context.Context, 
 func (r *PlatformRoutingController) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
 	exportModes := extractExportModes(target)
 	if len(exportModes) == 0 {
-		return fmt.Errorf("could not extract export modes from target %s", target.GetName())
+		return nil
 	}
 
 	templateData := spi.RoutingTemplateData{
@@ -96,12 +95,12 @@ func (r *PlatformRoutingController) exportService(ctx context.Context, target *u
 }
 
 func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.RoutingTemplateData) error {
-	var metaOptions []metadata.Options
-
 	exportModes := extractExportModes(target)
 	if len(exportModes) == 0 {
-		return fmt.Errorf("could not extract export modes from target %s", target.GetName())
+		return nil
 	}
+
+	var metaOptions []metadata.Options
 
 	// TODO(mvp): put the logic of creating host names into a single place
 	for _, exportMode := range exportModes {

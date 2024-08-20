@@ -81,6 +81,10 @@ func (r *PlatformRoutingController) Reconcile(ctx context.Context, req ctrl.Requ
 
 	r.log.Info("triggered routing reconcile", "namespace", req.Namespace, "name", req.Name)
 
+	if IsMarkedForDeletion(sourceRes) {
+		return ctrl.Result{}, r.handleResourceDeletion(ctx, sourceRes)
+	}
+
 	var errs []error
 
 	if controllerutil.AddFinalizer(sourceRes, metadata.Finalizers.Routing) {
@@ -129,4 +133,8 @@ func (r *PlatformRoutingController) Activate() {
 
 func (r *PlatformRoutingController) Deactivate() {
 	r.active = false
+}
+
+func IsMarkedForDeletion(target *unstructured.Unstructured) bool {
+	return !target.GetDeletionTimestamp().IsZero()
 }

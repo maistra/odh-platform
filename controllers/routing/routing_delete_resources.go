@@ -2,37 +2,35 @@ package routing
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/selection"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func (r *PlatformRoutingController) removeUnusedRoutingResources(ctx context.Context, target *unstructured.Unstructured) error {
-	if !target.GetDeletionTimestamp().IsZero() {
-		return r.handleResourceDeletion(ctx, target)
-	}
-
 	exportModes := extractExportModes(target)
 	unusedRouteTypes := spi.UnusedRouteTypes(exportModes)
 
-	var errDeletion []error
-
-	for _, unusedRouteType := range unusedRouteTypes {
-		if errDel := r.deleteOwnedResources(ctx, target, unusedRouteType, routingResourceGVKs(unusedRouteType)); errDel != nil {
-			errDeletion = append(errDeletion, errDel)
-		}
+	if len(unusedRouteTypes) == 0 {
+		// no unused route types to remove resources for
+		return nil
 	}
 
-	return errors.Join(errDeletion...)
+	var gvks []schema.GroupVersionKind
+	for _, unusedRouteType := range unusedRouteTypes {
+		gvks = append(gvks, routingResourceGVKs(unusedRouteType)...)
+	}
+
+	return r.deleteOwnedResources(ctx, target, unusedRouteTypes, gvks)
 }
 
-// handleResourceDeletion handles the removal of dependent resources when the target resource is being deleted.
 func (r *PlatformRoutingController) handleResourceDeletion(ctx context.Context, sourceRes *unstructured.Unstructured) error {
 	exportModes := extractExportModes(sourceRes)
 	if len(exportModes) == 0 {
@@ -43,10 +41,13 @@ func (r *PlatformRoutingController) handleResourceDeletion(ctx context.Context, 
 
 	r.log.Info("Handling deletion of dependent resources", "sourceRes", sourceRes)
 
+	var gvks []schema.GroupVersionKind
 	for _, exportMode := range exportModes {
-		if err := r.deleteOwnedResources(ctx, sourceRes, exportMode, routingResourceGVKs(exportMode)); err != nil {
-			return fmt.Errorf("failed to delete resources for export mode %s: %w", exportMode, err)
-		}
+		gvks = append(gvks, routingResourceGVKs(exportMode)...)
+	}
+
+	if err := r.deleteOwnedResources(ctx, sourceRes, exportModes, gvks); err != nil {
+		return fmt.Errorf("failed to delete resources: %w", err)
 	}
 
 	return removeFinalizer(ctx, r.Client, sourceRes)
@@ -54,26 +55,36 @@ func (r *PlatformRoutingController) handleResourceDeletion(ctx context.Context, 
 
 func (r *PlatformRoutingController) deleteOwnedResources(ctx context.Context,
 	target *unstructured.Unstructured,
-	exportMode spi.RouteType,
-	gvkList []schema.GroupVersionKind) error {
+	exportModes []spi.RouteType,
+	gvks []schema.GroupVersionKind) error {
 	ownerName := target.GetName()
 	ownerKind := target.GetObjectKind().GroupVersionKind().Kind
 	ownerUID := string(target.GetUID())
-	exportType := string(exportMode)
 
+	exportTypeValues := make([]string, len(exportModes))
+	for i, mode := range exportModes {
+		exportTypeValues[i] = string(mode)
+	}
+
+	requirement, err := labels.NewRequirement(metadata.Labels.ExportType, selection.In, exportTypeValues)
+	if err != nil {
+		return fmt.Errorf("failed to create label requirement: %w", err)
+	}
+
+	routeTypes := labels.NewSelector().Add(*requirement)
 	resourceOwnerLabels := client.MatchingLabels{
-		metadata.Labels.OwnerName:  ownerName,
-		metadata.Labels.OwnerKind:  ownerKind,
-		metadata.Labels.OwnerUID:   ownerUID,
-		metadata.Labels.ExportType: exportType,
+		metadata.Labels.OwnerName: ownerName,
+		metadata.Labels.OwnerKind: ownerKind,
+		metadata.Labels.OwnerUID:  ownerUID,
 	}
 
 	deleteOptions := []client.DeleteAllOfOption{
 		client.InNamespace(r.config.GatewayNamespace),
 		resourceOwnerLabels,
+		client.MatchingLabelsSelector{Selector: routeTypes},
 	}
 
-	for _, gvk := range gvkList {
+	for _, gvk := range gvks {
 		resource := &unstructured.Unstructured{}
 		resource.SetGroupVersionKind(gvk)
 

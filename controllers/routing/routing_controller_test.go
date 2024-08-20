@@ -16,6 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
@@ -359,19 +360,8 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			externalResourcesShouldExist(ctx, svc)
 			publicResourcesShouldExist(ctx, svc)
 
-			By("removing the external from the export annotation", func() {
-				errGetComponent := envTest.Client.Get(ctx, client.ObjectKey{
-					Namespace: component.GetNamespace(),
-					Name:      component.GetName(),
-				}, component)
-				Expect(errGetComponent).ToNot(HaveOccurred())
-
-				annotations := component.GetAnnotations()
-				annotations[metadata.Annotations.RoutingExportMode] = "public"
-				component.SetAnnotations(annotations)
-
-				errUpdateComponent := envTest.Client.Update(ctx, component)
-				Expect(errUpdateComponent).To(Succeed())
+			By("removing external from the export modes", func() {
+				setExportMode(ctx, component, "public")
 			})
 
 			// then
@@ -381,6 +371,20 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 	})
 
 })
+
+func setExportMode(ctx context.Context, component *unstructured.Unstructured, mode string) {
+	errGetComponent := envTest.Client.Get(ctx, client.ObjectKey{
+		Namespace: component.GetNamespace(),
+		Name:      component.GetName(),
+	}, component)
+	Expect(errGetComponent).ToNot(HaveOccurred())
+
+	annotations := component.GetAnnotations()
+	annotations[metadata.Annotations.RoutingExportMode] = mode
+	component.SetAnnotations(annotations)
+
+	Expect(envTest.Client.Update(ctx, component)).To(Succeed())
+}
 
 func externalResourcesShouldExist(ctx context.Context, svc *corev1.Service) {
 	Eventually(routeExistsFor(svc)).
