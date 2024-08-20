@@ -335,9 +335,9 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 				}, component)
 				Expect(errGetComponent).ToNot(HaveOccurred())
 
-				annotations := component.GetAnnotations()
-				delete(annotations, metadata.Annotations.RoutingExportMode)
-				component.SetAnnotations(annotations)
+				annos := component.GetAnnotations()
+				delete(annos, annotations.RoutingExportMode("").Key())
+				component.SetAnnotations(annos)
 
 				// Update the component in the cluster
 				errUpdateComponent := envTest.Client.Update(ctx, component)
@@ -389,9 +389,9 @@ func setExportMode(ctx context.Context, component *unstructured.Unstructured, mo
 	}, component)
 	Expect(errGetComponent).ToNot(HaveOccurred())
 
-	annotations := component.GetAnnotations()
-	annotations[metadata.Annotations.RoutingExportMode] = mode
-	component.SetAnnotations(annotations)
+	annnos := component.GetAnnotations()
+	annnos[annotations.RoutingExportMode("").Key()] = mode
+	component.SetAnnotations(annnos)
 
 	Expect(envTest.Client.Update(ctx, component)).To(Succeed())
 }

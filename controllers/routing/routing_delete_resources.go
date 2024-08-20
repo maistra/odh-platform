@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
-	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
+	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/labels"
+	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/selection"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -58,26 +58,18 @@ func (r *PlatformRoutingController) deleteOwnedResources(ctx context.Context,
 	target *unstructured.Unstructured,
 	exportModes []spi.RouteType,
 	gvks []schema.GroupVersionKind) error {
-	ownerName := target.GetName()
-	ownerKind := target.GetObjectKind().GroupVersionKind().Kind
-	ownerUID := string(target.GetUID())
-
 	exportTypeValues := make([]string, len(exportModes))
 	for i, mode := range exportModes {
 		exportTypeValues[i] = string(mode)
 	}
 
-	requirement, err := labels.NewRequirement(metadata.Labels.ExportType, selection.In, exportTypeValues)
+	requirement, err := k8slabels.NewRequirement(labels.ExportType("").Key(), selection.In, exportTypeValues)
+
 	if err != nil {
 		return fmt.Errorf("failed to create label requirement: %w", err)
 	}
 
-	routeTypes := labels.NewSelector().Add(*requirement)
-	resourceOwnerLabels := client.MatchingLabels{
-		metadata.Labels.OwnerName: ownerName,
-		metadata.Labels.OwnerKind: ownerKind,
-		metadata.Labels.OwnerUID:  ownerUID,
-	}
+	routeTypes := k8slabels.NewSelector().Add(*requirement)
 
 	deleteOptions := []client.DeleteAllOfOption{
 		client.InNamespace(r.config.GatewayNamespace),

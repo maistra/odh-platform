@@ -84,7 +84,7 @@ func (r *PlatformRoutingController) exportService(ctx context.Context, target *u
 			return fmt.Errorf("could not load templates for type %s: %w", exportMode, err)
 		}
 
-		labelsForCreatedResources = append(labelsForCreatedResources, metadata.WithLabels(metadata.Labels.ExportType, string(exportMode)))
+		ownershipLabels = append(ownershipLabels, labels.ExportType(exportMode))
 		if errApply := cluster.Apply(ctx, r.Client, resources, ownershipLabels...); errApply != nil {
 			return fmt.Errorf("could not apply routing resources for type %s: %w", exportMode, errApply)
 		}
