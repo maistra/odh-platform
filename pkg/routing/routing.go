@@ -70,12 +70,12 @@ func (s *staticTemplateLoader) resolveTemplate(tmpl []byte, data spi.RoutingTemp
 	return buf.Bytes(), nil
 }
 
-func NewAnnotationHostExtractor(separator string, annotations ...string) spi.HostExtractor {
+func NewAnnotationHostExtractor(separator string, annotationKeys ...string) spi.HostExtractor {
 	return func(target *unstructured.Unstructured) ([]string, error) {
 		hosts := []string{}
 
-		for _, annotation := range annotations {
-			if val, found := target.GetAnnotations()[annotation]; found {
+		for _, annKey := range annotationKeys {
+			if val, found := target.GetAnnotations()[annKey]; found {
 				hs := strings.Split(val, separator)
 				hosts = append(hosts, hs...)
 			}

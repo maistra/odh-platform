@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
 	"github.com/opendatahub-io/odh-platform/test"
 	. "github.com/opendatahub-io/odh-platform/test/matchers"
 	"istio.io/api/security/v1beta1"
@@ -96,7 +97,9 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 		}
 
 		_, errCreate := controllerutil.CreateOrUpdate(ctx, envTest.Client, createdComponent, func() error {
-			return metadata.ApplyMetaOptions(createdComponent, metadata.WithAnnotations(metadata.Annotations.AuthEnabled, "true"))
+			metadata.ApplyMetaOptions(createdComponent, annotations.AuthEnabled("true"))
+
+			return nil
 		})
 		Expect(errCreate).ToNot(HaveOccurred())
 
