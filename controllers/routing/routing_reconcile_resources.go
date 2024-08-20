@@ -8,6 +8,8 @@ import (
 
 	"github.com/opendatahub-io/odh-platform/pkg/cluster"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -71,11 +73,8 @@ func (r *PlatformRoutingController) exportService(ctx context.Context, target *u
 		Domain:                       domain,
 	}
 
-	labelsForCreatedResources := []metadata.Options{
-		// TODO(mvp): add standard labels
-		metadata.WithOwnerLabels(target), // To establish ownership for watched component
-		metadata.WithLabels(metadata.Labels.AppManagedBy, "odh-routing-controller"),
-	}
+	// To establish ownership for watched component
+	ownershipLabels := append(labels.AsOwner(target), labels.AppManagedBy("odh-routing-controller"))
 
 	targetKey := client.ObjectKeyFromObject(target)
 
@@ -86,7 +85,7 @@ func (r *PlatformRoutingController) exportService(ctx context.Context, target *u
 		}
 
 		labelsForCreatedResources = append(labelsForCreatedResources, metadata.WithLabels(metadata.Labels.ExportType, string(exportMode)))
-		if errApply := cluster.Apply(ctx, r.Client, resources, labelsForCreatedResources...); errApply != nil {
+		if errApply := cluster.Apply(ctx, r.Client, resources, ownershipLabels...); errApply != nil {
 			return fmt.Errorf("could not apply routing resources for type %s: %w", exportMode, errApply)
 		}
 	}
@@ -100,32 +99,27 @@ func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.Routi
 		return nil
 	}
 
-	var metaOptions []metadata.Options
+	var metaOptions []metadata.Option
 
 	// TODO(mvp): put the logic of creating host names into a single place
 	for _, exportMode := range exportModes {
 		switch exportMode {
 		case spi.ExternalRoute:
-			externalAddress := metadata.WithAnnotations(metadata.Annotations.RoutingAddressesExternal, fmt.Sprintf("%s-%s.%s", data.ServiceName, data.ServiceNamespace, data.Domain))
+			externalAddress := annotations.RoutingAddressesExternal(fmt.Sprintf("%s-%s.%s", data.ServiceName, data.ServiceNamespace, data.Domain))
 			metaOptions = append(metaOptions, externalAddress)
 		case spi.PublicRoute:
-			publicAddresses := metadata.WithAnnotations(
-				metadata.Annotations.RoutingAddressesPublic,
-				fmt.Sprintf("%[1]s.%[2]s;%[1]s.%[2]s.svc;%[1]s.%[2]s.svc.cluster.local", data.PublicServiceName, data.GatewayNamespace),
-			)
+			publicAddresses := annotations.RoutingAddressesPublic(fmt.Sprintf("%[1]s.%[2]s;%[1]s.%[2]s.svc;%[1]s.%[2]s.svc.cluster.local", data.PublicServiceName, data.GatewayNamespace))
 			metaOptions = append(metaOptions, publicAddresses)
 		}
 	}
 
-	if errApply := metadata.ApplyMetaOptions(target, metaOptions...); errApply != nil {
-		return fmt.Errorf("could not propagate hosts back to target %s/%s : %w", target.GetObjectKind().GroupVersionKind().Kind, target.GetName(), errApply)
-	}
+	metadata.ApplyMetaOptions(target, metaOptions...)
 
 	return nil
 }
 
 func extractExportModes(target *unstructured.Unstructured) []spi.RouteType {
-	exportModes, exportModeFound := target.GetAnnotations()[metadata.Annotations.RoutingExportMode]
+	exportModes, exportModeFound := target.GetAnnotations()[annotations.RoutingExportMode("").Key()]
 	if !exportModeFound {
 		return nil
 	}

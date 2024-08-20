@@ -8,6 +8,7 @@ import (
 
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -94,12 +95,7 @@ func createAuthConfig(authConfigTpl authorinov1beta2.AuthConfig, hosts []string,
 
 	authConfigTpl.Labels[keyValue[0]] = keyValue[1]
 
-	stdLabels := metadata.ApplyStandard(target.GetLabels())
-	for k, v := range stdLabels {
-		if _, found := authConfigTpl.Labels[k]; !found {
-			authConfigTpl.Labels[k] = v
-		}
-	}
+	metadata.ApplyMetaOptions(&authConfigTpl, labels.AppendStandardLabelsFrom(target))
 
 	authConfigTpl.Name = target.GetName()
 	authConfigTpl.Namespace = target.GetNamespace()

@@ -6,6 +6,7 @@ import (
 
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -80,7 +81,11 @@ func (r *PlatformRoutingController) deleteOwnedResources(ctx context.Context,
 
 	deleteOptions := []client.DeleteAllOfOption{
 		client.InNamespace(r.config.GatewayNamespace),
-		resourceOwnerLabels,
+		labels.MatchingLabels(
+			labels.OwnerName(target.GetName()),
+			labels.OwnerKind(target.GetObjectKind().GroupVersionKind().Kind),
+			labels.OwnerUID(target.GetUID()),
+		),
 		client.MatchingLabelsSelector{Selector: routeTypes},
 	}
 
