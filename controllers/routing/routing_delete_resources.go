@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -33,19 +34,13 @@ func (r *PlatformRoutingController) HandleResourceDeletion(ctx context.Context, 
 }
 
 func (r *PlatformRoutingController) deleteOwnedResources(ctx context.Context, target *unstructured.Unstructured, gvkList []schema.GroupVersionKind) error {
-	ownerName := target.GetName()
-	ownerKind := target.GetObjectKind().GroupVersionKind().Kind
-	ownerUID := string(target.GetUID())
-
-	resourceOwnerLabels := client.MatchingLabels{
-		metadata.Labels.OwnerName: ownerName,
-		metadata.Labels.OwnerKind: ownerKind,
-		metadata.Labels.OwnerUID:  ownerUID,
-	}
-
 	deleteOptions := []client.DeleteAllOfOption{
 		client.InNamespace(r.config.GatewayNamespace),
-		resourceOwnerLabels,
+		labels.MatchingLabels(
+			labels.OwnerName(target.GetName()),
+			labels.OwnerKind(target.GetObjectKind().GroupVersionKind().Kind),
+			labels.OwnerUID(target.GetUID()),
+		),
 	}
 
 	for _, gvk := range gvkList {

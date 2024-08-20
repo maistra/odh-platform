@@ -6,7 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/opendatahub-io/odh-platform/pkg/metadata"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
 	"github.com/opendatahub-io/odh-platform/test"
 	. "github.com/opendatahub-io/odh-platform/test/matchers"
 	openshiftroutev1 "github.com/openshift/api/route/v1"
@@ -123,11 +123,13 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 				}
 
 				g.Expect(updatedComponent.GetAnnotations()).ToNot(HaveKey(
-					metadata.Annotations.RoutingAddressesPublic,
+					annotations.RoutingAddressesPublic("").Key(),
 				), "public services are not expected to be defined in this mode")
 
+				externalAddressesAnnotation := annotations.RoutingAddressesExternal(fmt.Sprintf("%s-%s.%s", svc.Name, svc.Namespace, domain))
+
 				g.Expect(updatedComponent.GetAnnotations()).To(HaveKeyWithValue(
-					metadata.Annotations.RoutingAddressesExternal, fmt.Sprintf("%s-%s.%s", svc.Name, svc.Namespace, domain),
+					externalAddressesAnnotation.Key(), externalAddressesAnnotation.Value(),
 				))
 
 				return nil
@@ -184,14 +186,16 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 
 				g.Expect(updatedComponent.GetAnnotations()).ToNot(
 					HaveKey(
-						metadata.Annotations.RoutingAddressesExternal,
+						annotations.RoutingAddressesExternal("").Key(),
 					), "public services are not expected to be defined in this mode")
 
+				publicAddressAnnotation := annotations.RoutingAddressesPublic(
+					fmt.Sprintf("%[1]s-%[2]s.%[3]s;%[1]s-%[2]s.%[3]s.svc;%[1]s-%[2]s.%[3]s.svc.cluster.local",
+						svc.Name, svc.Namespace, routingConfiguration.GatewayNamespace),
+				)
+
 				g.Expect(updatedComponent.GetAnnotations()).To(
-					HaveKeyWithValue(
-						metadata.Annotations.RoutingAddressesPublic,
-						fmt.Sprintf("%[1]s-%[2]s.%[3]s;%[1]s-%[2]s.%[3]s.svc;%[1]s-%[2]s.%[3]s.svc.cluster.local", svc.Name, svc.Namespace, routingConfiguration.GatewayNamespace),
-					),
+					HaveKeyWithValue(publicAddressAnnotation.Key(), publicAddressAnnotation.Value()),
 				)
 
 				return nil
@@ -230,15 +234,21 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 					return errGet
 				}
 
+				externalAddressAnnotation := annotations.RoutingAddressesExternal(fmt.Sprintf("%s-%s.%s", svc.Name, svc.Namespace, domain))
+
+				publicAddrAnnotation := annotations.RoutingAddressesPublic(
+					fmt.Sprintf("%[1]s-%[2]s.%[3]s;%[1]s-%[2]s.%[3]s.svc;%[1]s-%[2]s.%[3]s.svc.cluster.local",
+						svc.Name, svc.Namespace, routingConfiguration.GatewayNamespace,
+					),
+				)
+
 				g.Expect(updatedComponent.GetAnnotations()).To(
 					And(
 						HaveKeyWithValue(
-							metadata.Annotations.RoutingAddressesExternal,
-							fmt.Sprintf("%s-%s.%s", svc.Name, svc.Namespace, domain),
+							externalAddressAnnotation.Key(), externalAddressAnnotation.Value(),
 						),
 						HaveKeyWithValue(
-							metadata.Annotations.RoutingAddressesPublic,
-							fmt.Sprintf("%[1]s-%[2]s.%[3]s;%[1]s-%[2]s.%[3]s.svc;%[1]s-%[2]s.%[3]s.svc.cluster.local", svc.Name, svc.Namespace, routingConfiguration.GatewayNamespace),
+							publicAddrAnnotation.Key(), publicAddrAnnotation.Value(),
 						),
 					),
 				)

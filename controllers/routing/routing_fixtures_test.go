@@ -6,6 +6,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/opendatahub-io/odh-platform/pkg/cluster"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
 	"github.com/opendatahub-io/odh-platform/test"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -34,14 +36,14 @@ func getClusterDomain(ctx context.Context, cli client.Client) string {
 // and it also sets labels for the owner component's name and kind, using
 // "platform.opendatahub.io/owner-name" and "platform.opendatahub.io/owner-kind" respectively.
 func addRoutingRequirementsToSvc(ctx context.Context, exportedSvc *corev1.Service, owningComponent *unstructured.Unstructured) {
-	exportAnnotation := metadata.WithLabels(metadata.Labels.RoutingExported, "true")
-	ownerLabels := metadata.WithLabels(
-		metadata.Labels.OwnerName, owningComponent.GetName(),
-		metadata.Labels.OwnerKind, owningComponent.GetKind(),
-	)
+	exportedLabel := labels.RoutingExported("true")
+	ownerName := labels.OwnerName(owningComponent.GetName())
+	ownerKind := labels.OwnerKind(owningComponent.GetObjectKind().GroupVersionKind().Kind)
 
 	_, errExportSvc := controllerutil.CreateOrUpdate(ctx, envTest.Client, exportedSvc, func() error {
-		return metadata.ApplyMetaOptions(exportedSvc, exportAnnotation, ownerLabels)
+		metadata.ApplyMetaOptions(exportedSvc, exportedLabel, ownerName, ownerKind)
+
+		return nil
 	})
 	Expect(errExportSvc).ToNot(HaveOccurred())
 }
@@ -51,13 +53,7 @@ func createComponentRequiringPlatformRouting(ctx context.Context, componentName,
 	Expect(errCreate).ToNot(HaveOccurred())
 
 	// set component's "routing.opendatahub.io/export-mode" annotation to the specified mode.
-	annotations := component.GetAnnotations()
-	if annotations == nil {
-		annotations = make(map[string]string)
-	}
-
-	annotations[metadata.Annotations.RoutingExportMode] = mode
-	component.SetAnnotations(annotations)
+	metadata.ApplyMetaOptions(component, annotations.RoutingExportMode(mode))
 
 	return component, envTest.Client.Create(ctx, component)
 }
