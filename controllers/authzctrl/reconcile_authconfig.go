@@ -1,4 +1,4 @@
-package authorization
+package authzctrl
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *PlatformAuthorizationController) reconcileAuthConfig(ctx context.Context, target *unstructured.Unstructured) error {
+func (r *Controller) reconcileAuthConfig(ctx context.Context, target *unstructured.Unstructured) error {
 	hosts, err := r.extractHosts(target)
 	if err != nil {
 		return err
@@ -112,7 +112,7 @@ func CompareAuthConfigs(m1, m2 *authorinov1beta2.AuthConfig) bool {
 		reflect.DeepEqual(m1.Spec, m2.Spec)
 }
 
-func (r *PlatformAuthorizationController) createAuthConfigTemplate(ctx context.Context, target *unstructured.Unstructured) (authorinov1beta2.AuthConfig, error) {
+func (r *Controller) createAuthConfigTemplate(ctx context.Context, target *unstructured.Unstructured) (authorinov1beta2.AuthConfig, error) {
 	authType, err := r.typeDetector.Detect(ctx, target)
 	if err != nil {
 		return authorinov1beta2.AuthConfig{}, fmt.Errorf("could not detect authtype: %w", err)
@@ -126,7 +126,7 @@ func (r *PlatformAuthorizationController) createAuthConfigTemplate(ctx context.C
 	return templ, nil
 }
 
-func (r *PlatformAuthorizationController) extractHosts(target *unstructured.Unstructured) ([]string, error) {
+func (r *Controller) extractHosts(target *unstructured.Unstructured) ([]string, error) {
 	hosts, err := r.hostExtractor(target)
 	if err != nil {
 		return nil, fmt.Errorf("could not extract host: %w", err)
