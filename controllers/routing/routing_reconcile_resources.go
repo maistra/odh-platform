@@ -11,6 +11,7 @@ import (
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
+	"github.com/opendatahub-io/odh-platform/pkg/unstruct"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -78,7 +79,7 @@ func (r *PlatformRoutingController) exportService(ctx context.Context, target *u
 			return fmt.Errorf("could not load templates for type %s: %w", exportMode, err)
 		}
 
-		if errApply := cluster.Apply(ctx, r.Client, resources, ownershipLabels...); errApply != nil {
+		if errApply := unstruct.Apply(ctx, r.Client, resources, ownershipLabels...); errApply != nil {
 			return fmt.Errorf("could not apply routing resources for type %s: %w", exportMode, errApply)
 		}
 	}
