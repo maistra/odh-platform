@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-func (r *PlatformRoutingController) removeUnusedRoutingResources(ctx context.Context, target *unstructured.Unstructured) error {
+func (r *Controller) removeUnusedRoutingResources(ctx context.Context, target *unstructured.Unstructured) error {
 	exportModes := extractExportModes(target, r.log)
 	unusedRouteTypes := spi.UnusedRouteTypes(exportModes)
 

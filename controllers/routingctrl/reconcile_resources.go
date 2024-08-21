@@ -23,6 +23,7 @@ func (r *Controller) createRoutingResources(ctx context.Context, target *unstruc
 
 	if len(exportModes) == 0 {
 		r.log.Info("No export mode found for target")
+
 		return nil
 	}
 

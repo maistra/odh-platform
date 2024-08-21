@@ -57,3 +57,7 @@ func patchUsingApplyStrategy(ctx context.Context, cli client.Client, source, tar
 
 	return nil
 }
+
+func IsMarkedForDeletion(target *unstructured.Unstructured) bool {
+	return !target.GetDeletionTimestamp().IsZero()
+}

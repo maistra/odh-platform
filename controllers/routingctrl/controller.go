@@ -11,6 +11,7 @@ import (
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/routing"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
+	"github.com/opendatahub-io/odh-platform/pkg/unstruct"
 	openshiftroutev1 "github.com/openshift/api/route/v1"
 	istionetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
@@ -81,7 +82,7 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	r.log.Info("triggered routing reconcile", "namespace", req.Namespace, "name", req.Name)
 
-	if IsMarkedForDeletion(sourceRes) {
+	if unstruct.IsMarkedForDeletion(sourceRes) {
 		return ctrl.Result{}, r.handleResourceDeletion(ctx, sourceRes)
 	}
 
@@ -137,8 +138,4 @@ func (r *Controller) Activate() {
 
 func (r *Controller) Deactivate() {
 	r.active = false
-}
-
-func IsMarkedForDeletion(target *unstructured.Unstructured) bool {
-	return !target.GetDeletionTimestamp().IsZero()
 }
