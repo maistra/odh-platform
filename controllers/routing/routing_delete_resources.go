@@ -16,7 +16,7 @@ import (
 )
 
 func (r *PlatformRoutingController) removeUnusedRoutingResources(ctx context.Context, target *unstructured.Unstructured) error {
-	exportModes := extractExportModes(target)
+	exportModes := extractExportModes(target, r.log)
 	unusedRouteTypes := spi.UnusedRouteTypes(exportModes)
 
 	if len(unusedRouteTypes) == 0 {
@@ -24,16 +24,13 @@ func (r *PlatformRoutingController) removeUnusedRoutingResources(ctx context.Con
 		return nil
 	}
 
-	var gvks []schema.GroupVersionKind
-	for _, unusedRouteType := range unusedRouteTypes {
-		gvks = append(gvks, routingResourceGVKs(unusedRouteType)...)
-	}
+	gvks := routingResourceGVKs(unusedRouteTypes...)
 
 	return r.deleteOwnedResources(ctx, target, unusedRouteTypes, gvks)
 }
 
 func (r *PlatformRoutingController) handleResourceDeletion(ctx context.Context, sourceRes *unstructured.Unstructured) error {
-	exportModes := extractExportModes(sourceRes)
+	exportModes := extractExportModes(sourceRes, r.log)
 	if len(exportModes) == 0 {
 		r.log.Info("No export modes found, skipping deletion logic", "sourceRes", sourceRes)
 
@@ -42,10 +39,7 @@ func (r *PlatformRoutingController) handleResourceDeletion(ctx context.Context, 
 
 	r.log.Info("Handling deletion of dependent resources", "sourceRes", sourceRes)
 
-	var gvks []schema.GroupVersionKind
-	for _, exportMode := range exportModes {
-		gvks = append(gvks, routingResourceGVKs(exportMode)...)
-	}
+	gvks := routingResourceGVKs(exportModes...)
 
 	if err := r.deleteOwnedResources(ctx, sourceRes, exportModes, gvks); err != nil {
 		return fmt.Errorf("failed to delete resources: %w", err)

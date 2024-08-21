@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/opendatahub-io/odh-platform/pkg/cluster"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
@@ -17,11 +18,7 @@ import (
 )
 
 func (r *PlatformRoutingController) createRoutingResources(ctx context.Context, target *unstructured.Unstructured) error {
-	if IsMarkedForDeletion(target) {
-		return nil
-	}
-
-	exportModes := extractExportModes(target)
+	exportModes := extractExportModes(target, r.log)
 
 	if len(exportModes) == 0 {
 		r.log.Info("No export mode found for target")
@@ -59,7 +56,7 @@ func (r *PlatformRoutingController) createRoutingResources(ctx context.Context, 
 }
 
 func (r *PlatformRoutingController) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
-	exportModes := extractExportModes(target)
+	exportModes := extractExportModes(target, r.log)
 	if len(exportModes) == 0 {
 		return nil
 	}
@@ -90,11 +87,11 @@ func (r *PlatformRoutingController) exportService(ctx context.Context, target *u
 		}
 	}
 
-	return propagateHostsToWatchedCR(target, templateData)
+	return propagateHostsToWatchedCR(target, templateData, r.log)
 }
 
-func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.RoutingTemplateData) error {
-	exportModes := extractExportModes(target)
+func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.RoutingTemplateData, log logr.Logger) error {
+	exportModes := extractExportModes(target, log)
 	if len(exportModes) == 0 {
 		return nil
 	}
@@ -118,18 +115,26 @@ func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.Routi
 	return nil
 }
 
-func extractExportModes(target *unstructured.Unstructured) []spi.RouteType {
+func extractExportModes(target *unstructured.Unstructured, log logr.Logger) []spi.RouteType {
 	exportModes, exportModeFound := target.GetAnnotations()[annotations.RoutingExportMode("").Key()]
 	if !exportModeFound {
 		return nil
 	}
 
 	exportModesSplit := strings.Split(exportModes, ";")
-	routeTypes := make([]spi.RouteType, len(exportModesSplit))
+	validRouteTypes := make([]spi.RouteType, 0, len(exportModesSplit))
 
-	for i, exportMode := range exportModesSplit {
-		routeTypes[i] = spi.RouteType(exportMode)
+	for _, exportMode := range exportModesSplit {
+		routeType := spi.RouteType(strings.TrimSpace(exportMode))
+		if spi.IsValidRouteType(routeType) {
+			validRouteTypes = append(validRouteTypes, routeType)
+		} else {
+			log.Info("Invalid route type found",
+				"invalidRouteType", routeType,
+				"resourceName", target.GetName(),
+				"resourceNamespace", target.GetNamespace())
+		}
 	}
 
-	return routeTypes
+	return validRouteTypes
 }

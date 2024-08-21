@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
 	"github.com/opendatahub-io/odh-platform/test"
 	. "github.com/opendatahub-io/odh-platform/test/matchers"
@@ -328,20 +329,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 
 			// when
 			By("removing the export annotation", func() {
-				// Re-fetch the component from the cluster to get the latest version
-				errGetComponent := envTest.Client.Get(ctx, client.ObjectKey{
-					Namespace: component.GetNamespace(),
-					Name:      component.GetName(),
-				}, component)
-				Expect(errGetComponent).ToNot(HaveOccurred())
-
-				annos := component.GetAnnotations()
-				delete(annos, annotations.RoutingExportMode("").Key())
-				component.SetAnnotations(annos)
-
-				// Update the component in the cluster
-				errUpdateComponent := envTest.Client.Update(ctx, component)
-				Expect(errUpdateComponent).To(Succeed())
+				setExportMode(ctx, component, remove)
 			})
 
 			// then
@@ -378,20 +366,70 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			externalResourcesShouldNotExist(ctx, svc)
 			publicResourcesShouldExist(ctx, svc)
 		})
+
+		It("should remove all routing resources when the unsupported mode is used", func(ctx context.Context) {
+			// given
+			// required annotation for watched custom resource:
+			// 	routing.opendatahub.io/export-mode: "public;external"
+			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-changed-to-non-existing",
+				"public;external", appNs.Name)
+			Expect(createErr).ToNot(HaveOccurred())
+
+			// required labels for the exported service:
+			// 	routing.opendatahub.io/exported: "true"
+			// 	platform.opendatahub.io/owner-name: test-component
+			// 	platform.opendatahub.io/owner-kind: Component
+			addRoutingRequirementsToSvc(ctx, svc, component)
+
+			// then
+			externalResourcesShouldExist(ctx, svc)
+			publicResourcesShouldExist(ctx, svc)
+
+			By("removing external from the export modes", func() {
+				setExportMode(ctx, component, "not-supported-mode")
+			})
+
+			// then
+			externalResourcesShouldNotExist(ctx, svc)
+			publicResourcesShouldNotExist(ctx, svc)
+
+			errGetComponent := envTest.Client.Get(ctx, client.ObjectKey{
+				Namespace: component.GetNamespace(),
+				Name:      component.GetName(),
+			}, component)
+			Expect(errGetComponent).ToNot(HaveOccurred())
+			fmt.Println("annotations:", component.GetAnnotations())
+		})
 	})
 
 })
 
-func setExportMode(ctx context.Context, component *unstructured.Unstructured, mode string) {
+type exportMode string
+
+var remove = exportMode("--blank--")
+
+func (m exportMode) ApplyToMeta(obj metav1.Object) {
+	annos := obj.GetAnnotations()
+	key := annotations.RoutingExportMode("").Key()
+
+	switch m {
+	default:
+		annos[key] = string(m)
+	case remove:
+		delete(annos, key)
+	}
+
+	obj.SetAnnotations(annos)
+}
+
+func setExportMode(ctx context.Context, component *unstructured.Unstructured, mode exportMode) {
 	errGetComponent := envTest.Client.Get(ctx, client.ObjectKey{
 		Namespace: component.GetNamespace(),
 		Name:      component.GetName(),
 	}, component)
 	Expect(errGetComponent).ToNot(HaveOccurred())
 
-	annnos := component.GetAnnotations()
-	annnos[annotations.RoutingExportMode("").Key()] = mode
-	component.SetAnnotations(annnos)
+	metadata.ApplyMetaOptions(component, mode)
 
 	Expect(envTest.Client.Update(ctx, component)).To(Succeed())
 }

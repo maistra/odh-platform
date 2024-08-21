@@ -75,6 +75,16 @@ func AllRouteTypes() []RouteType {
 	return []RouteType{PublicRoute, ExternalRoute}
 }
 
+func IsValidRouteType(routeType RouteType) bool {
+	for _, validType := range AllRouteTypes() {
+		if routeType == validType {
+			return true
+		}
+	}
+
+	return false
+}
+
 func UnusedRouteTypes(exportModes []RouteType) []RouteType {
 	used := make(map[RouteType]bool)
 
