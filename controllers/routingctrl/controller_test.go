@@ -398,7 +398,6 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 				Name:      component.GetName(),
 			}, component)
 			Expect(errGetComponent).ToNot(HaveOccurred())
-			fmt.Println("annotations:", component.GetAnnotations())
 		})
 	})
 
