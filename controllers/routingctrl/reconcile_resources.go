@@ -1,4 +1,4 @@
-package routing
+package routingctrl
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *PlatformRoutingController) reconcileResources(ctx context.Context, target *unstructured.Unstructured) error {
+func (r *Controller) reconcileResources(ctx context.Context, target *unstructured.Unstructured) error {
 	// TODO shouldn't we make it a predicate for ctrl watch instead
 	_, exportModeFound := extractExportModes(target)
 	if !exportModeFound {
@@ -53,7 +53,7 @@ func (r *PlatformRoutingController) reconcileResources(ctx context.Context, targ
 	return errors.Join(errSvcExport...)
 }
 
-func (r *PlatformRoutingController) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
+func (r *Controller) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
 	exportModes, found := extractExportModes(target)
 	if !found {
 		return fmt.Errorf("could not extract export modes from target %s", target.GetName())

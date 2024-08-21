@@ -1,4 +1,4 @@
-package routing
+package routingctrl
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 )
 
 // HandleResourceDeletion handles the removal of dependent resources when the target resource is being deleted.
-func (r *PlatformRoutingController) HandleResourceDeletion(ctx context.Context, sourceRes *unstructured.Unstructured) (ctrl.Result, error) {
+func (r *Controller) HandleResourceDeletion(ctx context.Context, sourceRes *unstructured.Unstructured) (ctrl.Result, error) {
 	exportModes, found := extractExportModes(sourceRes)
 	if !found {
 		r.log.Info("No export modes found, skipping deletion logic", "sourceRes", sourceRes)
@@ -33,7 +33,7 @@ func (r *PlatformRoutingController) HandleResourceDeletion(ctx context.Context, 
 	return removeFinalizer(ctx, r.Client, sourceRes)
 }
 
-func (r *PlatformRoutingController) deleteOwnedResources(ctx context.Context, target *unstructured.Unstructured, gvkList []schema.GroupVersionKind) error {
+func (r *Controller) deleteOwnedResources(ctx context.Context, target *unstructured.Unstructured, gvkList []schema.GroupVersionKind) error {
 	deleteOptions := []client.DeleteAllOfOption{
 		client.InNamespace(r.config.GatewayNamespace),
 		labels.MatchingLabels(

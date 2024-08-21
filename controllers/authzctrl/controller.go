@@ -1,4 +1,4 @@
-package authorization
+package authzctrl
 
 import (
 	"context"
@@ -23,15 +23,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const ctrlName = "authorization"
+const name = "authorization"
 
-func NewPlatformAuthorizationController(cli client.Client, log logr.Logger,
-	component spi.AuthorizationComponent, config PlatformAuthorizationConfig) *PlatformAuthorizationController {
-	return &PlatformAuthorizationController{
+func New(cli client.Client, log logr.Logger,
+	component spi.AuthorizationComponent, config PlatformAuthorizationConfig) *Controller {
+	return &Controller{
 		active: true,
 		Client: cli,
 		log: log.WithValues(
-			"controller", ctrlName,
+			"controller", name,
 			"component", component.ObjectReference.Kind,
 		),
 		config:        config,
@@ -54,8 +54,8 @@ type PlatformAuthorizationConfig struct {
 	ProviderName string
 }
 
-// PlatformAuthorizationController holds the controller configuration.
-type PlatformAuthorizationController struct {
+// Controller holds the authorization controller configuration.
+type Controller struct {
 	client.Client
 	active         bool
 	log            logr.Logger
@@ -69,8 +69,8 @@ type PlatformAuthorizationController struct {
 // +kubebuilder:rbac:groups=authorino.kuadrant.io,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=security.istio.io,resources=authorizationpolicies,verbs=get;list;watch;create;update;patch;delete
 
-// Reconcile ensures that the namespace has all required resources needed to be part of the Service Mesh of Open Data Hub.
-func (r *PlatformAuthorizationController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+// Reconcile ensures that the component has all required resources needed to use authorization capability of the platform.
+func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	if !r.active {
 		r.log.V(5).Info("controller is not active")
 
@@ -104,7 +104,11 @@ func (r *PlatformAuthorizationController) Reconcile(ctx context.Context, req ctr
 	return ctrl.Result{}, errors.Join(errs...)
 }
 
-func (r *PlatformAuthorizationController) SetupWithManager(mgr ctrl.Manager) error {
+func (r *Controller) Name() string {
+	return name + "-" + strings.ToLower(r.authComponent.ObjectReference.Kind)
+}
+
+func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
 	if r.Client == nil {
 		// Ensures client is set - fall back to the one defined for the passed manager
 		r.Client = mgr.GetClient()
@@ -113,7 +117,7 @@ func (r *PlatformAuthorizationController) SetupWithManager(mgr ctrl.Manager) err
 	// TODO(mvp): define predicates so we do not reconcile unnecessarily
 	//nolint:wrapcheck //reason there is no point in wrapping it
 	return ctrl.NewControllerManagedBy(mgr).
-		Named(ctrlName+"-"+strings.ToLower(r.authComponent.ObjectReference.Kind)).
+		Named(r.Name()).
 		For(&metav1.PartialObjectMetadata{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: r.authComponent.ObjectReference.GroupVersion().String(),
@@ -125,11 +129,11 @@ func (r *PlatformAuthorizationController) SetupWithManager(mgr ctrl.Manager) err
 		Complete(r)
 }
 
-func (r *PlatformAuthorizationController) Activate() {
+func (r *Controller) Activate() {
 	r.active = true
 }
 
-func (r *PlatformAuthorizationController) Deactivate() {
+func (r *Controller) Deactivate() {
 	r.active = false
 }
 

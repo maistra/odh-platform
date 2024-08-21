@@ -1,4 +1,4 @@
-package authorization_test
+package authzctrl_test
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/opendatahub-io/odh-platform/controllers/authorization"
+	"github.com/opendatahub-io/odh-platform/controllers/authzctrl"
 	"github.com/opendatahub-io/odh-platform/pkg/config"
 	"github.com/opendatahub-io/odh-platform/pkg/platform"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
@@ -30,7 +30,7 @@ var _ = SynchronizedBeforeSuite(func(ctx context.Context) {
 	}
 
 	envTest, cancelFunc = test.StartWithControllers(
-		authorization.NewPlatformAuthorizationController(
+		authzctrl.New(
 			nil,
 			ctrl.Log.WithName("controllers").WithName("platform"),
 			spi.AuthorizationComponent{
@@ -48,7 +48,7 @@ var _ = SynchronizedBeforeSuite(func(ctx context.Context) {
 					HostPaths:        []string{"spec.host"},
 				},
 			},
-			authorization.PlatformAuthorizationConfig{
+			authzctrl.PlatformAuthorizationConfig{
 				Label:        config.GetAuthorinoLabel(),
 				Audiences:    config.GetAuthAudience(),
 				ProviderName: config.GetAuthProvider(),

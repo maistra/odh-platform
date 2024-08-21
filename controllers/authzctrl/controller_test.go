@@ -1,4 +1,4 @@
-package authorization_test
+package authzctrl_test
 
 import (
 	"context"
