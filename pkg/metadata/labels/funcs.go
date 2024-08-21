@@ -38,7 +38,12 @@ func StandardLabelsFrom(source metav1.Object) []metadata.Option {
 // AppendStandardLabelsFrom appends standard labels found in source object but only
 // when they are not already present in the target object.
 func AppendStandardLabelsFrom(source metav1.Object) *LabelAppender {
-	return &LabelAppender{labels: standardLabelsFrom(source)}
+	return AppendLabels(standardLabelsFrom(source)...)
+}
+
+// AppendLabels appends provided labels to the target object but only when they are not already present.
+func AppendLabels(labels ...Label) *LabelAppender {
+	return &LabelAppender{labels: labels}
 }
 
 // MatchingLabels returns a client.MatchingLabels selector for the provided labels.

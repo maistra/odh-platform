@@ -9,6 +9,7 @@ import (
 
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/opendatahub-io/odh-platform/pkg/platform"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -130,8 +131,7 @@ type PlatformRoutingConfiguration struct {
 	GatewayNamespace string
 }
 
-// TODO(mvp) revise the stuct name - is it only for templates?
-type RoutingTemplateData struct {
+type RoutingData struct {
 	PlatformRoutingConfiguration
 
 	PublicServiceName string // [service-name]-[service-namespace]
@@ -143,10 +143,18 @@ type RoutingTemplateData struct {
 	Domain string
 }
 
-// RoutingTemplateLoader provides a way to differentiate the Route template used based on
-//   - RouteType
-//   - Namespace / Resource name
-//   - Loader source
+func NewRoutingData(config PlatformRoutingConfiguration, svc *corev1.Service, domain string) *RoutingData {
+	return &RoutingData{
+		PlatformRoutingConfiguration: config,
+		PublicServiceName:            svc.GetName() + "-" + svc.GetNamespace(),
+		ServiceName:                  svc.GetName(),
+		ServiceNamespace:             svc.GetNamespace(),
+		ServiceTargetPort:            svc.Spec.Ports[0].TargetPort.String(),
+		Domain:                       domain,
+	}
+}
+
+// RoutingTemplateLoader provides a way to differentiate the Route resource templates used based on its types.
 type RoutingTemplateLoader interface {
-	Load(ctx context.Context, routeType RouteType, key types.NamespacedName, data RoutingTemplateData) ([]*unstructured.Unstructured, error)
+	Load(data *RoutingData, routeType RouteType) ([]*unstructured.Unstructured, error)
 }
