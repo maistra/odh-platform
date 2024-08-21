@@ -4,8 +4,8 @@ import (
 	"flag"
 	"os"
 
-	"github.com/opendatahub-io/odh-platform/controllers/authorization"
-	"github.com/opendatahub-io/odh-platform/controllers/routing"
+	"github.com/opendatahub-io/odh-platform/controllers/authzctrl"
+	"github.com/opendatahub-io/odh-platform/controllers/routingctrl"
 	"github.com/opendatahub-io/odh-platform/pkg/config"
 	pschema "github.com/opendatahub-io/odh-platform/pkg/schema"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
@@ -66,14 +66,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	authorizationConfig := authorization.PlatformAuthorizationConfig{
+	authorizationConfig := authzctrl.PlatformAuthorizationConfig{
 		Label:        config.GetAuthorinoLabel(),
 		Audiences:    config.GetAuthAudience(),
 		ProviderName: config.GetAuthProvider(),
 	}
 
 	for _, component := range authorizationComponents {
-		if err = authorization.NewPlatformAuthorizationController(mgr.GetClient(), ctrlLog, component, authorizationConfig).
+		if err = authzctrl.New(mgr.GetClient(), ctrlLog, component, authorizationConfig).
 			SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "authorization", "component", component.ObjectReference.Kind)
 			os.Exit(1)
@@ -94,7 +94,7 @@ func main() {
 	}
 
 	for _, component := range routingComponents {
-		if err = routing.NewPlatformRoutingController(
+		if err = routingctrl.New(
 			mgr.GetClient(),
 			ctrlLog,
 			component,

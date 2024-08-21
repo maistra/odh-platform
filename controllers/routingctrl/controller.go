@@ -1,4 +1,4 @@
-package routing
+package routingctrl
 
 import (
 	"context"
@@ -22,14 +22,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-const ctrlName = "routing"
+const name = "routing"
 
-func NewPlatformRoutingController(cli client.Client, log logr.Logger, component spi.RoutingComponent, config spi.PlatformRoutingConfiguration) *PlatformRoutingController {
-	return &PlatformRoutingController{
+func New(cli client.Client, log logr.Logger, component spi.RoutingComponent, config spi.PlatformRoutingConfiguration) *Controller {
+	return &Controller{
 		active: true,
 		Client: cli,
 		log: log.WithValues(
-			"controller", ctrlName,
+			"controller", name,
 			"component", component.ObjectReference.Kind,
 		),
 		component:      component,
@@ -38,8 +38,8 @@ func NewPlatformRoutingController(cli client.Client, log logr.Logger, component 
 	}
 }
 
-// PlatformRoutingController holds the controller configuration.
-type PlatformRoutingController struct {
+// Controller holds the routing controller configuration.
+type Controller struct {
 	client.Client
 	active         bool
 	log            logr.Logger
@@ -53,8 +53,8 @@ type PlatformRoutingController struct {
 // +kubebuilder:rbac:groups="networking.istio.io",resources=gateways,verbs=*
 // +kubebuilder:rbac:groups="networking.istio.io",resources=destinationrules,verbs=*
 
-// Reconcile ensures that the namespace has all required resources needed to be part of the Service Mesh of Open Data Hub.
-func (r *PlatformRoutingController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+// Reconcile ensures that the component has all required resources needed to use routing capability of the platform.
+func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	if !r.active {
 		r.log.V(5).Info("controller is not active")
 
@@ -104,7 +104,11 @@ func (r *PlatformRoutingController) Reconcile(ctx context.Context, req ctrl.Requ
 	return ctrl.Result{}, errors.Join(errs...)
 }
 
-func (r *PlatformRoutingController) SetupWithManager(mgr ctrl.Manager) error {
+func (r *Controller) Name() string {
+	return name + "-" + strings.ToLower(r.component.ObjectReference.Kind)
+}
+
+func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
 	if r.Client == nil {
 		// Ensures client is set - fall back to the one defined for the passed manager
 		r.Client = mgr.GetClient()
@@ -113,7 +117,7 @@ func (r *PlatformRoutingController) SetupWithManager(mgr ctrl.Manager) error {
 	// TODO(mvp) define predicates for labels, annotation and generation changes
 	//nolint:wrapcheck //reason there is no point in wrapping it
 	return ctrl.NewControllerManagedBy(mgr).
-		Named(ctrlName+"-"+strings.ToLower(r.component.ObjectReference.Kind)).
+		Named(r.Name()).
 		For(&metav1.PartialObjectMetadata{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: r.component.ObjectReference.GroupVersion().String(),
@@ -127,11 +131,11 @@ func (r *PlatformRoutingController) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *PlatformRoutingController) Activate() {
+func (r *Controller) Activate() {
 	r.active = true
 }
 
-func (r *PlatformRoutingController) Deactivate() {
+func (r *Controller) Deactivate() {
 	r.active = false
 }
 

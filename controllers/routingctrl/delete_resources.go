@@ -1,4 +1,4 @@
-package routing
+package routingctrl
 
 import (
 	"context"
@@ -29,7 +29,7 @@ func (r *PlatformRoutingController) removeUnusedRoutingResources(ctx context.Con
 	return r.deleteOwnedResources(ctx, target, unusedRouteTypes, gvks)
 }
 
-func (r *PlatformRoutingController) handleResourceDeletion(ctx context.Context, sourceRes *unstructured.Unstructured) error {
+func (r *Controller) handleResourceDeletion(ctx context.Context, sourceRes *unstructured.Unstructured) error {
 	exportModes := extractExportModes(sourceRes, r.log)
 	if len(exportModes) == 0 {
 		r.log.Info("No export modes found, skipping deletion logic", "sourceRes", sourceRes)
@@ -48,7 +48,7 @@ func (r *PlatformRoutingController) handleResourceDeletion(ctx context.Context, 
 	return removeFinalizer(ctx, r.Client, sourceRes)
 }
 
-func (r *PlatformRoutingController) deleteOwnedResources(ctx context.Context,
+func (r *Controller) deleteOwnedResources(ctx context.Context,
 	target *unstructured.Unstructured,
 	exportModes []spi.RouteType,
 	gvks []schema.GroupVersionKind) error {
@@ -64,7 +64,6 @@ func (r *PlatformRoutingController) deleteOwnedResources(ctx context.Context,
 	}
 
 	routeTypes := k8slabels.NewSelector().Add(*requirement)
-
 	deleteOptions := []client.DeleteAllOfOption{
 		client.InNamespace(r.config.GatewayNamespace),
 		labels.MatchingLabels(

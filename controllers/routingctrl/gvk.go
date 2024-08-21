@@ -1,4 +1,4 @@
-package routing
+package routingctrl
 
 import (
 	"github.com/opendatahub-io/odh-platform/pkg/spi"

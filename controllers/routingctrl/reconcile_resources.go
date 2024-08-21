@@ -1,4 +1,4 @@
-package routing
+package routingctrl
 
 import (
 	"context"
@@ -12,17 +12,17 @@ import (
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
+	"github.com/opendatahub-io/odh-platform/pkg/unstruct"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *PlatformRoutingController) createRoutingResources(ctx context.Context, target *unstructured.Unstructured) error {
+func (r *Controller) createRoutingResources(ctx context.Context, target *unstructured.Unstructured) error {
 	exportModes := extractExportModes(target, r.log)
 
 	if len(exportModes) == 0 {
 		r.log.Info("No export mode found for target")
-
 		return nil
 	}
 
@@ -55,7 +55,7 @@ func (r *PlatformRoutingController) createRoutingResources(ctx context.Context, 
 	return errors.Join(errSvcExport...)
 }
 
-func (r *PlatformRoutingController) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
+func (r *Controller) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
 	exportModes := extractExportModes(target, r.log)
 	if len(exportModes) == 0 {
 		return nil
@@ -82,7 +82,7 @@ func (r *PlatformRoutingController) exportService(ctx context.Context, target *u
 		}
 
 		ownershipLabels = append(ownershipLabels, labels.ExportType(exportMode))
-		if errApply := cluster.Apply(ctx, r.Client, resources, ownershipLabels...); errApply != nil {
+		if errApply := unstruct.Apply(ctx, r.Client, resources, ownershipLabels...); errApply != nil {
 			return fmt.Errorf("could not apply routing resources for type %s: %w", exportMode, errApply)
 		}
 	}
