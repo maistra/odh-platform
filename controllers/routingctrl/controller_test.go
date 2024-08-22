@@ -335,6 +335,12 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// then
 			externalResourcesShouldNotExist(ctx, svc)
 			publicResourcesShouldNotExist(ctx, svc)
+
+			Eventually(hasNoAddressAnnotations(component)).
+				WithContext(ctx).
+				WithTimeout(test.DefaultTimeout).
+				WithPolling(test.DefaultPolling).
+				Should(Succeed())
 		})
 	})
 
@@ -365,6 +371,33 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// then
 			externalResourcesShouldNotExist(ctx, svc)
 			publicResourcesShouldExist(ctx, svc)
+
+			Eventually(func(g Gomega, ctx context.Context) error {
+				updatedComponent := component.DeepCopy()
+				if errGet := envTest.Get(ctx, client.ObjectKeyFromObject(updatedComponent), updatedComponent); errGet != nil {
+					return errGet
+				}
+
+				g.Expect(updatedComponent.GetAnnotations()).ToNot(
+					HaveKey(
+						annotations.RoutingAddressesExternal("").Key(),
+					), "public services are not expected to be defined in this mode")
+
+				publicAddressAnnotation := annotations.RoutingAddressesPublic(
+					fmt.Sprintf("%[1]s-%[2]s.%[3]s;%[1]s-%[2]s.%[3]s.svc;%[1]s-%[2]s.%[3]s.svc.cluster.local",
+						svc.Name, svc.Namespace, routingConfiguration.GatewayNamespace),
+				)
+
+				g.Expect(updatedComponent.GetAnnotations()).To(
+					HaveKeyWithValue(publicAddressAnnotation.Key(), publicAddressAnnotation.Value()),
+				)
+
+				return nil
+			}).
+				WithContext(ctx).
+				WithTimeout(test.DefaultTimeout).
+				WithPolling(test.DefaultPolling).
+				Should(Succeed())
 		})
 
 		It("should remove all routing resources when the unsupported mode is used", func(ctx context.Context) {
@@ -393,11 +426,11 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			externalResourcesShouldNotExist(ctx, svc)
 			publicResourcesShouldNotExist(ctx, svc)
 
-			errGetComponent := envTest.Client.Get(ctx, client.ObjectKey{
-				Namespace: component.GetNamespace(),
-				Name:      component.GetName(),
-			}, component)
-			Expect(errGetComponent).ToNot(HaveOccurred())
+			Eventually(hasNoAddressAnnotations(component)).
+				WithContext(ctx).
+				WithTimeout(test.DefaultTimeout).
+				WithPolling(test.DefaultPolling).
+				Should(Succeed())
 		})
 	})
 
@@ -511,6 +544,25 @@ func publicResourcesShouldNotExist(ctx context.Context, svc *corev1.Service) {
 		WithTimeout(test.DefaultTimeout).
 		WithPolling(test.DefaultPolling).
 		Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+}
+
+func hasNoAddressAnnotations(component *unstructured.Unstructured) func(g Gomega, ctx context.Context) error {
+	return func(g Gomega, ctx context.Context) error {
+		updatedComponent := component.DeepCopy()
+		Expect(envTest.Get(ctx, client.ObjectKeyFromObject(updatedComponent), updatedComponent)).To(Succeed())
+
+		g.Expect(updatedComponent.GetAnnotations()).ToNot(
+			HaveKey(
+				annotations.RoutingAddressesExternal("").Key(),
+			), "External services are not expected to be defined in this mode")
+
+		g.Expect(updatedComponent.GetAnnotations()).ToNot(
+			HaveKey(
+				annotations.RoutingAddressesPublic("").Key(),
+			), "Public services are not expected to be defined in this mode")
+
+		return nil
+	}
 }
 
 func routeExistsFor(exportedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {

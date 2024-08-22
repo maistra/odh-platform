@@ -24,7 +24,7 @@ func (r *Controller) createRoutingResources(ctx context.Context, target *unstruc
 	if len(exportModes) == 0 {
 		r.log.Info("No export mode found for target")
 
-		return nil
+		return propagateHostsToWatchedCR(target, spi.RoutingTemplateData{}, r.log)
 	}
 
 	r.log.Info("Reconciling resources for target", "target", target)
@@ -58,9 +58,6 @@ func (r *Controller) createRoutingResources(ctx context.Context, target *unstruc
 
 func (r *Controller) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
 	exportModes := extractExportModes(target, r.log)
-	if len(exportModes) == 0 {
-		return nil
-	}
 
 	templateData := spi.RoutingTemplateData{
 		PlatformRoutingConfiguration: r.config,
@@ -93,9 +90,8 @@ func (r *Controller) exportService(ctx context.Context, target *unstructured.Uns
 
 func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.RoutingTemplateData, log logr.Logger) error {
 	exportModes := extractExportModes(target, log)
-	if len(exportModes) == 0 {
-		return nil
-	}
+
+	annotationsToKeep := make(map[spi.RouteType]bool)
 
 	var metaOptions []metadata.Option
 
@@ -105,12 +101,31 @@ func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.Routi
 		case spi.ExternalRoute:
 			externalAddress := annotations.RoutingAddressesExternal(fmt.Sprintf("%s-%s.%s", data.ServiceName, data.ServiceNamespace, data.Domain))
 			metaOptions = append(metaOptions, externalAddress)
+			annotationsToKeep[spi.ExternalRoute] = true
 		case spi.PublicRoute:
 			publicAddresses := annotations.RoutingAddressesPublic(fmt.Sprintf("%[1]s.%[2]s;%[1]s.%[2]s.svc;%[1]s.%[2]s.svc.cluster.local", data.PublicServiceName, data.GatewayNamespace))
 			metaOptions = append(metaOptions, publicAddresses)
+			annotationsToKeep[spi.PublicRoute] = true
 		}
 	}
 
+	// Remove annotations that should not be present
+	targetAnnotations := target.GetAnnotations()
+	if targetAnnotations == nil {
+		targetAnnotations = make(map[string]string)
+	}
+
+	if !annotationsToKeep[spi.ExternalRoute] {
+		delete(targetAnnotations, annotations.RoutingAddressesExternal("").Key())
+	}
+
+	if !annotationsToKeep[spi.PublicRoute] {
+		delete(targetAnnotations, annotations.RoutingAddressesPublic("").Key())
+	}
+
+	target.SetAnnotations(targetAnnotations)
+
+	// Apply the meta options for the annotations that should be present
 	metadata.ApplyMetaOptions(target, metaOptions...)
 
 	return nil
