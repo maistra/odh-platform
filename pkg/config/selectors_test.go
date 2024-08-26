@@ -43,6 +43,8 @@ var _ = Describe("Templated selectors", test.Unit(), func() {
 
 			_, err := config.ResolveSelectors(labels, &target)
 			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("could not execute template"))
+			Expect(err.Error()).To(ContainSubstring("could not resolve value"))
 		})
 	})
 
