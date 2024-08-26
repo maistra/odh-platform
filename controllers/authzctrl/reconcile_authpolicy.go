@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/opendatahub-io/odh-platform/pkg/config"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
 	"istio.io/api/security/v1beta1"
@@ -19,11 +20,16 @@ import (
 )
 
 func (r *Controller) reconcileAuthPolicy(ctx context.Context, target *unstructured.Unstructured) error {
-	desired := createAuthzPolicy(r.authComponent.Ports, r.authComponent.WorkloadSelector, r.config.ProviderName, target)
+	resolvedSelectors, err := config.ResolveSelectors(r.authComponent.WorkloadSelector, target)
+	if err != nil {
+		return fmt.Errorf("could not resolve WorkloadSelectors err: %w", err)
+	}
+
+	desired := createAuthzPolicy(r.authComponent.Ports, resolvedSelectors, r.config.ProviderName, target)
 	found := &istiosecurityv1beta1.AuthorizationPolicy{}
 	justCreated := false
 
-	err := r.Get(ctx, types.NamespacedName{
+	err = r.Get(ctx, types.NamespacedName{
 		Name:      desired.Name,
 		Namespace: desired.Namespace,
 	}, found)
