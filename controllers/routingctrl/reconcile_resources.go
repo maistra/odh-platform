@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/opendatahub-io/odh-platform/pkg/cluster"
+	"github.com/opendatahub-io/odh-platform/pkg/config"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
@@ -29,7 +30,12 @@ func (r *Controller) createRoutingResources(ctx context.Context, target *unstruc
 
 	r.log.Info("Reconciling resources for target", "target", target)
 
-	exportedServices, errSvcGet := getExportedServices(ctx, r.Client, target)
+	renderedSelectors, errLables := config.ResolveSelectors(r.component.ServiceSelector, target)
+	if errLables != nil {
+		return fmt.Errorf("could not render labels for ServiceSelector %v. Error %w", r.component.ServiceSelector, errLables)
+	}
+
+	exportedServices, errSvcGet := getExportedServices(ctx, r.Client, renderedSelectors, target)
 	if errSvcGet != nil {
 		if errors.Is(errSvcGet, &ExportedServiceNotFoundError{}) {
 			r.log.Info("no exported services found for target", "target", target)

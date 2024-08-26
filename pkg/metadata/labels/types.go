@@ -131,24 +131,6 @@ func (o OwnerUID) Value() string {
 	return string(o)
 }
 
-// RoutingExported is a Label to mark resources that are exported by the routing capability.
-// It is intended to be set by enrolled component to mark resources that should be used to
-// configure routing capability by the Platform. This can be a Kubernetes Service or Istio
-// VirtualService from which settings like hosts and ports are extracted.
-type RoutingExported string
-
-func (r RoutingExported) ApplyToMeta(obj metav1.Object) {
-	addLabel(r, obj)
-}
-
-func (r RoutingExported) Key() string {
-	return "routing.opendatahub.io/exported"
-}
-
-func (r RoutingExported) Value() string {
-	return string(r)
-}
-
 // ExportType is a Label to mark created resources with which export type they were created for.
 // this can either be public or external.
 type ExportType string

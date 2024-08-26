@@ -94,7 +94,6 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			toRemove = append(toRemove, component)
 
 			// required labels for the exported service:
-			// 	routing.opendatahub.io/exported: "true"
 			// 	platform.opendatahub.io/owner-name: test-component
 			// 	platform.opendatahub.io/owner-kind: Component
 			addRoutingRequirementsToSvc(ctx, svc, component)
