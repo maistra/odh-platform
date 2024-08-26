@@ -16,7 +16,7 @@ import (
 )
 
 func (r *Controller) removeUnusedRoutingResources(ctx context.Context, target *unstructured.Unstructured) error {
-	exportModes := extractExportModes(target, r.log)
+	exportModes := r.extractExportModes(target)
 	unusedRouteTypes := spi.UnusedRouteTypes(exportModes)
 
 	if len(unusedRouteTypes) == 0 {
@@ -30,7 +30,7 @@ func (r *Controller) removeUnusedRoutingResources(ctx context.Context, target *u
 }
 
 func (r *Controller) handleResourceDeletion(ctx context.Context, sourceRes *unstructured.Unstructured) error {
-	exportModes := extractExportModes(sourceRes, r.log)
+	exportModes := r.extractExportModes(sourceRes)
 	if len(exportModes) == 0 {
 		r.log.Info("No export modes found, skipping deletion logic", "sourceRes", sourceRes)
 

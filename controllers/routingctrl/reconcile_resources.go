@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/go-logr/logr"
 	"github.com/opendatahub-io/odh-platform/pkg/cluster"
 	"github.com/opendatahub-io/odh-platform/pkg/config"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
@@ -20,12 +19,16 @@ import (
 )
 
 func (r *Controller) createRoutingResources(ctx context.Context, target *unstructured.Unstructured) error {
-	exportModes := extractExportModes(target, r.log)
+	exportModes := r.extractExportModes(target)
 
 	if len(exportModes) == 0 {
 		r.log.Info("No export mode found for target")
+		metadata.ApplyMetaOptions(target,
+			annotations.Remove(annotations.RoutingAddressesExternal("")),
+			annotations.Remove(annotations.RoutingAddressesPublic("")),
+		)
 
-		return propagateHostsToWatchedCR(target, spi.RoutingTemplateData{}, r.log)
+		return nil
 	}
 
 	r.log.Info("Reconciling resources for target", "target", target)
@@ -63,7 +66,7 @@ func (r *Controller) createRoutingResources(ctx context.Context, target *unstruc
 }
 
 func (r *Controller) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
-	exportModes := extractExportModes(target, r.log)
+	exportModes := r.extractExportModes(target)
 
 	templateData := spi.RoutingTemplateData{
 		PlatformRoutingConfiguration: r.config,
@@ -91,15 +94,17 @@ func (r *Controller) exportService(ctx context.Context, target *unstructured.Uns
 		}
 	}
 
-	return propagateHostsToWatchedCR(target, templateData, r.log)
+	return r.propagateHostsToWatchedCR(target, templateData)
 }
 
-func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.RoutingTemplateData, log logr.Logger) error {
-	exportModes := extractExportModes(target, log)
+func (r *Controller) propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.RoutingTemplateData) error {
+	exportModes := r.extractExportModes(target)
 
-	annotationsToKeep := make(map[spi.RouteType]bool)
-
-	var metaOptions []metadata.Option
+	// Remove all existing routing addresses
+	metaOptions := []metadata.Option{
+		annotations.Remove(annotations.RoutingAddressesExternal("")),
+		annotations.Remove(annotations.RoutingAddressesPublic("")),
+	}
 
 	// TODO(mvp): put the logic of creating host names into a single place
 	for _, exportMode := range exportModes {
@@ -107,37 +112,18 @@ func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.Routi
 		case spi.ExternalRoute:
 			externalAddress := annotations.RoutingAddressesExternal(fmt.Sprintf("%s-%s.%s", data.ServiceName, data.ServiceNamespace, data.Domain))
 			metaOptions = append(metaOptions, externalAddress)
-			annotationsToKeep[spi.ExternalRoute] = true
 		case spi.PublicRoute:
 			publicAddresses := annotations.RoutingAddressesPublic(fmt.Sprintf("%[1]s.%[2]s;%[1]s.%[2]s.svc;%[1]s.%[2]s.svc.cluster.local", data.PublicServiceName, data.GatewayNamespace))
 			metaOptions = append(metaOptions, publicAddresses)
-			annotationsToKeep[spi.PublicRoute] = true
 		}
 	}
 
-	// Remove annotations that should not be present
-	targetAnnotations := target.GetAnnotations()
-	if targetAnnotations == nil {
-		targetAnnotations = make(map[string]string)
-	}
-
-	if !annotationsToKeep[spi.ExternalRoute] {
-		delete(targetAnnotations, annotations.RoutingAddressesExternal("").Key())
-	}
-
-	if !annotationsToKeep[spi.PublicRoute] {
-		delete(targetAnnotations, annotations.RoutingAddressesPublic("").Key())
-	}
-
-	target.SetAnnotations(targetAnnotations)
-
-	// Apply the meta options for the annotations that should be present
 	metadata.ApplyMetaOptions(target, metaOptions...)
 
 	return nil
 }
 
-func extractExportModes(target *unstructured.Unstructured, log logr.Logger) []spi.RouteType {
+func (r *Controller) extractExportModes(target *unstructured.Unstructured) []spi.RouteType {
 	exportModes, exportModeFound := target.GetAnnotations()[annotations.RoutingExportMode("").Key()]
 	if !exportModeFound {
 		return nil
@@ -151,7 +137,7 @@ func extractExportModes(target *unstructured.Unstructured, log logr.Logger) []sp
 		if spi.IsValidRouteType(routeType) {
 			validRouteTypes = append(validRouteTypes, routeType)
 		} else {
-			log.Info("Invalid route type found",
+			r.log.Info("Invalid route type found",
 				"invalidRouteType", routeType,
 				"resourceName", target.GetName(),
 				"resourceNamespace", target.GetNamespace())
