@@ -16,6 +16,12 @@ type ObjectReference struct {
 type RoutingTarget struct {
 	// ObjectReference provides reference details to the associated object.
 	ObjectReference `json:"ref,omitempty"`
+	// ServiceSelector is a LabelSelector definition to locate the Service(s) to expose to Routing for the given ObjectReference.
+	// All provided label selectors must be present on the Service to find a match.
+	//
+	// go expressions are handled in the selector key and value to set dynamic values from the current ObjectReference;
+	// e.g. "routing.opendatahub.io/{{.kind}}": "{{.metadata.name}}", // > "routing.opendatahub.io/Service": "MyService"
+	ServiceSelector map[string]string `json:"serviceSelector,omitempty"`
 }
 
 // ProtectedResource  holds references and configuration details necessary for

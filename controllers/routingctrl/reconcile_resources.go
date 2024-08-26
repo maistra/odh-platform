@@ -1,4 +1,4 @@
-package routing
+package routingctrl
 
 import (
 	"context"
@@ -7,17 +7,19 @@ import (
 	"strings"
 
 	"github.com/opendatahub-io/odh-platform/pkg/cluster"
+	"github.com/opendatahub-io/odh-platform/pkg/config"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
+	"github.com/opendatahub-io/odh-platform/pkg/unstruct"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-func (r *PlatformRoutingController) reconcileResources(ctx context.Context, target *unstructured.Unstructured) error {
+func (r *Controller) reconcileResources(ctx context.Context, target *unstructured.Unstructured) error {
 	// TODO shouldn't we make it a predicate for ctrl watch instead
 	_, exportModeFound := extractExportModes(target)
 	if !exportModeFound {
@@ -26,7 +28,12 @@ func (r *PlatformRoutingController) reconcileResources(ctx context.Context, targ
 
 	r.log.Info("Reconciling resources for target", "target", target)
 
-	exportedServices, errSvcGet := getExportedServices(ctx, r.Client, target)
+	renderedSelectors, errLables := config.ResolveSelectors(r.component.ServiceSelector, target)
+	if errLables != nil {
+		return fmt.Errorf("could not render labels for ServiceSelector %v. Error %w", r.component.ServiceSelector, errLables)
+	}
+
+	exportedServices, errSvcGet := getExportedServices(ctx, r.Client, renderedSelectors, target)
 	if errSvcGet != nil {
 		if errors.Is(errSvcGet, &ExportedServiceNotFoundError{}) {
 			r.log.Info("no exported services found for target", "target", target)
@@ -53,7 +60,7 @@ func (r *PlatformRoutingController) reconcileResources(ctx context.Context, targ
 	return errors.Join(errSvcExport...)
 }
 
-func (r *PlatformRoutingController) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
+func (r *Controller) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
 	exportModes, found := extractExportModes(target)
 	if !found {
 		return fmt.Errorf("could not extract export modes from target %s", target.GetName())
@@ -79,7 +86,7 @@ func (r *PlatformRoutingController) exportService(ctx context.Context, target *u
 			return fmt.Errorf("could not load templates for type %s: %w", exportMode, err)
 		}
 
-		if errApply := cluster.Apply(ctx, r.Client, resources, ownershipLabels...); errApply != nil {
+		if errApply := unstruct.Apply(ctx, r.Client, resources, ownershipLabels...); errApply != nil {
 			return fmt.Errorf("could not apply routing resources for type %s: %w", exportMode, errApply)
 		}
 	}
@@ -112,9 +119,9 @@ func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.Routi
 	return nil
 }
 
-func (r *PlatformRoutingController) ensureResourceHasFinalizer(ctx context.Context, target *unstructured.Unstructured) error {
+func (r *Controller) ensureResourceHasFinalizer(ctx context.Context, target *unstructured.Unstructured) error {
 	if controllerutil.AddFinalizer(target, finalizerName) {
-		if err := cluster.Patch(ctx, r.Client, target); err != nil {
+		if err := unstruct.Patch(ctx, r.Client, target); err != nil {
 			return fmt.Errorf("failed to patch finalizer to resource %s/%s: %w", target.GetNamespace(), target.GetName(), err)
 		}
 	}
