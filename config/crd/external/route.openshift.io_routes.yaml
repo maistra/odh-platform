@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.1
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: routes.route.openshift.io
 spec:
   group: route.openshift.io
@@ -25,16 +25,20 @@ spec:
           may also add additional security, caching, or traffic controls on the service content. Routers
           usually talk directly to the service endpoints.
 
+
           Once a route is created, the `host` field may not be changed. Generally, routers use the oldest
           route with a given host when resolving conflicts.
 
+
           Routers are subject to additional customization and may support additional controls via the
           annotations field.
+
 
           Because administrators may configure multiple routers, the route status field is used to
           return information to clients about the names and states of the route under each router.
           If a client chooses a duplicate name, for instance, the route status conditions are used
           to indicate the route cannot be chosen.
+
 
           To enable HTTP/2 ALPN on a route it requires a custom
           (non-wildcard) certificate. This prevents connection coalescing by
@@ -43,6 +47,7 @@ spec:
           connection re-use/coalescing. Routes that do not have their own
           custom certificate will not be HTTP/2 ALPN-enabled on either the
           frontend or the backend.
+
 
           Compatibility level 1: Stable within a major release for a minimum of 12 months or 3 minor releases (whichever is longer).
         properties:
@@ -400,6 +405,7 @@ spec:
                   the request. This field may not be changed after creation except by a user with
                   the update routes/custom-host permission.
 
+
                   Example: subdomain `frontend` automatically receives the router subdomain
                   `apps.mycluster.com` to have a full hostname `frontend.apps.mycluster.com`.
                 maxLength: 253
@@ -446,6 +452,7 @@ spec:
                       insecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to a route. While
                       each router may make its own decisions on which ports to expose, this is normally port 80.
 
+
                       * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only) (default).
                       * None - no traffic is allowed on the insecure port.
                       * Redirect - clients are redirected to the secure port.
@@ -462,9 +469,11 @@ spec:
                     description: |-
                       termination indicates termination type.
 
+
                       * edge - TLS termination is done by the router and http is used to communicate with the backend (default)
                       * passthrough - Traffic is sent straight to the destination without the router providing TLS termination
                       * reencrypt - TLS termination is done by the router and https is used to communicate with the backend
+
 
                       Note: passthrough termination is incompatible with httpHeader actions
                     enum:

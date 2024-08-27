@@ -157,7 +157,7 @@ $(LOCALBIN)/kustomize:
 	tar xzvf /tmp/kustomize.tar.gz -C $(LOCALBIN)
 	chmod +x $(LOCALBIN)/kustomize
 
-CONTROLLER_TOOLS_VERSION?=v0.16.1 # Cannot be pulled as dependency from go.mod, as it will bump go requirements to 1.22
+CONTROLLER_TOOLS_VERSION?=$(call go-mod-version,'controller-tools')# Cannot be pulled as dependency from go.mod, as it will bump go requirements to 1.22
 $(LOCALBIN)/controller-gen:
 	$(call header,"Installing $(notdir $@)")
 	$(call go-get-tool,controller-gen,sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION))
