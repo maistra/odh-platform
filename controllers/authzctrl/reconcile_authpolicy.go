@@ -29,11 +29,10 @@ func (r *Controller) reconcileAuthPolicy(ctx context.Context, target *unstructur
 	found := &istiosecurityv1beta1.AuthorizationPolicy{}
 	justCreated := false
 
-	err = r.Get(ctx, types.NamespacedName{
+	typeName := types.NamespacedName{
 		Name:      desired.Name,
-		Namespace: desired.Namespace,
-	}, found)
-	if err != nil {
+		Namespace: desired.Namespace}
+	if errGet := r.Get(ctx, typeName, found); errGet != nil {
 		if k8serr.IsNotFound(err) {
 			errCreate := r.Create(ctx, desired)
 			if client.IgnoreAlreadyExists(errCreate) != nil {
@@ -42,7 +41,7 @@ func (r *Controller) reconcileAuthPolicy(ctx context.Context, target *unstructur
 
 			justCreated = true
 		} else {
-			return fmt.Errorf("unable to fetch AuthorizationPolicy: %w", err)
+			return fmt.Errorf("unable to fetch AuthorizationPolicy: %w", errGet)
 		}
 	}
 
