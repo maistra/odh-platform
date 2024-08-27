@@ -63,6 +63,8 @@ func IsMarkedForDeletion(target *unstructured.Unstructured) bool {
 	return !target.GetDeletionTimestamp().IsZero()
 }
 
+// Patch updates the specified Kubernetes resource by applying changes from the provided target object.
+// In case of conflicts, it will retry using default strategy.
 func Patch(ctx context.Context, cli client.Client, target *unstructured.Unstructured) error {
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		currentRes := &unstructured.Unstructured{}

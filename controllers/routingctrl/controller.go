@@ -23,7 +23,7 @@ import (
 
 const (
 	name          = "routing"
-	finalizerName = "platform-routing.opendatahub.io/finalizer"
+	finalizerName = "routing.opendatahub.io/finalizer"
 )
 
 func New(cli client.Client, log logr.Logger, component spi.RoutingComponent, config spi.PlatformRoutingConfiguration) *Controller {
