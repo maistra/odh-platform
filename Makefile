@@ -162,7 +162,7 @@ $(LOCALBIN)/controller-gen:
 	$(call header,"Installing $(notdir $@)")
 	$(call go-get-tool,controller-gen,sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION))
 
-ENVTEST_PACKAGE_VERSION = v0.0.0-20240813183042-b901db121e1f
+ENVTEST_PACKAGE_VERSION = v0.0.0-20240317064453-55d540be824b
 $(LOCALBIN)/setup-envtest:
 	$(call header,"Installing $(notdir $@)")
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@$(ENVTEST_PACKAGE_VERSION)
