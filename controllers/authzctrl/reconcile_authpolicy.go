@@ -20,9 +20,9 @@ import (
 )
 
 func (r *Controller) reconcileAuthPolicy(ctx context.Context, target *unstructured.Unstructured) error {
-	resolvedSelectors, err := config.ResolveSelectors(r.authComponent.WorkloadSelector, target)
-	if err != nil {
-		return fmt.Errorf("could not resolve WorkloadSelectors err: %w", err)
+	resolvedSelectors, errResolve := config.ResolveSelectors(r.authComponent.WorkloadSelector, target)
+	if errResolve != nil {
+		return fmt.Errorf("could not resolve WorkloadSelectors err: %w", errResolve)
 	}
 
 	desired := createAuthzPolicy(r.authComponent.Ports, resolvedSelectors, r.config.ProviderName, target)
@@ -33,7 +33,7 @@ func (r *Controller) reconcileAuthPolicy(ctx context.Context, target *unstructur
 		Name:      desired.Name,
 		Namespace: desired.Namespace}
 	if errGet := r.Get(ctx, typeName, found); errGet != nil {
-		if k8serr.IsNotFound(err) {
+		if k8serr.IsNotFound(errGet) {
 			errCreate := r.Create(ctx, desired)
 			if client.IgnoreAlreadyExists(errCreate) != nil {
 				return fmt.Errorf("unable to create AuthorizationPolicy: %w", errCreate)
@@ -47,12 +47,9 @@ func (r *Controller) reconcileAuthPolicy(ctx context.Context, target *unstructur
 
 	// Reconcile the Istio AuthorizationPolicy if it has been manually modified
 	if !justCreated && !CompareAuthPolicies(desired, found) {
-		if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			if err := r.Get(ctx, types.NamespacedName{
-				Name:      desired.Name,
-				Namespace: desired.Namespace,
-			}, found); err != nil {
-				return fmt.Errorf("failed getting AuthorizationPolicy %s in namespace %s: %w", desired.Name, desired.Namespace, err)
+		if errConflict := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			if errGet := r.Get(ctx, typeName, found); errGet != nil {
+				return fmt.Errorf("failed getting AuthorizationPolicy %s in namespace %s: %w", desired.Name, desired.Namespace, errGet)
 			}
 
 			found.Spec = *desired.Spec.DeepCopy()
@@ -63,8 +60,8 @@ func (r *Controller) reconcileAuthPolicy(ctx context.Context, target *unstructur
 			}
 
 			return nil
-		}); err != nil {
-			return fmt.Errorf("unable to reconcile the AuthorizationPolicy: %w", err)
+		}); errConflict != nil {
+			return fmt.Errorf("unable to reconcile the AuthorizationPolicy: %w", errConflict)
 		}
 	}
 
