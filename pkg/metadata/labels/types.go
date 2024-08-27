@@ -131,6 +131,18 @@ func (o OwnerUID) Value() string {
 	return string(o)
 }
 
+// ExportType is a Label to mark created resources with which export type they were created for.
+// this can either be public or external.
+type ExportType string
+
+func (e ExportType) ApplyToMeta(obj metav1.Object) {
+	addLabel(e, obj)
+}
+
+func (e ExportType) Key() string { return "routing.opendatahub.io/type" }
+
+func (e ExportType) Value() string { return string(e) }
+
 func addLabel(label Label, obj metav1.Object) {
 	existingLabels := obj.GetLabels()
 	if existingLabels == nil {

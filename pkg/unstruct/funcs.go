@@ -59,6 +59,10 @@ func patchUsingApplyStrategy(ctx context.Context, cli client.Client, source, tar
 	return nil
 }
 
+func IsMarkedForDeletion(target *unstructured.Unstructured) bool {
+	return !target.GetDeletionTimestamp().IsZero()
+}
+
 func Patch(ctx context.Context, cli client.Client, target *unstructured.Unstructured) error {
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		currentRes := &unstructured.Unstructured{}

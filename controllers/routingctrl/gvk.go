@@ -19,13 +19,29 @@ var publicGVKs = []schema.GroupVersionKind{
 	{Group: "networking.istio.io", Version: "v1beta1", Kind: "DestinationRule"},
 }
 
-func routingResourceGVKs(exportMode spi.RouteType) []schema.GroupVersionKind {
-	switch exportMode {
-	case spi.ExternalRoute:
-		return externalGVKs
-	case spi.PublicRoute:
-		return publicGVKs
+func routingResourceGVKs(exportModes ...spi.RouteType) []schema.GroupVersionKind {
+	// use map just to handle possible duplication of gvks
+	gvkSet := make(map[schema.GroupVersionKind]struct{})
+
+	for _, exportMode := range exportModes {
+		var gvks []schema.GroupVersionKind
+
+		switch exportMode {
+		case spi.ExternalRoute:
+			gvks = externalGVKs
+		case spi.PublicRoute:
+			gvks = publicGVKs
+		}
+
+		for _, gvk := range gvks {
+			gvkSet[gvk] = struct{}{}
+		}
 	}
 
-	return nil
+	result := make([]schema.GroupVersionKind, 0, len(gvkSet))
+	for gvk := range gvkSet {
+		result = append(result, gvk)
+	}
+
+	return result
 }

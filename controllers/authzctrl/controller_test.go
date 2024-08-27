@@ -138,6 +138,8 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 			}
 
 			Expect(createdAuthPolicy.Spec.GetAction()).To(Equal(v1beta1.AuthorizationPolicy_CUSTOM))
+			// WorkloadSelector expresssion defined in suite_test
+			Expect(createdAuthPolicy.Spec.GetSelector().GetMatchLabels()).To(HaveKeyWithValue("component", resourceName))
 
 			return nil
 		}, test.DefaultTimeout, test.DefaultPolling).Should(Succeed())

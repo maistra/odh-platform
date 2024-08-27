@@ -5,34 +5,64 @@ import (
 	"fmt"
 
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
+	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"k8s.io/apimachinery/pkg/selection"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// HandleResourceDeletion handles the removal of dependent resources when the target resource is being deleted.
-func (r *Controller) HandleResourceDeletion(ctx context.Context, sourceRes *unstructured.Unstructured) (ctrl.Result, error) {
-	exportModes, found := extractExportModes(sourceRes)
-	if !found {
+func (r *Controller) removeUnusedRoutingResources(ctx context.Context, target *unstructured.Unstructured) error {
+	exportModes := r.extractExportModes(target)
+	unusedRouteTypes := spi.UnusedRouteTypes(exportModes)
+
+	if len(unusedRouteTypes) == 0 {
+		// no unused route types to remove resources for
+		return nil
+	}
+
+	gvks := routingResourceGVKs(unusedRouteTypes...)
+
+	return r.deleteOwnedResources(ctx, target, unusedRouteTypes, gvks)
+}
+
+func (r *Controller) handleResourceDeletion(ctx context.Context, sourceRes *unstructured.Unstructured) error {
+	exportModes := r.extractExportModes(sourceRes)
+	if len(exportModes) == 0 {
 		r.log.Info("No export modes found, skipping deletion logic", "sourceRes", sourceRes)
 
-		return ctrl.Result{}, nil
+		return nil
 	}
 
 	r.log.Info("Handling deletion of dependent resources", "sourceRes", sourceRes)
 
-	for _, exportMode := range exportModes {
-		if err := r.deleteOwnedResources(ctx, sourceRes, routingResourceGVKs(exportMode)); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to delete resources for export mode %s: %w", exportMode, err)
-		}
+	gvks := routingResourceGVKs(exportModes...)
+
+	if err := r.deleteOwnedResources(ctx, sourceRes, exportModes, gvks); err != nil {
+		return fmt.Errorf("failed to delete resources: %w", err)
 	}
 
 	return removeFinalizer(ctx, r.Client, sourceRes)
 }
 
-func (r *Controller) deleteOwnedResources(ctx context.Context, target *unstructured.Unstructured, gvkList []schema.GroupVersionKind) error {
+func (r *Controller) deleteOwnedResources(ctx context.Context,
+	target *unstructured.Unstructured,
+	exportModes []spi.RouteType,
+	gvks []schema.GroupVersionKind) error {
+	exportTypeValues := make([]string, len(exportModes))
+	for i, mode := range exportModes {
+		exportTypeValues[i] = string(mode)
+	}
+
+	requirement, err := k8slabels.NewRequirement(labels.ExportType("").Key(), selection.In, exportTypeValues)
+
+	if err != nil {
+		return fmt.Errorf("failed to create label requirement: %w", err)
+	}
+
+	routeTypes := k8slabels.NewSelector().Add(*requirement)
 	deleteOptions := []client.DeleteAllOfOption{
 		client.InNamespace(r.config.GatewayNamespace),
 		labels.MatchingLabels(
@@ -40,9 +70,10 @@ func (r *Controller) deleteOwnedResources(ctx context.Context, target *unstructu
 			labels.OwnerKind(target.GetObjectKind().GroupVersionKind().Kind),
 			labels.OwnerUID(target.GetUID()),
 		),
+		client.MatchingLabelsSelector{Selector: routeTypes},
 	}
 
-	for _, gvk := range gvkList {
+	for _, gvk := range gvks {
 		resource := &unstructured.Unstructured{}
 		resource.SetGroupVersionKind(gvk)
 
@@ -55,16 +86,16 @@ func (r *Controller) deleteOwnedResources(ctx context.Context, target *unstructu
 }
 
 // removeFinalizer is called after a successful cleanup, it removes the finalizer from the resource in the cluster.
-func removeFinalizer(ctx context.Context, cli client.Client, sourceRes *unstructured.Unstructured) (ctrl.Result, error) {
+func removeFinalizer(ctx context.Context, cli client.Client, sourceRes *unstructured.Unstructured) error {
 	finalizer := finalizerName
 
 	if controllerutil.ContainsFinalizer(sourceRes, finalizer) {
 		controllerutil.RemoveFinalizer(sourceRes, finalizer)
 
 		if err := cli.Update(ctx, sourceRes); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
+			return fmt.Errorf("failed to remove finalizer: %w", err)
 		}
 	}
 
-	return ctrl.Result{}, nil
+	return nil
 }

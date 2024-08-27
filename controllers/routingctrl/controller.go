@@ -54,6 +54,7 @@ type Controller struct {
 // +kubebuilder:rbac:groups="networking.istio.io",resources=virtualservices,verbs=*
 // +kubebuilder:rbac:groups="networking.istio.io",resources=gateways,verbs=*
 // +kubebuilder:rbac:groups="networking.istio.io",resources=destinationrules,verbs=*
+// +kubebuilder:rbac:groups="",resources=services,verbs=*
 
 // Reconcile ensures that the component has all required resources needed to use routing capability of the platform.
 func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -63,7 +64,10 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, nil
 	}
 
-	reconcilers := []platformctrl.SubReconcileFunc{r.reconcileResources}
+	reconcilers := []platformctrl.SubReconcileFunc{
+		r.removeUnusedRoutingResources,
+		r.createRoutingResources,
+	}
 
 	sourceRes := &unstructured.Unstructured{}
 	sourceRes.SetGroupVersionKind(r.component.ObjectReference.GroupVersionKind)
@@ -78,11 +82,11 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, fmt.Errorf("failed getting resource: %w", err)
 	}
 
-	if !sourceRes.GetDeletionTimestamp().IsZero() {
-		return r.HandleResourceDeletion(ctx, sourceRes)
-	}
-
 	r.log.Info("triggered routing reconcile", "namespace", req.Namespace, "name", req.Name)
+
+	if unstruct.IsMarkedForDeletion(sourceRes) {
+		return ctrl.Result{}, r.handleResourceDeletion(ctx, sourceRes)
+	}
 
 	var errs []error
 
