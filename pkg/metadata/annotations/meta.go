@@ -1,8 +1,11 @@
 package annotations
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	"github.com/opendatahub-io/odh-platform/pkg/metadata"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
-func Remove(annotation Annotation) OptionFunc {
+func Remove(annotation Annotation) metadata.OptionFunc {
 	return func(obj metav1.Object) {
 		existingAnnotations := obj.GetAnnotations()
 		if existingAnnotations == nil {
@@ -13,10 +16,4 @@ func Remove(annotation Annotation) OptionFunc {
 
 		obj.SetAnnotations(existingAnnotations)
 	}
-}
-
-type OptionFunc func(obj metav1.Object)
-
-func (f OptionFunc) ApplyToMeta(obj metav1.Object) {
-	f(obj)
 }

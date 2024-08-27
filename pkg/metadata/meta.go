@@ -33,3 +33,9 @@ func ApplyMetaOptions(obj metav1.Object, opts ...Option) {
 		opt.ApplyToMeta(obj)
 	}
 }
+
+type OptionFunc func(obj metav1.Object)
+
+func (f OptionFunc) ApplyToMeta(obj metav1.Object) {
+	f(obj)
+}
