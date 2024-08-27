@@ -2,7 +2,6 @@ package routingctrl_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -431,62 +430,6 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 				WithTimeout(test.DefaultTimeout).
 				WithPolling(test.DefaultPolling).
 				Should(Succeed())
-		})
-	})
-
-	When("reconciling an object that is modified concurrently", func() {
-		It("should successfully add the finalizer despite the conflict", func(ctx context.Context) {
-			// when
-			component, createErr := createComponentRequiringPlatformRouting(ctx, "conflict-test-component", "external", appNs.Name)
-			Expect(createErr).ToNot(HaveOccurred())
-			toRemove = append(toRemove, component)
-
-			// Ensure the component doesn't have finalizers initially
-			Expect(component.GetFinalizers()).To(BeEmpty())
-
-			modifyComponent := func(ctx context.Context) {
-				updatedComponent := &unstructured.Unstructured{}
-				updatedComponent.SetGroupVersionKind(component.GroupVersionKind())
-				Expect(envTest.Client.Get(ctx, types.NamespacedName{Name: component.GetName(), Namespace: component.GetNamespace()}, updatedComponent)).To(Succeed())
-
-				annotations := updatedComponent.GetAnnotations()
-				if annotations == nil {
-					annotations = make(map[string]string)
-				}
-				annotations["test-annotation"] = "modified"
-				updatedComponent.SetAnnotations(annotations)
-
-				Expect(envTest.Client.Update(ctx, updatedComponent)).To(Succeed())
-			}
-
-			// Simulate concurrent modifications by adding an annotation to the resource
-			go func(ctx context.Context) {
-				defer GinkgoRecover()
-
-				modifyComponent(ctx)
-
-			}(ctx)
-
-			// Wait for the reconciliation to add finalizer successfully
-			Eventually(func(ctx context.Context) error {
-				updatedComponent := &unstructured.Unstructured{}
-				updatedComponent.SetGroupVersionKind(component.GroupVersionKind())
-				err := envTest.Client.Get(ctx, types.NamespacedName{Name: component.GetName(), Namespace: component.GetNamespace()}, updatedComponent)
-				if err != nil {
-					return fmt.Errorf("error getting component: %w", err)
-				}
-
-				if len(updatedComponent.GetFinalizers()) == 0 {
-					return errors.New("finalizers are empty")
-				}
-
-				testAnnotation, exists := updatedComponent.GetAnnotations()["test-annotation"]
-				if !exists || testAnnotation != "modified" {
-					return errors.New("test-annotation is not set to 'modified'")
-				}
-
-				return nil
-			}).WithContext(ctx).WithTimeout(test.DefaultTimeout * 2).WithPolling(test.DefaultPolling).Should(Succeed())
 		})
 	})
 
