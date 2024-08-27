@@ -43,9 +43,11 @@ var _ = SynchronizedBeforeSuite(func(ctx context.Context) {
 						},
 						Resources: "components",
 					},
-					WorkloadSelector: map[string]string{},
-					Ports:            []string{},
-					HostPaths:        []string{"spec.host"},
+					WorkloadSelector: map[string]string{
+						"component": "{{.metadata.name}}",
+					},
+					Ports:     []string{},
+					HostPaths: []string{"spec.host"},
 				},
 			},
 			authzctrl.PlatformAuthorizationConfig{

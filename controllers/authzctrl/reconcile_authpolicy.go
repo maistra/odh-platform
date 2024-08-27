@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/opendatahub-io/odh-platform/pkg/config"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
 	"istio.io/api/security/v1beta1"
@@ -19,16 +20,20 @@ import (
 )
 
 func (r *Controller) reconcileAuthPolicy(ctx context.Context, target *unstructured.Unstructured) error {
-	desired := createAuthzPolicy(r.authComponent.Ports, r.authComponent.WorkloadSelector, r.config.ProviderName, target)
+	resolvedSelectors, errResolve := config.ResolveSelectors(r.authComponent.WorkloadSelector, target)
+	if errResolve != nil {
+		return fmt.Errorf("could not resolve WorkloadSelectors err: %w", errResolve)
+	}
+
+	desired := createAuthzPolicy(r.authComponent.Ports, resolvedSelectors, r.config.ProviderName, target)
 	found := &istiosecurityv1beta1.AuthorizationPolicy{}
 	justCreated := false
 
-	err := r.Get(ctx, types.NamespacedName{
+	typeName := types.NamespacedName{
 		Name:      desired.Name,
-		Namespace: desired.Namespace,
-	}, found)
-	if err != nil {
-		if k8serr.IsNotFound(err) {
+		Namespace: desired.Namespace}
+	if errGet := r.Get(ctx, typeName, found); errGet != nil {
+		if k8serr.IsNotFound(errGet) {
 			errCreate := r.Create(ctx, desired)
 			if client.IgnoreAlreadyExists(errCreate) != nil {
 				return fmt.Errorf("unable to create AuthorizationPolicy: %w", errCreate)
@@ -36,18 +41,15 @@ func (r *Controller) reconcileAuthPolicy(ctx context.Context, target *unstructur
 
 			justCreated = true
 		} else {
-			return fmt.Errorf("unable to fetch AuthorizationPolicy: %w", err)
+			return fmt.Errorf("unable to fetch AuthorizationPolicy: %w", errGet)
 		}
 	}
 
 	// Reconcile the Istio AuthorizationPolicy if it has been manually modified
 	if !justCreated && !CompareAuthPolicies(desired, found) {
-		if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			if err := r.Get(ctx, types.NamespacedName{
-				Name:      desired.Name,
-				Namespace: desired.Namespace,
-			}, found); err != nil {
-				return fmt.Errorf("failed getting AuthorizationPolicy %s in namespace %s: %w", desired.Name, desired.Namespace, err)
+		if errConflict := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			if errGet := r.Get(ctx, typeName, found); errGet != nil {
+				return fmt.Errorf("failed getting AuthorizationPolicy %s in namespace %s: %w", desired.Name, desired.Namespace, errGet)
 			}
 
 			found.Spec = *desired.Spec.DeepCopy()
@@ -58,8 +60,8 @@ func (r *Controller) reconcileAuthPolicy(ctx context.Context, target *unstructur
 			}
 
 			return nil
-		}); err != nil {
-			return fmt.Errorf("unable to reconcile the AuthorizationPolicy: %w", err)
+		}); errConflict != nil {
+			return fmt.Errorf("unable to reconcile the AuthorizationPolicy: %w", errConflict)
 		}
 	}
 
