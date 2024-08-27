@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
 	"github.com/opendatahub-io/odh-platform/test"
 	. "github.com/opendatahub-io/odh-platform/test/matchers"
@@ -16,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
@@ -297,46 +299,171 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			})
 
 			// then
-			Eventually(routeExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+			externalResourcesShouldNotExist(ctx, svc)
 
-			Eventually(ingressVirtualServiceExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
-
-			Eventually(publicSvcExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
-
-			Eventually(publicVirtualSvcExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
-
-			Eventually(publicGatewayExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
-
-			Eventually(destinationRuleExistsFor(svc)).
-				WithContext(ctx).
-				WithTimeout(test.DefaultTimeout).
-				WithPolling(test.DefaultPolling).
-				Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+			publicResourcesShouldNotExist(ctx, svc)
 
 		})
 	})
 
+	When("export annotation is removed from previously exported component", func() {
+
+		It("should remove all created routing resources", func(ctx context.Context) {
+			// given
+			// required annotation for watched custom resource:
+			// 	routing.opendatahub.io/export-mode: "public;external"
+			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-remove-annotation",
+				"public;external", appNs.Name)
+			Expect(createErr).ToNot(HaveOccurred())
+
+			// required labels for the exported service:
+			// 	routing.opendatahub.io/exported: "true"
+			// 	platform.opendatahub.io/owner-name: test-component
+			// 	platform.opendatahub.io/owner-kind: Component
+			addRoutingRequirementsToSvc(ctx, svc, component)
+
+			// then
+			externalResourcesShouldExist(ctx, svc)
+			publicResourcesShouldExist(ctx, svc)
+
+			// when
+			By("removing the export annotation", func() {
+				setExportMode(ctx, component, remove)
+			})
+
+			// then
+			externalResourcesShouldNotExist(ctx, svc)
+			publicResourcesShouldNotExist(ctx, svc)
+
+			Eventually(hasNoAddressAnnotations(component)).
+				WithContext(ctx).
+				WithTimeout(test.DefaultTimeout).
+				WithPolling(test.DefaultPolling).
+				Should(Succeed())
+		})
+	})
+
+	When("export annotation is changed on existing exported component", func() {
+
+		It("should remove all routing resources from removed", func(ctx context.Context) {
+			// given
+			// required annotation for watched custom resource:
+			// 	routing.opendatahub.io/export-mode: "public;external"
+			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-change-annotation",
+				"public;external", appNs.Name)
+			Expect(createErr).ToNot(HaveOccurred())
+
+			// required labels for the exported service:
+			// 	routing.opendatahub.io/exported: "true"
+			// 	platform.opendatahub.io/owner-name: test-component
+			// 	platform.opendatahub.io/owner-kind: Component
+			addRoutingRequirementsToSvc(ctx, svc, component)
+
+			// then
+			externalResourcesShouldExist(ctx, svc)
+			publicResourcesShouldExist(ctx, svc)
+
+			By("removing external from the export modes", func() {
+				setExportMode(ctx, component, "public")
+			})
+
+			// then
+			externalResourcesShouldNotExist(ctx, svc)
+			publicResourcesShouldExist(ctx, svc)
+
+			Eventually(func(g Gomega, ctx context.Context) error {
+				updatedComponent := component.DeepCopy()
+				if errGet := envTest.Get(ctx, client.ObjectKeyFromObject(updatedComponent), updatedComponent); errGet != nil {
+					return errGet
+				}
+
+				g.Expect(updatedComponent.GetAnnotations()).ToNot(
+					HaveKey(
+						annotations.RoutingAddressesExternal("").Key(),
+					), "public services are not expected to be defined in this mode")
+
+				publicAddressAnnotation := annotations.RoutingAddressesPublic(
+					fmt.Sprintf("%[1]s-%[2]s.%[3]s;%[1]s-%[2]s.%[3]s.svc;%[1]s-%[2]s.%[3]s.svc.cluster.local",
+						svc.Name, svc.Namespace, routingConfiguration.GatewayNamespace),
+				)
+
+				g.Expect(updatedComponent.GetAnnotations()).To(
+					HaveKeyWithValue(publicAddressAnnotation.Key(), publicAddressAnnotation.Value()),
+				)
+
+				return nil
+			}).
+				WithContext(ctx).
+				WithTimeout(test.DefaultTimeout).
+				WithPolling(test.DefaultPolling).
+				Should(Succeed())
+		})
+
+		It("should remove all routing resources when the unsupported mode is used", func(ctx context.Context) {
+			// given
+			// required annotation for watched custom resource:
+			// 	routing.opendatahub.io/export-mode: "public;external"
+			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-changed-to-non-existing",
+				"public;external", appNs.Name)
+			Expect(createErr).ToNot(HaveOccurred())
+
+			// required labels for the exported service:
+			// 	routing.opendatahub.io/exported: "true"
+			// 	platform.opendatahub.io/owner-name: test-component
+			// 	platform.opendatahub.io/owner-kind: Component
+			addRoutingRequirementsToSvc(ctx, svc, component)
+
+			// then
+			externalResourcesShouldExist(ctx, svc)
+			publicResourcesShouldExist(ctx, svc)
+
+			By("removing external from the export modes", func() {
+				setExportMode(ctx, component, "not-supported-mode")
+			})
+
+			// then
+			externalResourcesShouldNotExist(ctx, svc)
+			publicResourcesShouldNotExist(ctx, svc)
+
+			Eventually(hasNoAddressAnnotations(component)).
+				WithContext(ctx).
+				WithTimeout(test.DefaultTimeout).
+				WithPolling(test.DefaultPolling).
+				Should(Succeed())
+		})
+	})
+
 })
+
+type exportMode string
+
+var remove = exportMode("--blank--")
+
+func (m exportMode) ApplyToMeta(obj metav1.Object) {
+	annos := obj.GetAnnotations()
+	key := annotations.RoutingExportMode("").Key()
+
+	switch m {
+	default:
+		annos[key] = string(m)
+	case remove:
+		delete(annos, key)
+	}
+
+	obj.SetAnnotations(annos)
+}
+
+func setExportMode(ctx context.Context, component *unstructured.Unstructured, mode exportMode) {
+	errGetComponent := envTest.Client.Get(ctx, client.ObjectKey{
+		Namespace: component.GetNamespace(),
+		Name:      component.GetName(),
+	}, component)
+	Expect(errGetComponent).ToNot(HaveOccurred())
+
+	metadata.ApplyMetaOptions(component, mode)
+
+	Expect(envTest.Client.Update(ctx, component)).To(Succeed())
+}
 
 func externalResourcesShouldExist(ctx context.Context, svc *corev1.Service) {
 	Eventually(routeExistsFor(svc)).
@@ -376,6 +503,65 @@ func publicResourcesShouldExist(ctx context.Context, svc *corev1.Service) {
 		WithTimeout(test.DefaultTimeout).
 		WithPolling(test.DefaultPolling).
 		Should(Succeed())
+}
+
+func externalResourcesShouldNotExist(ctx context.Context, svc *corev1.Service) {
+	Eventually(routeExistsFor(svc)).
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+
+	Eventually(ingressVirtualServiceExistsFor(svc)).
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+}
+
+func publicResourcesShouldNotExist(ctx context.Context, svc *corev1.Service) {
+	Eventually(publicSvcExistsFor(svc)).
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+
+	Eventually(publicVirtualSvcExistsFor(svc)).
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+
+	Eventually(publicGatewayExistsFor(svc)).
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+
+	Eventually(destinationRuleExistsFor(svc)).
+		WithContext(ctx).
+		WithTimeout(test.DefaultTimeout).
+		WithPolling(test.DefaultPolling).
+		Should(WithTransform(k8serr.IsNotFound, BeTrue()))
+}
+
+func hasNoAddressAnnotations(component *unstructured.Unstructured) func(g Gomega, ctx context.Context) error {
+	return func(g Gomega, ctx context.Context) error {
+		updatedComponent := component.DeepCopy()
+		Expect(envTest.Get(ctx, client.ObjectKeyFromObject(updatedComponent), updatedComponent)).To(Succeed())
+
+		g.Expect(updatedComponent.GetAnnotations()).ToNot(
+			HaveKey(
+				annotations.RoutingAddressesExternal("").Key(),
+			), "External services are not expected to be defined in this mode")
+
+		g.Expect(updatedComponent.GetAnnotations()).ToNot(
+			HaveKey(
+				annotations.RoutingAddressesPublic("").Key(),
+			), "Public services are not expected to be defined in this mode")
+
+		return nil
+	}
 }
 
 func routeExistsFor(exportedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {

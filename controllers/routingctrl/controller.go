@@ -11,6 +11,7 @@ import (
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/routing"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
+	"github.com/opendatahub-io/odh-platform/pkg/unstruct"
 	openshiftroutev1 "github.com/openshift/api/route/v1"
 	istionetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
@@ -62,7 +63,10 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, nil
 	}
 
-	reconcilers := []platformctrl.SubReconcileFunc{r.reconcileResources}
+	reconcilers := []platformctrl.SubReconcileFunc{
+		r.removeUnusedRoutingResources,
+		r.createRoutingResources,
+	}
 
 	sourceRes := &unstructured.Unstructured{}
 	sourceRes.SetGroupVersionKind(r.component.ObjectReference.GroupVersionKind)
@@ -77,11 +81,11 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, fmt.Errorf("failed getting resource: %w", err)
 	}
 
-	if !sourceRes.GetDeletionTimestamp().IsZero() {
-		return r.HandleResourceDeletion(ctx, sourceRes)
-	}
-
 	r.log.Info("triggered routing reconcile", "namespace", req.Namespace, "name", req.Name)
+
+	if unstruct.IsMarkedForDeletion(sourceRes) {
+		return ctrl.Result{}, r.handleResourceDeletion(ctx, sourceRes)
+	}
 
 	var errs []error
 

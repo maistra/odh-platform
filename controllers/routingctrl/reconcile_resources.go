@@ -18,10 +18,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *Controller) reconcileResources(ctx context.Context, target *unstructured.Unstructured) error {
-	// TODO shouldn't we make it a predicate for ctrl watch instead
-	_, exportModeFound := extractExportModes(target)
-	if !exportModeFound {
+func (r *Controller) createRoutingResources(ctx context.Context, target *unstructured.Unstructured) error {
+	exportModes := r.extractExportModes(target)
+
+	if len(exportModes) == 0 {
+		r.log.Info("No export mode found for target")
+		metadata.ApplyMetaOptions(target,
+			annotations.Remove(annotations.RoutingAddressesExternal("")),
+			annotations.Remove(annotations.RoutingAddressesPublic("")),
+		)
+
 		return nil
 	}
 
@@ -60,10 +66,7 @@ func (r *Controller) reconcileResources(ctx context.Context, target *unstructure
 }
 
 func (r *Controller) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
-	exportModes, found := extractExportModes(target)
-	if !found {
-		return fmt.Errorf("could not extract export modes from target %s", target.GetName())
-	}
+	exportModes := r.extractExportModes(target)
 
 	templateData := spi.RoutingTemplateData{
 		PlatformRoutingConfiguration: r.config,
@@ -85,20 +88,22 @@ func (r *Controller) exportService(ctx context.Context, target *unstructured.Uns
 			return fmt.Errorf("could not load templates for type %s: %w", exportMode, err)
 		}
 
+		ownershipLabels = append(ownershipLabels, labels.ExportType(exportMode))
 		if errApply := unstruct.Apply(ctx, r.Client, resources, ownershipLabels...); errApply != nil {
 			return fmt.Errorf("could not apply routing resources for type %s: %w", exportMode, errApply)
 		}
 	}
 
-	return propagateHostsToWatchedCR(target, templateData)
+	return r.propagateHostsToWatchedCR(target, templateData)
 }
 
-func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.RoutingTemplateData) error {
-	var metaOptions []metadata.Option
+func (r *Controller) propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.RoutingTemplateData) error {
+	exportModes := r.extractExportModes(target)
 
-	exportModes, found := extractExportModes(target)
-	if !found {
-		return fmt.Errorf("could not extract export modes from target %s", target.GetName())
+	// Remove all existing routing addresses
+	metaOptions := []metadata.Option{
+		annotations.Remove(annotations.RoutingAddressesExternal("")),
+		annotations.Remove(annotations.RoutingAddressesPublic("")),
 	}
 
 	// TODO(mvp): put the logic of creating host names into a single place
@@ -118,18 +123,26 @@ func propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.Routi
 	return nil
 }
 
-func extractExportModes(target *unstructured.Unstructured) ([]spi.RouteType, bool) {
+func (r *Controller) extractExportModes(target *unstructured.Unstructured) []spi.RouteType {
 	exportModes, exportModeFound := target.GetAnnotations()[annotations.RoutingExportMode("").Key()]
 	if !exportModeFound {
-		return nil, false
+		return nil
 	}
 
 	exportModesSplit := strings.Split(exportModes, ";")
-	routeTypes := make([]spi.RouteType, len(exportModesSplit))
+	validRouteTypes := make([]spi.RouteType, 0, len(exportModesSplit))
 
-	for i, exportMode := range exportModesSplit {
-		routeTypes[i] = spi.RouteType(exportMode)
+	for _, exportMode := range exportModesSplit {
+		routeType := spi.RouteType(strings.TrimSpace(exportMode))
+		if spi.IsValidRouteType(routeType) {
+			validRouteTypes = append(validRouteTypes, routeType)
+		} else {
+			r.log.Info("Invalid route type found",
+				"invalidRouteType", routeType,
+				"resourceName", target.GetName(),
+				"resourceNamespace", target.GetNamespace())
+		}
 	}
 
-	return routeTypes, true
+	return validRouteTypes
 }

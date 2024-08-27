@@ -30,9 +30,15 @@ func NewStaticTemplateLoader() spi.RoutingTemplateLoader {
 func (s *staticTemplateLoader) Load(_ context.Context, routeType spi.RouteType, key types.NamespacedName, data spi.RoutingTemplateData) ([]*unstructured.Unstructured, error) {
 	var resources []*unstructured.Unstructured
 
-	templateContent := publicRouteTemplate
-	if routeType == spi.ExternalRoute {
+	var templateContent []byte
+
+	switch routeType {
+	case spi.PublicRoute:
+		templateContent = publicRouteTemplate
+	case spi.ExternalRoute:
 		templateContent = externalRouteTemplate
+	default:
+		templateContent = make([]byte, 0)
 	}
 
 	resolvedTemplates, err := s.resolveTemplate(templateContent, data)
