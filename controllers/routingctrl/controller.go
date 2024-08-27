@@ -8,7 +8,6 @@ import (
 
 	"github.com/go-logr/logr"
 	platformctrl "github.com/opendatahub-io/odh-platform/controllers"
-	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/routing"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"github.com/opendatahub-io/odh-platform/pkg/unstruct"
@@ -20,10 +19,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-const name = "routing"
+const (
+	name          = "routing"
+	finalizerName = "routing.opendatahub.io/finalizer"
+)
 
 func New(cli client.Client, log logr.Logger, component spi.RoutingComponent, config spi.PlatformRoutingConfiguration) *Controller {
 	return &Controller{
@@ -89,19 +90,15 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	var errs []error
 
-	if controllerutil.AddFinalizer(sourceRes, metadata.Finalizers.Routing) {
-		if errUpdate := r.Update(ctx, sourceRes); errUpdate != nil {
-			return ctrl.Result{}, fmt.Errorf("failed adding finalizer: %w", errUpdate)
-		}
+	if errFinalizer := r.ensureResourceHasFinalizer(ctx, sourceRes); errFinalizer != nil {
+		return ctrl.Result{}, fmt.Errorf("failed adding finalizer: %w", errFinalizer)
 	}
 
 	for _, reconciler := range reconcilers {
 		errs = append(errs, reconciler(ctx, sourceRes))
 	}
 
-	if errUpdate := r.Update(ctx, sourceRes); errUpdate != nil {
-		errs = append(errs, errUpdate)
-	}
+	errs = append(errs, unstruct.Patch(ctx, r.Client, sourceRes))
 
 	return ctrl.Result{}, errors.Join(errs...)
 }

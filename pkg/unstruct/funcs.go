@@ -8,6 +8,7 @@ import (
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -60,4 +61,30 @@ func patchUsingApplyStrategy(ctx context.Context, cli client.Client, source, tar
 
 func IsMarkedForDeletion(target *unstructured.Unstructured) bool {
 	return !target.GetDeletionTimestamp().IsZero()
+}
+
+// Patch updates the specified Kubernetes resource by applying changes from the provided target object.
+// In case of conflicts, it will retry using default strategy.
+func Patch(ctx context.Context, cli client.Client, target *unstructured.Unstructured) error {
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		currentRes := &unstructured.Unstructured{}
+		currentRes.SetGroupVersionKind(target.GroupVersionKind())
+
+		if err := cli.Get(ctx, client.ObjectKeyFromObject(target), currentRes); err != nil {
+			return fmt.Errorf("failed re-fetching resource: %w", err)
+		}
+
+		patch := client.MergeFrom(currentRes)
+		if errPatch := cli.Patch(ctx, target, patch); errPatch != nil {
+			return fmt.Errorf("failed to patch: %w", errPatch)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to patch resource metadata with retry: %w", err)
+	}
+
+	return nil
 }

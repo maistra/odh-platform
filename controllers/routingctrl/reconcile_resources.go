@@ -16,6 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func (r *Controller) createRoutingResources(ctx context.Context, target *unstructured.Unstructured) error {
@@ -119,6 +120,16 @@ func (r *Controller) propagateHostsToWatchedCR(target *unstructured.Unstructured
 	}
 
 	metadata.ApplyMetaOptions(target, metaOptions...)
+
+	return nil
+}
+
+func (r *Controller) ensureResourceHasFinalizer(ctx context.Context, target *unstructured.Unstructured) error {
+	if controllerutil.AddFinalizer(target, finalizerName) {
+		if err := unstruct.Patch(ctx, r.Client, target); err != nil {
+			return fmt.Errorf("failed to patch finalizer to resource %s/%s: %w", target.GetNamespace(), target.GetName(), err)
+		}
+	}
 
 	return nil
 }
