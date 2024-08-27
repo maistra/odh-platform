@@ -71,6 +71,38 @@ const (
 	ExternalRoute RouteType = "external"
 )
 
+func AllRouteTypes() []RouteType {
+	return []RouteType{PublicRoute, ExternalRoute}
+}
+
+func IsValidRouteType(routeType RouteType) bool {
+	for _, validType := range AllRouteTypes() {
+		if routeType == validType {
+			return true
+		}
+	}
+
+	return false
+}
+
+func UnusedRouteTypes(exportModes []RouteType) []RouteType {
+	used := make(map[RouteType]bool)
+
+	for _, mode := range exportModes {
+		used[mode] = true
+	}
+
+	var unused []RouteType
+
+	for _, rType := range AllRouteTypes() {
+		if !used[rType] {
+			unused = append(unused, rType)
+		}
+	}
+
+	return unused
+}
+
 type RoutingComponent struct {
 	platform.RoutingTarget
 }
