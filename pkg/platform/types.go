@@ -31,6 +31,10 @@ type ProtectedResource struct {
 	ObjectReference `json:"ref,omitempty"`
 	// WorkloadSelector defines labels used to identify and select the specific workload
 	// to which the authorization policy should be applied.
+	// All provided label selectors must be present on the Service to find a match.
+	//
+	// go expressions are handled in the selector key and value to set dynamic values from the current ObjectReference;
+	// e.g. "routing.opendatahub.io/{{.kind}}": "{{.metadata.name}}", // > "routing.opendatahub.io/Service": "MyService"
 	WorkloadSelector map[string]string `json:"workloadSelector,omitempty"`
 	// HostPaths defines paths in custom resource where hosts for this component are defined.
 	HostPaths []string `json:"hostPaths,omitempty"` // TODO(mvp): should we switch to annotations like in routing?
