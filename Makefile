@@ -50,7 +50,7 @@ lint: tools format ## Concurrently runs a whole bunch of static analysis tools
 test: generate
 test: test-unit+kube-envtest ## Run all tests. You can also select a category by running e.g. make test-unit or make test-kube-envtest
 
-ENVTEST_K8S_VERSION = 1.26 # refers to the version of kubebuilder assets to be downloaded by envtest binary.
+ENVTEST_K8S_VERSION = 1.28 # refers to the version of kubebuilder assets to be downloaded by envtest binary.
 test-%:
 	$(eval test-type:=$(subst +,||,$(subst test-,,$@)))
 	KUBEBUILDER_ASSETS="$(shell $(LOCALBIN)/setup-envtest use $(ENVTEST_K8S_VERSION) -p path)" \
@@ -157,12 +157,12 @@ $(LOCALBIN)/kustomize:
 	tar xzvf /tmp/kustomize.tar.gz -C $(LOCALBIN)
 	chmod +x $(LOCALBIN)/kustomize
 
-CONTROLLER_TOOLS_VERSION?=$(call go-mod-version,'controller-tools')
+CONTROLLER_TOOLS_VERSION?=v0.16.1 # Cannot be pulled as dependency from go.mod, as it will bump go requirements to 1.22
 $(LOCALBIN)/controller-gen:
 	$(call header,"Installing $(notdir $@)")
 	$(call go-get-tool,controller-gen,sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION))
 
-ENVTEST_PACKAGE_VERSION = v0.0.0-20240320141353-395cfc7486e6
+ENVTEST_PACKAGE_VERSION = v0.0.0-20240813183042-b901db121e1f
 $(LOCALBIN)/setup-envtest:
 	$(call header,"Installing $(notdir $@)")
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@$(ENVTEST_PACKAGE_VERSION)
