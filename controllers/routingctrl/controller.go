@@ -52,6 +52,7 @@ type Controller struct {
 // +kubebuilder:rbac:groups="networking.istio.io",resources=virtualservices,verbs=*
 // +kubebuilder:rbac:groups="networking.istio.io",resources=gateways,verbs=*
 // +kubebuilder:rbac:groups="networking.istio.io",resources=destinationrules,verbs=*
+// +kubebuilder:rbac:groups="",resources=services,verbs=*
 
 // Reconcile ensures that the component has all required resources needed to use routing capability of the platform.
 func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
