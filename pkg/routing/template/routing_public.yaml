@@ -25,9 +25,9 @@ spec:
     {{ .IngressSelectorLabel }}: {{ .IngressSelectorValue }}
   servers:
   - hosts:
-    - {{ .PublicServiceName }}.{{ .GatewayNamespace }}
-    - {{ .PublicServiceName }}.{{ .GatewayNamespace }}.svc
-    - {{ .PublicServiceName }}.{{ .GatewayNamespace }}.svc.cluster.local
+{{ range $host := .PublicHosts }}
+    - {{ $host }}
+{{ end }}
     port:
       name: https
       number: 443
@@ -47,9 +47,9 @@ spec:
   - {{ .PublicServiceName }} # Gateway for public service
   - mesh # for clients in the mesh
   hosts:
-  - {{ .PublicServiceName }}.{{ .GatewayNamespace }}
-  - {{ .PublicServiceName }}.{{ .GatewayNamespace }}.svc
-  - {{ .PublicServiceName }}.{{ .GatewayNamespace }}.svc.cluster.local
+{{ range $host := .PublicHosts }}
+    - {{ $host }}
+{{ end }}
   http:
   - name: {{ .PublicServiceName }}
     route:
