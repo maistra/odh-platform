@@ -5,6 +5,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	RoutingExportModePrefix = "routing.opendatahub.io/export-mode-"
+)
+
 type Annotation interface {
 	metadata.Option
 	metadata.KeyValue
@@ -44,21 +48,38 @@ func (a AuthorizationGroup) Value() string {
 	return string(a)
 }
 
-// RoutingExportMode defines the export mode for the routing capability. It can be
-// either "public" or "external" or both, delimited by ";".
-// It is intended to be defined on the component's Custom Resource.
-type RoutingExportMode string
+// RoutingExportMode defines an individual export mode for the routing capability.
+// Each mode (currently: "public" or "external") is represented by a separate annotation.
+// The annotation key is formed by prefixing the mode with "routing.opendatahub.io/export-mode-", value is boolean.
+type RoutingExportMode struct {
+	mode  string
+	value string
+}
+
+func ExternalMode() RoutingExportMode {
+	return RoutingExportMode{mode: "external", value: "true"}
+}
+
+func PublicMode() RoutingExportMode {
+	return RoutingExportMode{mode: "public", value: "true"}
+}
 
 func (r RoutingExportMode) ApplyToMeta(obj metav1.Object) {
 	addAnnotation(r, obj)
 }
 
 func (r RoutingExportMode) Key() string {
-	return "routing.opendatahub.io/export-mode"
+	return RoutingExportModePrefix + r.mode
 }
 
 func (r RoutingExportMode) Value() string {
-	return string(r)
+	return r.value
+}
+
+// WithValue can be used to create a new RoutingExportMode with modifiable value
+// created in case of need to set an export mode to false.
+func (r RoutingExportMode) WithValue(value string) RoutingExportMode {
+	return RoutingExportMode{mode: r.mode, value: value}
 }
 
 // RoutingAddressesPublic exposes the public addresses set by Platform's routing capability.

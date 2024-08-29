@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/opendatahub-io/odh-platform/pkg/cluster"
 	"github.com/opendatahub-io/odh-platform/pkg/config"
@@ -124,17 +123,13 @@ func (r *Controller) ensureResourceHasFinalizer(ctx context.Context, target *uns
 	return nil
 }
 
+// extractExportModes retrieves the enabled export modes from the target's annotations.
 func (r *Controller) extractExportModes(target *unstructured.Unstructured) []spi.RouteType {
-	exportModes, exportModeFound := target.GetAnnotations()[annotations.RoutingExportMode("").Key()]
-	if !exportModeFound {
-		return nil
-	}
+	exportModes := annotations.GetExportModes(target)
+	validRouteTypes := make([]spi.RouteType, 0, len(exportModes))
 
-	exportModesSplit := strings.Split(exportModes, ";")
-	validRouteTypes := make([]spi.RouteType, 0, len(exportModesSplit))
-
-	for _, exportMode := range exportModesSplit {
-		routeType := spi.RouteType(strings.TrimSpace(exportMode))
+	for _, exportMode := range exportModes {
+		routeType := spi.RouteType(exportMode)
 		if spi.IsValidRouteType(routeType) {
 			validRouteTypes = append(validRouteTypes, routeType)
 		} else {
