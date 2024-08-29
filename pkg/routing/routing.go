@@ -2,7 +2,6 @@ package routing
 
 import (
 	"bytes"
-	"context"
 	_ "embed" // needed for go:embed directive
 	"fmt"
 	"strings"
@@ -11,7 +10,6 @@ import (
 	"github.com/opendatahub-io/odh-platform/pkg/schema"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 //go:embed template/routing_public.yaml
@@ -27,7 +25,7 @@ func NewStaticTemplateLoader() spi.RoutingTemplateLoader {
 	return &staticTemplateLoader{}
 }
 
-func (s *staticTemplateLoader) Load(_ context.Context, routeType spi.RouteType, key types.NamespacedName, data spi.RoutingTemplateData) ([]*unstructured.Unstructured, error) {
+func (s *staticTemplateLoader) Load(data *spi.RoutingData, routeType spi.RouteType) ([]*unstructured.Unstructured, error) {
 	var resources []*unstructured.Unstructured
 
 	var templateContent []byte
@@ -60,7 +58,7 @@ func (s *staticTemplateLoader) Load(_ context.Context, routeType spi.RouteType, 
 	return resources, nil
 }
 
-func (s *staticTemplateLoader) resolveTemplate(tmpl []byte, data spi.RoutingTemplateData) ([]byte, error) {
+func (s *staticTemplateLoader) resolveTemplate(tmpl []byte, data *spi.RoutingData) ([]byte, error) {
 	engine, err := template.New("routing").Parse(string(tmpl))
 	if err != nil {
 		return []byte{}, fmt.Errorf("could not create template engine: %w", err)
