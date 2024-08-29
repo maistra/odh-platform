@@ -15,7 +15,6 @@ import (
 	"github.com/opendatahub-io/odh-platform/pkg/unstruct"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -69,22 +68,13 @@ func (r *Controller) createRoutingResources(ctx context.Context, target *unstruc
 func (r *Controller) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
 	exportModes := r.extractExportModes(target)
 
-	templateData := spi.RoutingTemplateData{
-		PlatformRoutingConfiguration: r.config,
-		PublicServiceName:            exportedSvc.GetName() + "-" + exportedSvc.GetNamespace(),
-		ServiceName:                  exportedSvc.GetName(),
-		ServiceNamespace:             exportedSvc.GetNamespace(),
-		ServiceTargetPort:            exportedSvc.Spec.Ports[0].TargetPort.String(),
-		Domain:                       domain,
-	}
+	templateData := spi.NewRoutingData(r.config, exportedSvc, domain)
 
 	// To establish ownership for watched component
 	ownershipLabels := append(labels.AsOwner(target), labels.AppManagedBy("odh-routing-controller"))
 
-	targetKey := client.ObjectKeyFromObject(target)
-
 	for _, exportMode := range exportModes {
-		resources, err := r.templateLoader.Load(ctx, exportMode, targetKey, templateData)
+		resources, err := r.templateLoader.Load(templateData, exportMode)
 		if err != nil {
 			return fmt.Errorf("could not load templates for type %s: %w", exportMode, err)
 		}
@@ -98,7 +88,7 @@ func (r *Controller) exportService(ctx context.Context, target *unstructured.Uns
 	return r.propagateHostsToWatchedCR(target, templateData)
 }
 
-func (r *Controller) propagateHostsToWatchedCR(target *unstructured.Unstructured, data spi.RoutingTemplateData) error {
+func (r *Controller) propagateHostsToWatchedCR(target *unstructured.Unstructured, data *spi.RoutingData) error {
 	exportModes := r.extractExportModes(target)
 
 	// Remove all existing routing addresses
