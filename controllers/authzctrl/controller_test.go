@@ -69,7 +69,7 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 	})
 
 	It("should create an anonymous AuthConfig resource by default when a target CR is created", func(ctx context.Context) {
-		Eventually(func() error {
+		Eventually(func(g Gomega, ctx context.Context) error {
 			createdAuthConfig := &authorinov1beta2.AuthConfig{}
 			err := envTest.Client.Get(ctx, types.NamespacedName{
 				Name:      resourceName,
@@ -88,7 +88,11 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 			Expect(createdAuthConfig).NotTo(HaveKubernetesTokenReview())
 
 			return nil
-		}, test.DefaultTimeout, test.DefaultPolling).Should(Succeed())
+		}).
+			WithContext(ctx).
+			WithTimeout(test.DefaultTimeout).
+			WithPolling(test.DefaultPolling).
+			Should(Succeed())
 	})
 
 	It("should create a non-anonymous AuthConfig resource when annotation is specified", func(ctx context.Context) {
@@ -103,7 +107,7 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 		})
 		Expect(errCreate).ToNot(HaveOccurred())
 
-		Eventually(func() error {
+		Eventually(func(g Gomega, ctx context.Context) error {
 			createdAuthConfig := &authorinov1beta2.AuthConfig{}
 			err := envTest.Client.Get(ctx, types.NamespacedName{
 				Name:      resourceName,
@@ -122,11 +126,15 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 			Expect(createdAuthConfig).To(HaveKubernetesTokenReview())
 
 			return nil
-		}, test.DefaultTimeout, test.DefaultPolling).Should(Succeed())
+		}).
+			WithContext(ctx).
+			WithTimeout(test.DefaultTimeout).
+			WithPolling(test.DefaultPolling).
+			Should(Succeed())
 	})
 
 	It("should create an AuthorizationPolicy when a Component is created", func(ctx context.Context) {
-		Eventually(func() error {
+		Eventually(func(g Gomega, ctx context.Context) error {
 			createdAuthPolicy := &istiosecurityv1beta1.AuthorizationPolicy{}
 			err := envTest.Client.Get(ctx, types.NamespacedName{
 				Name:      resourceName,
@@ -142,7 +150,11 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 			Expect(createdAuthPolicy.Spec.GetSelector().GetMatchLabels()).To(HaveKeyWithValue("component", resourceName))
 
 			return nil
-		}, test.DefaultTimeout, test.DefaultPolling).Should(Succeed())
+		}).
+			WithContext(ctx).
+			WithTimeout(test.DefaultTimeout).
+			WithPolling(test.DefaultPolling).
+			Should(Succeed())
 	})
 
 	// Using k8s envtest we are not able to test actual garbage collection of resources. [1]
