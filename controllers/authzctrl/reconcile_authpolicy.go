@@ -20,12 +20,12 @@ import (
 )
 
 func (r *Controller) reconcileAuthPolicy(ctx context.Context, target *unstructured.Unstructured) error {
-	resolvedSelectors, errResolve := config.ResolveSelectors(r.authComponent.WorkloadSelector, target)
+	resolvedSelectors, errResolve := config.ResolveSelectors(r.protectedResource.WorkloadSelector, target)
 	if errResolve != nil {
 		return fmt.Errorf("could not resolve WorkloadSelectors err: %w", errResolve)
 	}
 
-	desired := createAuthzPolicy(r.authComponent.Ports, resolvedSelectors, r.config.ProviderName, target)
+	desired := createAuthzPolicy(r.protectedResource.Ports, resolvedSelectors, r.config.ProviderName, target)
 	found := &istiosecurityv1beta1.AuthorizationPolicy{}
 	justCreated := false
 

@@ -1,160 +1,129 @@
 package spi
 
 import (
-	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
+	"net/url"
+	"strings"
 
-	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
-	"github.com/opendatahub-io/odh-platform/pkg/platform"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 )
-
-// Auth
-
-type AuthType string
-
-const (
-	UserDefined AuthType = "userdefined"
-	Anonymous   AuthType = "anonymous"
-)
-
-type AuthorizationComponent struct {
-	platform.ProtectedResource
-}
-
-// TODO: the config file will contain more then just AuthorizationComponents now.. adjust to read it multiple times pr Type or load it all at once..?
-// TODO: move the config load and save into a sub package and lazy share with operator.
-func (a AuthorizationComponent) Load(configPath string) ([]AuthorizationComponent, error) {
-	// TODO(mvp): rework/simplify types
-	content, err := os.ReadFile(configPath + string(filepath.Separator) + "authorization")
-	if err != nil {
-		return []AuthorizationComponent{}, fmt.Errorf("could not read config file [%s]: %w", configPath, err)
-	}
-
-	var authz []AuthorizationComponent
-
-	err = json.Unmarshal(content, &authz)
-	if err != nil {
-		return []AuthorizationComponent{}, fmt.Errorf("could not parse json content of [%s]: %w", configPath, err)
-	}
-
-	return authz, nil
-}
 
 // HostExtractor attempts to extract Hosts from the given resource.
 type HostExtractor func(res *unstructured.Unstructured) ([]string, error)
 
-// AuthTypeDetector attempts to determine the AuthType for the given resource
-// Possible implementations might check annotations or labels or possible related objects / config.
-type AuthTypeDetector interface {
-	Detect(ctx context.Context, res *unstructured.Unstructured) (AuthType, error)
-}
+func NewAnnotationHostExtractor(separator string, annotationKeys ...string) HostExtractor {
+	return func(target *unstructured.Unstructured) ([]string, error) {
+		hosts := []string{}
 
-// AuthConfigTemplateLoader provides a way to differentiate the AuthConfig template used based on
-//   - AuthType
-//   - Namespace / Resource name
-//   - Loader source
-type AuthConfigTemplateLoader interface {
-	Load(ctx context.Context, authType AuthType, key types.NamespacedName) (authorinov1beta2.AuthConfig, error)
-}
-
-// Routing
-
-type RouteType string
-
-const (
-	PublicRoute   RouteType = "public"
-	ExternalRoute RouteType = "external"
-)
-
-func AllRouteTypes() []RouteType {
-	return []RouteType{PublicRoute, ExternalRoute}
-}
-
-func IsValidRouteType(routeType RouteType) bool {
-	for _, validType := range AllRouteTypes() {
-		if routeType == validType {
-			return true
+		for _, annKey := range annotationKeys {
+			if val, found := target.GetAnnotations()[annKey]; found {
+				hs := strings.Split(val, separator)
+				hosts = append(hosts, hs...)
+			}
 		}
-	}
 
-	return false
+		return hosts, nil
+	}
 }
 
-func UnusedRouteTypes(exportModes []RouteType) []RouteType {
-	used := make(map[RouteType]bool)
+func UnifiedHostExtractor(extractors ...HostExtractor) HostExtractor { //nolint:gocognit //reason Inlined functions to avoid package pollution, "function scoped"
+	unique := func(in []string) []string {
+		set := map[string]bool{}
 
-	for _, mode := range exportModes {
-		used[mode] = true
-	}
-
-	var unused []RouteType
-
-	for _, rType := range AllRouteTypes() {
-		if !used[rType] {
-			unused = append(unused, rType)
+		for _, elem := range in {
+			set[elem] = true
 		}
+
+		unique := make([]string, len(set))
+
+		i := 0
+
+		for elem := range set {
+			unique[i] = elem
+			i++
+		}
+
+		return unique
 	}
 
-	return unused
-}
-
-type RoutingComponent struct {
-	platform.RoutingTarget
-}
-
-func (r RoutingComponent) Load(configPath string) ([]RoutingComponent, error) {
-	content, err := os.ReadFile(configPath + string(filepath.Separator) + "routing")
-	if err != nil {
-		return []RoutingComponent{}, fmt.Errorf("could not read config file [%s]: %w", configPath, err)
+	isURL := func(host string) bool {
+		return strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://")
 	}
 
-	var routes []RoutingComponent
+	appendHosts := func(hosts []string, foundHosts ...string) ([]string, error) {
+		var errAllParse []error
 
-	err = json.Unmarshal(content, &routes)
-	if err != nil {
-		return []RoutingComponent{}, fmt.Errorf("could not parse json content of [%s]: %w", configPath, err)
+		for _, foundHost := range foundHosts {
+			if isURL(foundHost) {
+				parsedURL, errParse := url.Parse(foundHost)
+				if errParse != nil {
+					errAllParse = append(errAllParse, fmt.Errorf("failed to parse URL %s: %w", foundHost, errParse))
+				}
+
+				hosts = append(hosts, parsedURL.Host)
+			} else {
+				hosts = append(hosts, foundHost)
+			}
+		}
+
+		return hosts, errors.Join(errAllParse...)
 	}
 
-	return routes, nil
-}
+	return func(target *unstructured.Unstructured) ([]string, error) {
+		var errAll []error
 
-type PlatformRoutingConfiguration struct {
-	IngressSelectorLabel,
-	IngressSelectorValue,
-	IngressService,
-	GatewayNamespace string
-}
+		combinedExtractedHosts := []string{}
 
-type RoutingData struct {
-	PlatformRoutingConfiguration
+		for _, extractor := range extractors {
+			extractedHosts, err := extractor(target)
+			if err != nil {
+				errAll = append(errAll, err)
 
-	PublicServiceName string // [service-name]-[service-namespace]
-	ServiceName       string
-	ServiceNamespace  string
+				continue
+			}
 
-	ServiceTargetPort string
+			combinedExtractedHosts, err = appendHosts(combinedExtractedHosts, extractedHosts...)
+			if err != nil {
+				errAll = append(errAll, err)
+			}
+		}
 
-	Domain string
-}
-
-func NewRoutingData(config PlatformRoutingConfiguration, svc *corev1.Service, domain string) *RoutingData {
-	return &RoutingData{
-		PlatformRoutingConfiguration: config,
-		PublicServiceName:            svc.GetName() + "-" + svc.GetNamespace(),
-		ServiceName:                  svc.GetName(),
-		ServiceNamespace:             svc.GetNamespace(),
-		ServiceTargetPort:            svc.Spec.Ports[0].TargetPort.String(),
-		Domain:                       domain,
+		return unique(combinedExtractedHosts), errors.Join(errAll...)
 	}
 }
 
-// RoutingTemplateLoader provides a way to differentiate the Route resource templates used based on its types.
-type RoutingTemplateLoader interface {
-	Load(data *RoutingData, routeType RouteType) ([]*unstructured.Unstructured, error)
+func NewPathExpressionExtractor(paths []string) HostExtractor {
+	extractHosts := func(target *unstructured.Unstructured, splitPath []string) ([]string, error) {
+		// extracting as string
+		if foundHost, found, err := unstructured.NestedString(target.Object, splitPath...); err == nil && found {
+			return []string{foundHost}, nil
+		}
+
+		// extracting as slice of strings
+		if foundHosts, found, err := unstructured.NestedStringSlice(target.Object, splitPath...); err == nil && found {
+			return foundHosts, nil
+		}
+
+		return nil, fmt.Errorf("neither string nor slice of strings found at path %v", splitPath)
+	}
+
+	return func(target *unstructured.Unstructured) ([]string, error) {
+		var errExtract []error
+
+		hosts := []string{}
+
+		for _, path := range paths {
+			splitPath := strings.Split(path, ".")
+			extractedHosts, err := extractHosts(target, splitPath)
+
+			if err != nil {
+				errExtract = append(errExtract, fmt.Errorf("failed to extract hosts at path %s: %w", path, err))
+			}
+
+			hosts = append(hosts, extractedHosts...)
+		}
+
+		return hosts, errors.Join(errExtract...)
+	}
 }

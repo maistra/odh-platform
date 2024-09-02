@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
-	"github.com/opendatahub-io/odh-platform/pkg/spi"
+	"github.com/opendatahub-io/odh-platform/pkg/routing"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -16,7 +16,7 @@ import (
 
 func (r *Controller) removeUnusedRoutingResources(ctx context.Context, target *unstructured.Unstructured) error {
 	exportModes := r.extractExportModes(target)
-	unusedRouteTypes := spi.UnusedRouteTypes(exportModes)
+	unusedRouteTypes := routing.UnusedRouteTypes(exportModes)
 
 	if len(unusedRouteTypes) == 0 {
 		// no unused route types to remove resources for
@@ -49,7 +49,7 @@ func (r *Controller) handleResourceDeletion(ctx context.Context, sourceRes *unst
 
 func (r *Controller) deleteOwnedResources(ctx context.Context,
 	target *unstructured.Unstructured,
-	exportModes []spi.RouteType,
+	exportModes []routing.RouteType,
 	gvks []schema.GroupVersionKind) error {
 	exportTypeValues := make([]string, len(exportModes))
 	for i, mode := range exportModes {
