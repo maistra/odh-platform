@@ -15,7 +15,6 @@ replace (
 	k8s.io/component-base => k8s.io/component-base v0.28.4
 	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.17.5
 	sigs.k8s.io/controller-tools => sigs.k8s.io/controller-tools v0.14.0
-
 )
 
 require (

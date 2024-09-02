@@ -12,7 +12,7 @@ import (
 	"github.com/opendatahub-io/odh-platform/pkg/authorization"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
-	"github.com/opendatahub-io/odh-platform/pkg/routing"
+	"github.com/opendatahub-io/odh-platform/pkg/platform"
 	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	istiosecurityv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
@@ -26,21 +26,21 @@ import (
 const name = "authorization"
 
 func New(cli client.Client, log logr.Logger,
-	component spi.AuthorizationComponent, config PlatformAuthorizationConfig) *Controller {
+	protectedResource platform.ProtectedResource, config PlatformAuthorizationConfig) *Controller {
 	return &Controller{
 		active: true,
 		Client: cli,
 		log: log.WithValues(
 			"controller", name,
-			"component", component.ObjectReference.Kind,
+			"component", protectedResource.ResourceReference.Kind,
 		),
-		config:        config,
-		authComponent: component,
-		typeDetector:  authorization.NewAnnotationAuthTypeDetector(annotations.AuthEnabled("").Key()),
+		config:            config,
+		protectedResource: protectedResource,
+		typeDetector:      authorization.NewAnnotationAuthTypeDetector(annotations.AuthEnabled("").Key()),
 		// TODO: Evaluate passing in the hostExtractor to avoid coupling the authorizaiton/routing packages
-		hostExtractor: authorization.UnifiedHostExtractor(
-			authorization.NewPathExpressionExtractor(component.HostPaths),
-			routing.NewAnnotationHostExtractor(";", metadata.Keys(annotations.RoutingAddressesExternal(""), annotations.RoutingAddressesPublic(""))...)),
+		hostExtractor: spi.UnifiedHostExtractor(
+			spi.NewPathExpressionExtractor(protectedResource.HostPaths),
+			spi.NewAnnotationHostExtractor(";", metadata.Keys(annotations.RoutingAddressesExternal(""), annotations.RoutingAddressesPublic(""))...)),
 		templateLoader: authorization.NewConfigMapTemplateLoader(cli, authorization.NewStaticTemplateLoader(config.Audiences)),
 	}
 }
@@ -57,13 +57,13 @@ type PlatformAuthorizationConfig struct {
 // Controller holds the authorization controller configuration.
 type Controller struct {
 	client.Client
-	active         bool
-	log            logr.Logger
-	config         PlatformAuthorizationConfig
-	authComponent  spi.AuthorizationComponent
-	typeDetector   spi.AuthTypeDetector
-	hostExtractor  spi.HostExtractor
-	templateLoader spi.AuthConfigTemplateLoader
+	active            bool
+	log               logr.Logger
+	config            PlatformAuthorizationConfig
+	protectedResource platform.ProtectedResource
+	typeDetector      authorization.AuthTypeDetector
+	hostExtractor     spi.HostExtractor
+	templateLoader    authorization.AuthConfigTemplateLoader
 }
 
 // +kubebuilder:rbac:groups=authorino.kuadrant.io,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
@@ -82,7 +82,7 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	reconcilers := []platformctrl.SubReconcileFunc{r.reconcileAuthConfig, r.reconcileAuthPolicy}
 
 	sourceRes := &unstructured.Unstructured{}
-	sourceRes.SetGroupVersionKind(r.authComponent.ObjectReference.GroupVersionKind)
+	sourceRes.SetGroupVersionKind(r.protectedResource.ResourceReference.GroupVersionKind)
 
 	if err := r.Client.Get(ctx, req.NamespacedName, sourceRes); err != nil {
 		if k8serr.IsNotFound(err) {
@@ -105,7 +105,7 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 }
 
 func (r *Controller) Name() string {
-	return name + "-" + strings.ToLower(r.authComponent.ObjectReference.Kind)
+	return name + "-" + strings.ToLower(r.protectedResource.ResourceReference.Kind)
 }
 
 func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
@@ -120,8 +120,8 @@ func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
 		Named(r.Name()).
 		For(&metav1.PartialObjectMetadata{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: r.authComponent.ObjectReference.GroupVersion().String(),
-				Kind:       r.authComponent.ObjectReference.Kind,
+				APIVersion: r.protectedResource.ResourceReference.GroupVersion().String(),
+				Kind:       r.protectedResource.ResourceReference.Kind,
 			},
 		}, builder.OnlyMetadata).
 		Owns(&authorinov1beta2.AuthConfig{}).

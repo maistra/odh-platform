@@ -1,20 +1,29 @@
 package config
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
+	"reflect"
 )
 
-// LoadableConfig is an interface that defines the strategy to load a configuration from a given path.
-type LoadableConfig[T any] interface {
-	Load(configPath string) ([]T, error)
-}
-
-// Load loads the configuration from the given path using the strategy defined by the LoadableConfig implementation.
-func Load[T LoadableConfig[T]](instance T, configPath string) ([]T, error) {
-	defs, err := instance.Load(configPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed loading config for: %w", err)
+// Load loads the configuration from the given path.
+func Load(instance any, configPath string) error {
+	rv := reflect.ValueOf(instance)
+	if rv.Kind() != reflect.Pointer || rv.IsNil() {
+		return errors.New("must be a non-nil pointer")
 	}
 
-	return defs, nil
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("could not read config file [%s]: %w", configPath, err)
+	}
+
+	err = json.Unmarshal(content, instance)
+	if err != nil {
+		return fmt.Errorf("could not parse json content of [%s]: %w", configPath, err)
+	}
+
+	return nil
 }

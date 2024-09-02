@@ -9,7 +9,7 @@ import (
 	"github.com/opendatahub-io/odh-platform/controllers/routingctrl"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
 	"github.com/opendatahub-io/odh-platform/pkg/platform"
-	"github.com/opendatahub-io/odh-platform/pkg/spi"
+	"github.com/opendatahub-io/odh-platform/pkg/routing"
 	"github.com/opendatahub-io/odh-platform/test"
 	"github.com/opendatahub-io/odh-platform/test/k8senvtest"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -18,7 +18,7 @@ import (
 
 var (
 	envTest              *k8senvtest.Client
-	routingConfiguration = spi.PlatformRoutingConfiguration{
+	routingConfiguration = routing.PlatformRoutingConfiguration{
 		IngressService:       "odh-router",
 		GatewayNamespace:     "odh-gateway",
 		IngressSelectorLabel: "istio",
@@ -44,17 +44,15 @@ var _ = SynchronizedBeforeSuite(func() {
 	routingCtrl := routingctrl.New(
 		nil,
 		ctrl.Log.WithName("controllers").WithName("platform"),
-		spi.RoutingComponent{
-			RoutingTarget: platform.RoutingTarget{
-				ObjectReference: platform.ObjectReference{
-					GroupVersionKind: schema.GroupVersionKind{
-						Version: "v1",
-						Group:   "opendatahub.io",
-						Kind:    "Component",
-					},
+		platform.RoutingTarget{
+			ResourceReference: platform.ResourceReference{
+				GroupVersionKind: schema.GroupVersionKind{
+					Version: "v1",
+					Group:   "opendatahub.io",
+					Kind:    "Component",
 				},
-				ServiceSelector: labels.MatchingLabels(ownerName, ownerKind),
 			},
+			ServiceSelector: labels.MatchingLabels(ownerName, ownerKind),
 		},
 		routingConfiguration,
 	)
