@@ -16,31 +16,28 @@ var _ = Describe("Resource functions", test.Unit(), func() {
 
 	Context("Template Loader", func() {
 
-		config := routing.PlatformRoutingConfiguration{
+		config := routing.IngressConfig{
 			GatewayNamespace:     "opendatahub",
 			IngressSelectorLabel: "istio",
 			IngressSelectorValue: "rhoai-gateway",
 			IngressService:       "rhoai-router-ingress",
 		}
 
-		data := routing.NewExposedServiceConfig(config,
-			&corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "registry",
-					Namespace: "office",
-				},
-				Spec: corev1.ServiceSpec{
-					Ports: []corev1.ServicePort{
-						{
-							Name:        "http-api",
-							Port:        80,
-							AppProtocol: ptr.To("http"),
-						},
+		data := routing.NewExposedServiceConfig(&corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "registry",
+				Namespace: "office",
+			},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{
+						Name:        "http-api",
+						Port:        80,
+						AppProtocol: ptr.To("http"),
 					},
 				},
 			},
-			"app-crc.testing",
-		)
+		}, config, "app-crc.testing")
 
 		It("should load public resources", func() {
 			// given

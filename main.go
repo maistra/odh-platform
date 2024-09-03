@@ -7,6 +7,7 @@ import (
 
 	"github.com/opendatahub-io/odh-platform/controllers/authzctrl"
 	"github.com/opendatahub-io/odh-platform/controllers/routingctrl"
+	"github.com/opendatahub-io/odh-platform/pkg/authorization"
 	"github.com/opendatahub-io/odh-platform/pkg/config"
 	"github.com/opendatahub-io/odh-platform/pkg/platform"
 	"github.com/opendatahub-io/odh-platform/pkg/routing"
@@ -73,7 +74,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	authorizationConfig := authzctrl.PlatformAuthorizationConfig{
+	authorizationConfig := authorization.ProviderConfig{
 		Label:        config.GetAuthorinoLabel(),
 		Audiences:    config.GetAuthAudience(),
 		ProviderName: config.GetAuthProvider(),
@@ -95,7 +96,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	routingConfig := routing.PlatformRoutingConfiguration{
+	routingConfig := routing.IngressConfig{
 		IngressSelectorLabel: config.GetIngressSelectorKey(),
 		IngressSelectorValue: config.GetIngressSelectorValue(),
 		IngressService:       config.GetGatewayService(),
