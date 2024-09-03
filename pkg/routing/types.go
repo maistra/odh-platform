@@ -40,15 +40,19 @@ func UnusedRouteTypes(exportModes []RouteType) []RouteType {
 	return unused
 }
 
-type PlatformRoutingConfiguration struct {
+// IngressConfig holds the configuration for the ingress resources (Istio Ingress Gateway services).
+// These values determine how and where additional resources required for platform routing will be created.
+type IngressConfig struct {
 	IngressSelectorLabel,
 	IngressSelectorValue,
 	IngressService,
 	GatewayNamespace string
 }
 
+// ExposedServiceConfig holds the configuration for a service that is used to serve as a cluster-local service facade
+// allowing non-mesh clients to access mesh services.
 type ExposedServiceConfig struct {
-	PlatformRoutingConfiguration
+	IngressConfig
 	PublicServiceName,
 	ServiceName,
 	ServiceNamespace,
@@ -56,14 +60,14 @@ type ExposedServiceConfig struct {
 	Domain string
 }
 
-func NewExposedServiceConfig(config PlatformRoutingConfiguration, svc *corev1.Service, domain string) *ExposedServiceConfig {
+func NewExposedServiceConfig(svc *corev1.Service, config IngressConfig, domain string) *ExposedServiceConfig {
 	return &ExposedServiceConfig{
-		PlatformRoutingConfiguration: config,
-		PublicServiceName:            svc.GetName() + "-" + svc.GetNamespace(),
-		ServiceName:                  svc.GetName(),
-		ServiceNamespace:             svc.GetNamespace(),
-		ServiceTargetPort:            svc.Spec.Ports[0].TargetPort.String(),
-		Domain:                       domain,
+		IngressConfig:     config,
+		PublicServiceName: svc.GetName() + "-" + svc.GetNamespace(),
+		ServiceName:       svc.GetName(),
+		ServiceNamespace:  svc.GetNamespace(),
+		ServiceTargetPort: svc.Spec.Ports[0].TargetPort.String(),
+		Domain:            domain,
 	}
 }
 

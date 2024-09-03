@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/opendatahub-io/odh-platform/controllers/authzctrl"
+	"github.com/opendatahub-io/odh-platform/pkg/authorization"
 	"github.com/opendatahub-io/odh-platform/pkg/config"
 	"github.com/opendatahub-io/odh-platform/pkg/platform"
 	"github.com/opendatahub-io/odh-platform/test"
@@ -47,7 +48,7 @@ var _ = SynchronizedBeforeSuite(func(ctx context.Context) {
 				Ports:     []string{},
 				HostPaths: []string{"spec.host"},
 			},
-			authzctrl.PlatformAuthorizationConfig{
+			authorization.ProviderConfig{
 				Label:        config.GetAuthorinoLabel(),
 				Audiences:    config.GetAuthAudience(),
 				ProviderName: config.GetAuthProvider(),

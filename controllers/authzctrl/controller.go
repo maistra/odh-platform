@@ -26,7 +26,7 @@ import (
 const name = "authorization"
 
 func New(cli client.Client, log logr.Logger,
-	protectedResource platform.ProtectedResource, config PlatformAuthorizationConfig) *Controller {
+	protectedResource platform.ProtectedResource, config authorization.ProviderConfig) *Controller {
 	return &Controller{
 		active: true,
 		Client: cli,
@@ -45,21 +45,12 @@ func New(cli client.Client, log logr.Logger,
 	}
 }
 
-type PlatformAuthorizationConfig struct {
-	// Label in a format of key=value. It's used to target created AuthConfig by Authorino instance.
-	Label string
-	// Audiences is a list of audiences that will be used in the AuthConfig template when performing TokenReview.
-	Audiences []string
-	// ProviderName is the name of the registered external authorization provider in Service Mesh.
-	ProviderName string
-}
-
 // Controller holds the authorization controller configuration.
 type Controller struct {
 	client.Client
 	active            bool
 	log               logr.Logger
-	config            PlatformAuthorizationConfig
+	config            authorization.ProviderConfig
 	protectedResource platform.ProtectedResource
 	typeDetector      authorization.AuthTypeDetector
 	hostExtractor     spi.HostExtractor

@@ -68,7 +68,7 @@ func (r *Controller) createRoutingResources(ctx context.Context, target *unstruc
 func (r *Controller) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
 	exportModes := r.extractExportModes(target)
 
-	templateData := routing.NewExposedServiceConfig(r.config, exportedSvc, domain)
+	templateData := routing.NewExposedServiceConfig(exportedSvc, r.config, domain)
 
 	// To establish ownership for watched component
 	ownershipLabels := append(labels.AsOwner(target), labels.AppManagedBy("odh-routing-controller"))

@@ -26,7 +26,7 @@ const (
 	finalizerName = "routing.opendatahub.io/finalizer"
 )
 
-func New(cli client.Client, log logr.Logger, target platform.RoutingTarget, config routing.PlatformRoutingConfiguration) *Controller {
+func New(cli client.Client, log logr.Logger, target platform.RoutingTarget, config routing.IngressConfig) *Controller {
 	return &Controller{
 		active: true,
 		Client: cli,
@@ -47,7 +47,7 @@ type Controller struct {
 	log            logr.Logger
 	component      platform.RoutingTarget
 	templateLoader routing.TemplateLoader
-	config         routing.PlatformRoutingConfiguration
+	config         routing.IngressConfig
 }
 
 // +kubebuilder:rbac:groups="route.openshift.io",resources=routes,verbs=*
