@@ -3,12 +3,15 @@ package main
 import (
 	"flag"
 	"os"
+	"path/filepath"
 
 	"github.com/opendatahub-io/odh-platform/controllers/authzctrl"
 	"github.com/opendatahub-io/odh-platform/controllers/routingctrl"
+	"github.com/opendatahub-io/odh-platform/pkg/authorization"
 	"github.com/opendatahub-io/odh-platform/pkg/config"
+	"github.com/opendatahub-io/odh-platform/pkg/platform"
+	"github.com/opendatahub-io/odh-platform/pkg/routing"
 	pschema "github.com/opendatahub-io/odh-platform/pkg/schema"
-	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"github.com/opendatahub-io/odh-platform/version"
 	"k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/client-go/plugin/pkg/client/auth" // Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.) to ensure that exec-entrypoint and run can make use of them.
@@ -63,40 +66,44 @@ func main() {
 	ctrlLog := ctrl.Log.WithName("controllers").WithName("platform")
 	ctrlLog.Info("creating controller instances", "version", version.Version, "commit", version.Commit, "build-time", version.BuildTime)
 
-	authorizationComponents, errLoadAuthz := config.Load(spi.AuthorizationComponent{}, config.GetConfigFile())
-	if errLoadAuthz != nil {
-		setupLog.Error(errLoadAuthz, "unable to load config from "+config.GetConfigFile())
+	var protectedResources []platform.ProtectedResource
+
+	authzPath := filepath.Join(config.GetConfigFile(), "authorization")
+	if errLoadAuthz := config.Load(&protectedResources, authzPath); errLoadAuthz != nil {
+		setupLog.Error(errLoadAuthz, "unable to load config from "+authzPath)
 		os.Exit(1)
 	}
 
-	authorizationConfig := authzctrl.PlatformAuthorizationConfig{
+	authorizationConfig := authorization.ProviderConfig{
 		Label:        config.GetAuthorinoLabel(),
 		Audiences:    config.GetAuthAudience(),
 		ProviderName: config.GetAuthProvider(),
 	}
 
-	for _, component := range authorizationComponents {
+	for _, component := range protectedResources {
 		if err = authzctrl.New(mgr.GetClient(), ctrlLog, component, authorizationConfig).
 			SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "authorization", "component", component.ObjectReference.Kind)
+			setupLog.Error(err, "unable to create controller", "controller", "authorization", "component", component.ResourceReference.Kind)
 			os.Exit(1)
 		}
 	}
 
-	routingComponents, errLoadRouting := config.Load(spi.RoutingComponent{}, config.GetConfigFile())
-	if errLoadRouting != nil {
-		setupLog.Error(errLoadRouting, "unable to load config from "+config.GetConfigFile())
+	var routingTargets []platform.RoutingTarget
+
+	routingPath := filepath.Join(config.GetConfigFile(), "routing")
+	if errLoadRouting := config.Load(&routingTargets, routingPath); errLoadRouting != nil {
+		setupLog.Error(errLoadRouting, "unable to load config from "+routingPath)
 		os.Exit(1)
 	}
 
-	routingConfig := spi.PlatformRoutingConfiguration{
+	routingConfig := routing.IngressConfig{
 		IngressSelectorLabel: config.GetIngressSelectorKey(),
 		IngressSelectorValue: config.GetIngressSelectorValue(),
 		IngressService:       config.GetGatewayService(),
 		GatewayNamespace:     config.GetGatewayNamespace(),
 	}
 
-	for _, component := range routingComponents {
+	for _, component := range routingTargets {
 		if err = routingctrl.New(
 			mgr.GetClient(),
 			ctrlLog,
@@ -104,7 +111,7 @@ func main() {
 			routingConfig,
 		).
 			SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "routing", "component", component.ObjectReference.Kind)
+			setupLog.Error(err, "unable to create controller", "controller", "routing", "component", component.ResourceReference.Kind)
 			os.Exit(1)
 		}
 	}

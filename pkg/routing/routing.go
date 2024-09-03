@@ -8,7 +8,6 @@ import (
 	"text/template"
 
 	"github.com/opendatahub-io/odh-platform/pkg/schema"
-	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -21,19 +20,21 @@ var externalRouteTemplate []byte
 type staticTemplateLoader struct {
 }
 
-func NewStaticTemplateLoader() spi.RoutingTemplateLoader {
+var _ TemplateLoader = (*staticTemplateLoader)(nil)
+
+func NewStaticTemplateLoader() *staticTemplateLoader {
 	return &staticTemplateLoader{}
 }
 
-func (s *staticTemplateLoader) Load(data *spi.RoutingData, routeType spi.RouteType) ([]*unstructured.Unstructured, error) {
+func (s *staticTemplateLoader) Load(data *ExposedServiceConfig, routeType RouteType) ([]*unstructured.Unstructured, error) {
 	var resources []*unstructured.Unstructured
 
 	var templateContent []byte
 
 	switch routeType {
-	case spi.PublicRoute:
+	case PublicRoute:
 		templateContent = publicRouteTemplate
-	case spi.ExternalRoute:
+	case ExternalRoute:
 		templateContent = externalRouteTemplate
 	default:
 		templateContent = make([]byte, 0)
@@ -58,7 +59,7 @@ func (s *staticTemplateLoader) Load(data *spi.RoutingData, routeType spi.RouteTy
 	return resources, nil
 }
 
-func (s *staticTemplateLoader) resolveTemplate(tmpl []byte, data *spi.RoutingData) ([]byte, error) {
+func (s *staticTemplateLoader) resolveTemplate(tmpl []byte, data *ExposedServiceConfig) ([]byte, error) {
 	engine, err := template.New("routing").Parse(string(tmpl))
 	if err != nil {
 		return []byte{}, fmt.Errorf("could not create template engine: %w", err)
@@ -72,19 +73,4 @@ func (s *staticTemplateLoader) resolveTemplate(tmpl []byte, data *spi.RoutingDat
 	}
 
 	return buf.Bytes(), nil
-}
-
-func NewAnnotationHostExtractor(separator string, annotationKeys ...string) spi.HostExtractor {
-	return func(target *unstructured.Unstructured) ([]string, error) {
-		hosts := []string{}
-
-		for _, annKey := range annotationKeys {
-			if val, found := target.GetAnnotations()[annKey]; found {
-				hs := strings.Split(val, separator)
-				hosts = append(hosts, hs...)
-			}
-		}
-
-		return hosts, nil
-	}
 }

@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"github.com/opendatahub-io/odh-platform/pkg/config"
-	"github.com/opendatahub-io/odh-platform/pkg/spi"
+	"github.com/opendatahub-io/odh-platform/pkg/platform"
 	"github.com/opendatahub-io/odh-platform/test"
 )
 
@@ -16,17 +16,19 @@ var _ = Describe("Loading capabilities", test.Unit(), func() {
 	Context("loading capabilities from files", func() {
 
 		It("should load authorized resources", func() {
-			configPath := filepath.Join(test.ProjectRoot(), "test", "data", "config")
+			configPath := filepath.Join(test.ProjectRoot(), "test", "data", "config", "authorization")
 
-			authorizationComponents, err := config.Load(spi.AuthorizationComponent{}, configPath)
-			Expect(err).To(Succeed())
-			Expect(authorizationComponents).To(ContainElement(MatchFields(IgnoreExtras, Fields{
-				"ProtectedResource": MatchFields(IgnoreExtras, Fields{
-					"Ports":     ContainElement("9192"),
-					"HostPaths": ContainElement("status.url"),
-				}),
-			})))
+			var protectedResources []platform.ProtectedResource
+			Expect(config.Load(&protectedResources, configPath)).To(Succeed())
+			Expect(protectedResources).To(
+				ContainElement(
+					MatchFields(IgnoreExtras, Fields{
+						"Ports":     ContainElement("9192"),
+						"HostPaths": ContainElement("status.url"),
+					}),
+				),
+			)
 		})
-	})
 
+	})
 })

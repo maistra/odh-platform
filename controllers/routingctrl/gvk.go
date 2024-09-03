@@ -1,7 +1,7 @@
 package routingctrl
 
 import (
-	"github.com/opendatahub-io/odh-platform/pkg/spi"
+	"github.com/opendatahub-io/odh-platform/pkg/routing"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -19,7 +19,7 @@ var publicGVKs = []schema.GroupVersionKind{
 	{Group: "networking.istio.io", Version: "v1beta1", Kind: "DestinationRule"},
 }
 
-func routingResourceGVKs(exportModes ...spi.RouteType) []schema.GroupVersionKind {
+func routingResourceGVKs(exportModes ...routing.RouteType) []schema.GroupVersionKind {
 	// use map just to handle possible duplication of gvks
 	gvkSet := make(map[schema.GroupVersionKind]struct{})
 
@@ -27,9 +27,9 @@ func routingResourceGVKs(exportModes ...spi.RouteType) []schema.GroupVersionKind
 		var gvks []schema.GroupVersionKind
 
 		switch exportMode {
-		case spi.ExternalRoute:
+		case routing.ExternalRoute:
 			gvks = externalGVKs
-		case spi.PublicRoute:
+		case routing.PublicRoute:
 			gvks = publicGVKs
 		}
 

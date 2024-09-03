@@ -16,38 +16,35 @@ var _ = Describe("Resource functions", test.Unit(), func() {
 
 	Context("Template Loader", func() {
 
-		config := spi.PlatformRoutingConfiguration{
+		config := routing.IngressConfig{
 			GatewayNamespace:     "opendatahub",
 			IngressSelectorLabel: "istio",
 			IngressSelectorValue: "rhoai-gateway",
 			IngressService:       "rhoai-router-ingress",
 		}
 
-		data := spi.NewRoutingData(config,
-			&corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "registry",
-					Namespace: "office",
-				},
-				Spec: corev1.ServiceSpec{
-					Ports: []corev1.ServicePort{
-						{
-							Name:        "http-api",
-							Port:        80,
-							AppProtocol: ptr.To("http"),
-						},
+		data := routing.NewExposedServiceConfig(&corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "registry",
+				Namespace: "office",
+			},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{
+						Name:        "http-api",
+						Port:        80,
+						AppProtocol: ptr.To("http"),
 					},
 				},
 			},
-			"app-crc.testing",
-		)
+		}, config, "app-crc.testing")
 
 		It("should load public resources", func() {
 			// given
 			// data^
 
 			// when
-			res, err := routing.NewStaticTemplateLoader().Load(data, spi.PublicRoute)
+			res, err := routing.NewStaticTemplateLoader().Load(data, routing.PublicRoute)
 
 			// then
 			Expect(err).ShouldNot(HaveOccurred())
@@ -59,7 +56,7 @@ var _ = Describe("Resource functions", test.Unit(), func() {
 			// data^
 
 			// when
-			res, err := routing.NewStaticTemplateLoader().Load(data, spi.ExternalRoute)
+			res, err := routing.NewStaticTemplateLoader().Load(data, routing.ExternalRoute)
 
 			// then
 			Expect(err).ShouldNot(HaveOccurred())
@@ -72,7 +69,7 @@ var _ = Describe("Resource functions", test.Unit(), func() {
 
 		It("should extract host from unstructured via paths as string", func() {
 			// given
-			extractor := routing.NewAnnotationHostExtractor(";", "A", "B")
+			extractor := spi.NewAnnotationHostExtractor(";", "A", "B")
 			target := unstructured.Unstructured{
 				Object: map[string]interface{}{},
 			}

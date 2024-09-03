@@ -8,8 +8,8 @@ import (
 
 	"github.com/go-logr/logr"
 	platformctrl "github.com/opendatahub-io/odh-platform/controllers"
+	"github.com/opendatahub-io/odh-platform/pkg/platform"
 	"github.com/opendatahub-io/odh-platform/pkg/routing"
-	"github.com/opendatahub-io/odh-platform/pkg/spi"
 	"github.com/opendatahub-io/odh-platform/pkg/unstruct"
 	openshiftroutev1 "github.com/openshift/api/route/v1"
 	istionetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
@@ -26,15 +26,15 @@ const (
 	finalizerName = "routing.opendatahub.io/finalizer"
 )
 
-func New(cli client.Client, log logr.Logger, component spi.RoutingComponent, config spi.PlatformRoutingConfiguration) *Controller {
+func New(cli client.Client, log logr.Logger, target platform.RoutingTarget, config routing.IngressConfig) *Controller {
 	return &Controller{
 		active: true,
 		Client: cli,
 		log: log.WithValues(
 			"controller", name,
-			"component", component.ObjectReference.Kind,
+			"component", target.ResourceReference.Kind,
 		),
-		component:      component,
+		component:      target,
 		config:         config,
 		templateLoader: routing.NewStaticTemplateLoader(),
 	}
@@ -45,9 +45,9 @@ type Controller struct {
 	client.Client
 	active         bool
 	log            logr.Logger
-	component      spi.RoutingComponent
-	templateLoader spi.RoutingTemplateLoader
-	config         spi.PlatformRoutingConfiguration
+	component      platform.RoutingTarget
+	templateLoader routing.TemplateLoader
+	config         routing.IngressConfig
 }
 
 // +kubebuilder:rbac:groups="route.openshift.io",resources=routes,verbs=*
@@ -70,7 +70,7 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	sourceRes := &unstructured.Unstructured{}
-	sourceRes.SetGroupVersionKind(r.component.ObjectReference.GroupVersionKind)
+	sourceRes.SetGroupVersionKind(r.component.ResourceReference.GroupVersionKind)
 
 	if err := r.Client.Get(ctx, req.NamespacedName, sourceRes); err != nil {
 		if k8serr.IsNotFound(err) {
@@ -104,7 +104,7 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 }
 
 func (r *Controller) Name() string {
-	return name + "-" + strings.ToLower(r.component.ObjectReference.Kind)
+	return name + "-" + strings.ToLower(r.component.ResourceReference.Kind)
 }
 
 func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
@@ -119,8 +119,8 @@ func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
 		Named(r.Name()).
 		For(&metav1.PartialObjectMetadata{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: r.component.ObjectReference.GroupVersion().String(),
-				Kind:       r.component.ObjectReference.Kind,
+				APIVersion: r.component.ResourceReference.GroupVersion().String(),
+				Kind:       r.component.ResourceReference.Kind,
 			},
 		}, builder.OnlyMetadata).
 		Owns(&istionetworkingv1beta1.DestinationRule{}).

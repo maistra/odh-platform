@@ -10,7 +10,7 @@ import (
 	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
-	"github.com/opendatahub-io/odh-platform/pkg/spi"
+	"github.com/opendatahub-io/odh-platform/pkg/routing"
 	"github.com/opendatahub-io/odh-platform/pkg/unstruct"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -67,7 +67,7 @@ func (r *Controller) createRoutingResources(ctx context.Context, target *unstruc
 func (r *Controller) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
 	exportModes := r.extractExportModes(target)
 
-	templateData := spi.NewRoutingData(r.config, exportedSvc, domain)
+	templateData := routing.NewExposedServiceConfig(exportedSvc, r.config, domain)
 
 	// To establish ownership for watched component
 	ownershipLabels := append(labels.AsOwner(target), labels.AppManagedBy("odh-routing-controller"))
@@ -87,7 +87,7 @@ func (r *Controller) exportService(ctx context.Context, target *unstructured.Uns
 	return r.propagateHostsToWatchedCR(target, templateData)
 }
 
-func (r *Controller) propagateHostsToWatchedCR(target *unstructured.Unstructured, data *spi.RoutingData) error {
+func (r *Controller) propagateHostsToWatchedCR(target *unstructured.Unstructured, data *routing.ExposedServiceConfig) error {
 	exportModes := r.extractExportModes(target)
 
 	// Remove all existing routing addresses
@@ -99,10 +99,10 @@ func (r *Controller) propagateHostsToWatchedCR(target *unstructured.Unstructured
 	// TODO(mvp): put the logic of creating host names into a single place
 	for _, exportMode := range exportModes {
 		switch exportMode {
-		case spi.ExternalRoute:
+		case routing.ExternalRoute:
 			externalAddress := annotations.RoutingAddressesExternal(fmt.Sprintf("%s-%s.%s", data.ServiceName, data.ServiceNamespace, data.Domain))
 			metaOptions = append(metaOptions, externalAddress)
-		case spi.PublicRoute:
+		case routing.PublicRoute:
 			publicAddresses := annotations.RoutingAddressesPublic(fmt.Sprintf("%[1]s.%[2]s;%[1]s.%[2]s.svc;%[1]s.%[2]s.svc.cluster.local", data.PublicServiceName, data.GatewayNamespace))
 			metaOptions = append(metaOptions, publicAddresses)
 		}
@@ -124,17 +124,17 @@ func (r *Controller) ensureResourceHasFinalizer(ctx context.Context, target *uns
 }
 
 // extractExportModes retrieves the enabled export modes from the target's annotations.
-func (r *Controller) extractExportModes(target *unstructured.Unstructured) []spi.RouteType {
+func (r *Controller) extractExportModes(target *unstructured.Unstructured) []routing.RouteType {
 	targetAnnotations := target.GetAnnotations()
 	if targetAnnotations == nil {
 		return nil
 	}
 
-	validRouteTypes := make([]spi.RouteType, 0)
+	validRouteTypes := make([]routing.RouteType, 0)
 
 	for key, value := range targetAnnotations {
 		if value == "true" {
-			routeType, valid := spi.IsValidRouteType(key)
+			routeType, valid := routing.IsValidRouteType(key)
 			if valid {
 				validRouteTypes = append(validRouteTypes, routeType)
 			} else {
