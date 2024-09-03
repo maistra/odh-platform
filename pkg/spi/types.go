@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
+	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
 	"github.com/opendatahub-io/odh-platform/pkg/platform"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -76,14 +78,20 @@ func AllRouteTypes() []RouteType {
 	return []RouteType{PublicRoute, ExternalRoute}
 }
 
-func IsValidRouteType(routeType RouteType) bool {
+func IsValidRouteType(annotationKey string) (RouteType, bool) {
+	if !strings.HasPrefix(annotationKey, annotations.RoutingExportModePrefix) {
+		return "", false
+	}
+
+	routeType := RouteType(strings.TrimPrefix(annotationKey, annotations.RoutingExportModePrefix))
+
 	for _, validType := range AllRouteTypes() {
 		if routeType == validType {
-			return true
+			return routeType, true
 		}
 	}
 
-	return false
+	return routeType, false
 }
 
 func UnusedRouteTypes(exportModes []RouteType) []RouteType {

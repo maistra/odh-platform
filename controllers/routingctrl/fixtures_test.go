@@ -48,16 +48,12 @@ func addRoutingRequirementsToSvc(ctx context.Context, exportedSvc *corev1.Servic
 }
 
 // createComponentRequiringPlatformRouting creates a new component with the specified routing modes.
-func createComponentRequiringPlatformRouting(ctx context.Context, componentName, appNs string, isExternal, isPublic bool) (*unstructured.Unstructured, error) {
+func createComponentRequiringPlatformRouting(ctx context.Context, componentName, appNs string, modes ...annotations.RoutingExportMode) (*unstructured.Unstructured, error) {
 	component, errCreate := test.CreateUnstructured(componentResource(componentName, appNs))
 	Expect(errCreate).ToNot(HaveOccurred())
 
-	if isExternal {
-		metadata.ApplyMetaOptions(component, annotations.ExternalMode())
-	}
-
-	if isPublic {
-		metadata.ApplyMetaOptions(component, annotations.PublicMode())
+	for _, mode := range modes {
+		metadata.ApplyMetaOptions(component, mode)
 	}
 
 	return component, envTest.Client.Create(ctx, component)

@@ -76,12 +76,6 @@ func (r RoutingExportMode) Value() string {
 	return r.value
 }
 
-// WithValue can be used to create a new RoutingExportMode with modifiable value
-// created in case of need to set an export mode to false.
-func (r RoutingExportMode) WithValue(value string) RoutingExportMode {
-	return RoutingExportMode{mode: r.mode, value: value}
-}
-
 // RoutingAddressesPublic exposes the public addresses set by Platform's routing capability.
 // It is set by the Platform's Routing controller back to the component's Custom Resource.
 // Values are delimited by ";".

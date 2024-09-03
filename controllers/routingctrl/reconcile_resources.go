@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/opendatahub-io/odh-platform/pkg/cluster"
 	"github.com/opendatahub-io/odh-platform/pkg/config"
@@ -134,9 +133,9 @@ func (r *Controller) extractExportModes(target *unstructured.Unstructured) []spi
 	validRouteTypes := make([]spi.RouteType, 0)
 
 	for key, value := range targetAnnotations {
-		if strings.HasPrefix(key, annotations.RoutingExportModePrefix) && value == "true" {
-			routeType := spi.RouteType(strings.TrimPrefix(key, annotations.RoutingExportModePrefix))
-			if spi.IsValidRouteType(routeType) {
+		if value == "true" {
+			routeType, valid := spi.IsValidRouteType(key)
+			if valid {
 				validRouteTypes = append(validRouteTypes, routeType)
 			} else {
 				r.log.Info("Invalid route type found",

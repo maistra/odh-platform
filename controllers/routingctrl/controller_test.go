@@ -88,7 +88,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// given
 			// required annotation for watched custom resource:
 			// routing.opendatahub.io/export-mode-external: "true"
-			component, createErr := createComponentRequiringPlatformRouting(ctx, "exported-test-component", appNs.Name, true, false)
+			component, createErr := createComponentRequiringPlatformRouting(ctx, "exported-test-component", appNs.Name, annotations.ExternalMode())
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
@@ -105,7 +105,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// given
 			// required annotation for watched custom resource:
 			// routing.opendatahub.io/export-mode-external: "true"
-			component, createErr := createComponentRequiringPlatformRouting(ctx, "exported-test-component", appNs.Name, true, false)
+			component, createErr := createComponentRequiringPlatformRouting(ctx, "exported-test-component", appNs.Name, annotations.ExternalMode())
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
@@ -148,7 +148,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// given
 			// required annotation for watched custom resource:
 			// routing.opendatahub.io/export-mode-public: "true"
-			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-test-component", appNs.Name, false, true)
+			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-test-component", appNs.Name, annotations.PublicMode())
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
@@ -167,7 +167,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// given
 			// required annotation for watched custom resource:
 			// routing.opendatahub.io/export-mode-public: "true"
-			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-test-component", appNs.Name, false, true)
+			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-test-component", appNs.Name, annotations.PublicMode())
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
@@ -215,7 +215,8 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// required annotation for watched custom resource:
 			// routing.opendatahub.io/export-mode-external: "true"
 			// routing.opendatahub.io/export-mode-public: "true"
-			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-test-component", appNs.Name, true, true)
+			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-test-component",
+				appNs.Name, annotations.ExternalMode(), annotations.PublicMode())
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
@@ -273,7 +274,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// routing.opendatahub.io/export-mode-external: "true"
 			// routing.opendatahub.io/export-mode-public: "true"
 			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-test-component",
-				appNs.Name, true, true)
+				appNs.Name, annotations.ExternalMode(), annotations.PublicMode())
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
@@ -315,7 +316,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// routing.opendatahub.io/export-mode-external: "true"
 			// routing.opendatahub.io/export-mode-public: "true"
 			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-remove-annotation",
-				appNs.Name, true, true)
+				appNs.Name, annotations.ExternalMode(), annotations.PublicMode())
 			Expect(createErr).ToNot(HaveOccurred())
 
 			// required labels for the exported service:
@@ -353,7 +354,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// routing.opendatahub.io/export-mode-external: "true"
 			// routing.opendatahub.io/export-mode-public: "true"
 			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-change-annotation",
-				appNs.Name, true, true)
+				appNs.Name, annotations.ExternalMode(), annotations.PublicMode())
 			Expect(createErr).ToNot(HaveOccurred())
 
 			// required labels for the exported service:
@@ -408,7 +409,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			// routing.opendatahub.io/export-mode-external: "true"
 			// routing.opendatahub.io/export-mode-public: "true"
 			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-changed-to-non-existing",
-				appNs.Name, true, true)
+				appNs.Name, annotations.ExternalMode(), annotations.PublicMode())
 			Expect(createErr).ToNot(HaveOccurred())
 
 			// required labels for the exported service:
