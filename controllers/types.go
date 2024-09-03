@@ -7,8 +7,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-type Activable interface {
-	Activate()
+type Activable[T any] interface {
+	Activate(config T)
 	Deactivate()
 }
 

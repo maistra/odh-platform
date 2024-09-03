@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-logr/logr"
 	platformctrl "github.com/opendatahub-io/odh-platform/controllers"
+
 	"github.com/opendatahub-io/odh-platform/pkg/platform"
 	"github.com/opendatahub-io/odh-platform/pkg/routing"
 	"github.com/opendatahub-io/odh-platform/pkg/unstruct"
@@ -130,8 +131,11 @@ func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *Controller) Activate() {
+var _ platformctrl.Activable[routing.IngressConfig] = &Controller{}
+
+func (r *Controller) Activate(config routing.IngressConfig) {
 	r.active = true
+	r.config = config
 }
 
 func (r *Controller) Deactivate() {
