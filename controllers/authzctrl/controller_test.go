@@ -80,12 +80,12 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 				return err
 			}
 
-			Expect(createdAuthConfig).To(HaveHosts("example.com"))
-			Expect(createdAuthConfig.Labels).To(HaveKeyWithValue("security.opendatahub.io/authorization-group", "default"))
+			g.Expect(createdAuthConfig).To(HaveHosts("example.com"))
+			g.Expect(createdAuthConfig.Labels).To(HaveKeyWithValue("security.opendatahub.io/authorization-group", "default"))
 
-			Expect(createdAuthConfig).To(HaveAuthenticationMethod("anonymous-access"))
-			Expect(createdAuthConfig).NotTo(HaveAuthenticationMethod("kubernetes-user"))
-			Expect(createdAuthConfig).NotTo(HaveKubernetesTokenReview())
+			g.Expect(createdAuthConfig).To(HaveAuthenticationMethod("anonymous-access"))
+			g.Expect(createdAuthConfig).NotTo(HaveAuthenticationMethod("kubernetes-user"))
+			g.Expect(createdAuthConfig).NotTo(HaveKubernetesTokenReview())
 
 			return nil
 		}).
@@ -118,12 +118,12 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 				return err
 			}
 
-			Expect(createdAuthConfig).To(HaveHosts("example.com"))
-			Expect(createdAuthConfig.Labels).To(HaveKeyWithValue("security.opendatahub.io/authorization-group", "default"))
+			g.Expect(createdAuthConfig).To(HaveHosts("example.com"))
+			g.Expect(createdAuthConfig.Labels).To(HaveKeyWithValue("security.opendatahub.io/authorization-group", "default"))
 
-			Expect(createdAuthConfig).To(HaveAuthenticationMethod("kubernetes-user"))
-			Expect(createdAuthConfig).NotTo(HaveAuthenticationMethod("anonymous-access"))
-			Expect(createdAuthConfig).To(HaveKubernetesTokenReview())
+			g.Expect(createdAuthConfig).To(HaveAuthenticationMethod("kubernetes-user"))
+			g.Expect(createdAuthConfig).NotTo(HaveAuthenticationMethod("anonymous-access"))
+			g.Expect(createdAuthConfig).To(HaveKubernetesTokenReview())
 
 			return nil
 		}).
@@ -145,9 +145,9 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 				return err
 			}
 
-			Expect(createdAuthPolicy.Spec.GetAction()).To(Equal(v1beta1.AuthorizationPolicy_CUSTOM))
+			g.Expect(createdAuthPolicy.Spec.GetAction()).To(Equal(v1beta1.AuthorizationPolicy_CUSTOM))
 			// WorkloadSelector expresssion defined in suite_test
-			Expect(createdAuthPolicy.Spec.GetSelector().GetMatchLabels()).To(HaveKeyWithValue("component", resourceName))
+			g.Expect(createdAuthPolicy.Spec.GetSelector().GetMatchLabels()).To(HaveKeyWithValue("component", resourceName))
 
 			return nil
 		}).
@@ -162,7 +162,7 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 	//
 	// [1] https://book.kubebuilder.io/reference/envtest#testing-considerations
 	It("should have ownerReference on all created auth resources", func(ctx context.Context) {
-		Eventually(func() error {
+		Eventually(func(g Gomega, ctx context.Context) error {
 			createdResource := &istiosecurityv1beta1.AuthorizationPolicy{}
 			err := envTest.Client.Get(ctx, types.NamespacedName{
 				Name:      resourceName,
@@ -182,10 +182,14 @@ var _ = Describe("Checking Authorization Resource Creation", test.EnvTest(), fun
 				Controller: &ctrl,
 			}
 
-			Expect(createdResource.OwnerReferences).To(ContainElement(expectedOwnerRef))
+			g.Expect(createdResource.OwnerReferences).To(ContainElement(expectedOwnerRef))
 
 			return nil
-		}, test.DefaultTimeout, test.DefaultPolling).Should(Succeed())
+		}).
+			WithContext(ctx).
+			WithTimeout(test.DefaultTimeout).
+			WithPolling(test.DefaultPolling).
+			Should(Succeed())
 	})
 })
 
