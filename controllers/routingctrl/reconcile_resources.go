@@ -50,18 +50,28 @@ func (r *Controller) createRoutingResources(ctx context.Context, target *unstruc
 		return fmt.Errorf("could not get domain: %w", errDomain)
 	}
 
+	targetPublicHosts := []string{}
+	targetExternalHosts := []string{}
 	var errSvcExport []error
 
 	for i := range exportedServices {
-		if errExport := r.exportService(ctx, target, &exportedServices[i], domain); errExport != nil {
+		servicePublicHosts, serviceExternalHosts, errExport := r.exportService(ctx, target, &exportedServices[i], domain)
+		if errExport != nil {
 			errSvcExport = append(errSvcExport, errExport)
+			continue
 		}
+		targetPublicHosts = append(targetPublicHosts, servicePublicHosts...)
+		targetExternalHosts = append(targetExternalHosts, serviceExternalHosts...)
 	}
 
-	return errors.Join(errSvcExport...)
+	if errSvcExportCombined := errors.Join(errSvcExport...); errSvcExportCombined != nil {
+		return errSvcExportCombined
+	}
+
+	return r.propagateHostsToWatchedCR(ctx, target, targetPublicHosts, targetExternalHosts)
 }
 
-func (r *Controller) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
+func (r *Controller) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) ([]string, []string, error) {
 	exportModes := r.extractExportModes(target)
 
 	externalHosts := []string{}
@@ -76,12 +86,12 @@ func (r *Controller) exportService(ctx context.Context, target *unstructured.Uns
 		for _, exportMode := range exportModes {
 			resources, err := r.templateLoader.Load(templateData, exportMode)
 			if err != nil {
-				return fmt.Errorf("could not load templates for type %s: %w", exportMode, err)
+				return nil, nil, fmt.Errorf("could not load templates for type %s: %w", exportMode, err)
 			}
 
 			ownershipLabels = append(ownershipLabels, labels.ExportType(exportMode))
 			if errApply := unstruct.Apply(ctx, r.Client, resources, ownershipLabels...); errApply != nil {
-				return fmt.Errorf("could not apply routing resources for type %s: %w", exportMode, errApply)
+				return nil, nil, fmt.Errorf("could not apply routing resources for type %s: %w", exportMode, errApply)
 			}
 
 			switch exportMode {
@@ -93,16 +103,25 @@ func (r *Controller) exportService(ctx context.Context, target *unstructured.Uns
 		}
 	}
 
-	return r.propagateHostsToWatchedCR(ctx, target, publicHosts, externalHosts)
+	return publicHosts, externalHosts, nil
 }
 
 func (r *Controller) propagateHostsToWatchedCR(ctx context.Context, target *unstructured.Unstructured, publicHosts, externalHosts []string) error {
-	err := unstruct.PatchWithRetry(ctx, r.Client, target, func() error {
-		// Always remove the annotations first
-		annotations.Remove(annotations.RoutingAddressesExternal(""))(target)
-		annotations.Remove(annotations.RoutingAddressesPublic(""))(target)
+	errPatch := unstruct.PatchWithRetry(ctx, r.Client, target, r.updateAddressAnnotations(target, publicHosts, externalHosts))
+	if errPatch != nil {
+		return fmt.Errorf("failed to propagate hosts to watched CR %s/%s: %w", target.GetNamespace(), target.GetName(), errPatch)
+	}
 
-		var metaOptions []metadata.Option
+	return nil
+}
+
+func (r *Controller) updateAddressAnnotations(target *unstructured.Unstructured, publicHosts, externalHosts []string) func() error {
+	return func() error {
+		// Remove all existing routing addresses
+		metaOptions := []metadata.Option{
+			annotations.Remove(annotations.RoutingAddressesExternal("")),
+			annotations.Remove(annotations.RoutingAddressesPublic("")),
+		}
 
 		if len(publicHosts) > 0 {
 			metaOptions = append(metaOptions, annotations.RoutingAddressesPublic(strings.Join(publicHosts, ";")))
@@ -115,13 +134,7 @@ func (r *Controller) propagateHostsToWatchedCR(ctx context.Context, target *unst
 		metadata.ApplyMetaOptions(target, metaOptions...)
 
 		return nil
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to propagate hosts to watched CR %s/%s: %w", target.GetNamespace(), target.GetName(), err)
 	}
-
-	return nil
 }
 
 func (r *Controller) ensureResourceHasFinalizer(ctx context.Context, target *unstructured.Unstructured) error {
