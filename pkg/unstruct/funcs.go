@@ -71,12 +71,12 @@ func Patch(ctx context.Context, cli client.Client, target *unstructured.Unstruct
 		currentRes.SetGroupVersionKind(target.GroupVersionKind())
 
 		if err := cli.Get(ctx, client.ObjectKeyFromObject(target), currentRes); err != nil {
-			return fmt.Errorf("failed re-fetching resource: %w", err)
+			return err //nolint:wrapcheck // Return unwrapped error for retry logic
 		}
 
 		patch := client.MergeFrom(currentRes)
 		if errPatch := cli.Patch(ctx, target, patch); errPatch != nil {
-			return fmt.Errorf("failed to patch: %w", errPatch)
+			return errPatch //nolint:wrapcheck // Return unwrapped error for retry logic
 		}
 
 		return nil
