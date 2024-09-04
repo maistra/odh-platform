@@ -130,8 +130,11 @@ func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *Controller) Activate() {
+var _ platformctrl.Activable[routing.IngressConfig] = &Controller{}
+
+func (r *Controller) Activate(config routing.IngressConfig) {
 	r.active = true
+	r.config = config
 }
 
 func (r *Controller) Deactivate() {
