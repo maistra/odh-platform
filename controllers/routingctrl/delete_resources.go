@@ -6,6 +6,7 @@ import (
 
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
 	"github.com/opendatahub-io/odh-platform/pkg/routing"
+	"github.com/opendatahub-io/odh-platform/pkg/unstruct"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -90,8 +91,9 @@ func removeFinalizer(ctx context.Context, cli client.Client, sourceRes *unstruct
 	if controllerutil.ContainsFinalizer(sourceRes, finalizerName) {
 		controllerutil.RemoveFinalizer(sourceRes, finalizerName)
 
-		if err := cli.Update(ctx, sourceRes); err != nil {
-			return fmt.Errorf("failed to remove finalizer: %w", err)
+		if err := unstruct.Patch(ctx, cli, sourceRes); err != nil {
+			return fmt.Errorf("failed to remove finalizer patching resource %s/%s: %w",
+				sourceRes.GetNamespace(), sourceRes.GetName(), err)
 		}
 	}
 
