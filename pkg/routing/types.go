@@ -1,8 +1,9 @@
 package routing
 
 import (
-	"slices"
+	"strings"
 
+	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -18,8 +19,20 @@ func AllRouteTypes() []RouteType {
 	return []RouteType{PublicRoute, ExternalRoute}
 }
 
-func IsValidRouteType(routeType RouteType) bool {
-	return slices.Contains(AllRouteTypes(), routeType)
+func IsValidRouteType(annotationKey string) (RouteType, bool) {
+	if !strings.HasPrefix(annotationKey, annotations.RoutingExportModePrefix) {
+		return "", false
+	}
+
+	routeType := RouteType(strings.TrimPrefix(annotationKey, annotations.RoutingExportModePrefix))
+
+	for _, validType := range AllRouteTypes() {
+		if routeType == validType {
+			return routeType, true
+		}
+	}
+
+	return routeType, false
 }
 
 func UnusedRouteTypes(exportModes []RouteType) []RouteType {
@@ -60,13 +73,25 @@ type ExposedServiceConfig struct {
 	Domain string
 }
 
-func NewExposedServiceConfig(svc *corev1.Service, config IngressConfig, domain string) *ExposedServiceConfig {
+func (t ExposedServiceConfig) ExternalHost() string {
+	return t.PublicServiceName + "." + t.Domain
+}
+
+func (t ExposedServiceConfig) PublicHosts() []string {
+	return []string{
+		t.PublicServiceName + "." + t.IngressConfig.GatewayNamespace,
+		t.PublicServiceName + "." + t.IngressConfig.GatewayNamespace + ".svc",
+		t.PublicServiceName + "." + t.IngressConfig.GatewayNamespace + ".svc.cluster.local",
+	}
+}
+
+func NewExposedServiceConfig(svc *corev1.Service, svcPort corev1.ServicePort, config IngressConfig, domain string) *ExposedServiceConfig {
 	return &ExposedServiceConfig{
 		IngressConfig:     config,
-		PublicServiceName: svc.GetName() + "-" + svc.GetNamespace(),
+		PublicServiceName: svc.GetName() + "-" + svcPort.Name + "-" + svc.GetNamespace(),
 		ServiceName:       svc.GetName(),
 		ServiceNamespace:  svc.GetNamespace(),
-		ServiceTargetPort: svc.Spec.Ports[0].TargetPort.String(),
+		ServiceTargetPort: svcPort.TargetPort.String(),
 		Domain:            domain,
 	}
 }

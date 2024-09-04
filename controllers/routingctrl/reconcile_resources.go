@@ -35,7 +35,7 @@ func (r *Controller) createRoutingResources(ctx context.Context, target *unstruc
 
 	renderedSelectors, errLables := config.ResolveSelectors(r.component.ServiceSelector, target)
 	if errLables != nil {
-		return fmt.Errorf("could not render labels for ServiceSelector %v. Error %w", r.component.ServiceSelector, errLables)
+		return fmt.Errorf("could not render labels for ServiceSelector %v: %w", r.component.ServiceSelector, errLables)
 	}
 
 	exportedServices, errSvcGet := getExportedServices(ctx, r.Client, renderedSelectors, target)
@@ -68,45 +68,51 @@ func (r *Controller) createRoutingResources(ctx context.Context, target *unstruc
 func (r *Controller) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
 	exportModes := r.extractExportModes(target)
 
-	templateData := routing.NewExposedServiceConfig(exportedSvc, r.config, domain)
+	externalHosts := []string{}
+	publicHosts := []string{}
 
 	// To establish ownership for watched component
 	ownershipLabels := append(labels.AsOwner(target), labels.AppManagedBy("odh-routing-controller"))
 
-	for _, exportMode := range exportModes {
-		resources, err := r.templateLoader.Load(templateData, exportMode)
-		if err != nil {
-			return fmt.Errorf("could not load templates for type %s: %w", exportMode, err)
-		}
+	for _, exportedSvcPort := range exportedSvc.Spec.Ports {
+		templateData := routing.NewExposedServiceConfig(exportedSvc, exportedSvcPort, r.config, domain)
 
-		ownershipLabels = append(ownershipLabels, labels.ExportType(exportMode))
-		if errApply := unstruct.Apply(ctx, r.Client, resources, ownershipLabels...); errApply != nil {
-			return fmt.Errorf("could not apply routing resources for type %s: %w", exportMode, errApply)
+		for _, exportMode := range exportModes {
+			resources, err := r.templateLoader.Load(templateData, exportMode)
+			if err != nil {
+				return fmt.Errorf("could not load templates for type %s: %w", exportMode, err)
+			}
+
+			ownershipLabels = append(ownershipLabels, labels.ExportType(exportMode))
+			if errApply := unstruct.Apply(ctx, r.Client, resources, ownershipLabels...); errApply != nil {
+				return fmt.Errorf("could not apply routing resources for type %s: %w", exportMode, errApply)
+			}
+
+			switch exportMode {
+			case routing.ExternalRoute:
+				externalHosts = append(externalHosts, templateData.ExternalHost())
+			case routing.PublicRoute:
+				publicHosts = append(publicHosts, templateData.PublicHosts()...)
+			}
 		}
 	}
 
-	return r.propagateHostsToWatchedCR(target, templateData)
+	return r.propagateHostsToWatchedCR(target, publicHosts, externalHosts)
 }
 
-func (r *Controller) propagateHostsToWatchedCR(target *unstructured.Unstructured, data *routing.ExposedServiceConfig) error {
-	exportModes := r.extractExportModes(target)
-
+func (r *Controller) propagateHostsToWatchedCR(target *unstructured.Unstructured, publicHosts, externalHosts []string) error {
 	// Remove all existing routing addresses
 	metaOptions := []metadata.Option{
 		annotations.Remove(annotations.RoutingAddressesExternal("")),
 		annotations.Remove(annotations.RoutingAddressesPublic("")),
 	}
 
-	// TODO(mvp): put the logic of creating host names into a single place
-	for _, exportMode := range exportModes {
-		switch exportMode {
-		case routing.ExternalRoute:
-			externalAddress := annotations.RoutingAddressesExternal(fmt.Sprintf("%s-%s.%s", data.ServiceName, data.ServiceNamespace, data.Domain))
-			metaOptions = append(metaOptions, externalAddress)
-		case routing.PublicRoute:
-			publicAddresses := annotations.RoutingAddressesPublic(fmt.Sprintf("%[1]s.%[2]s;%[1]s.%[2]s.svc;%[1]s.%[2]s.svc.cluster.local", data.PublicServiceName, data.GatewayNamespace))
-			metaOptions = append(metaOptions, publicAddresses)
-		}
+	if len(publicHosts) > 0 {
+		metaOptions = append(metaOptions, annotations.RoutingAddressesPublic(strings.Join(publicHosts, ";")))
+	}
+
+	if len(externalHosts) > 0 {
+		metaOptions = append(metaOptions, annotations.RoutingAddressesExternal(strings.Join(externalHosts, ";")))
 	}
 
 	metadata.ApplyMetaOptions(target, metaOptions...)
@@ -124,24 +130,26 @@ func (r *Controller) ensureResourceHasFinalizer(ctx context.Context, target *uns
 	return nil
 }
 
+// extractExportModes retrieves the enabled export modes from the target's annotations.
 func (r *Controller) extractExportModes(target *unstructured.Unstructured) []routing.RouteType {
-	exportModes, exportModeFound := target.GetAnnotations()[annotations.RoutingExportMode("").Key()]
-	if !exportModeFound {
+	targetAnnotations := target.GetAnnotations()
+	if targetAnnotations == nil {
 		return nil
 	}
 
-	exportModesSplit := strings.Split(exportModes, ";")
-	validRouteTypes := make([]routing.RouteType, 0, len(exportModesSplit))
+	validRouteTypes := make([]routing.RouteType, 0)
 
-	for _, exportMode := range exportModesSplit {
-		routeType := routing.RouteType(strings.TrimSpace(exportMode))
-		if routing.IsValidRouteType(routeType) {
-			validRouteTypes = append(validRouteTypes, routeType)
-		} else {
-			r.log.Info("Invalid route type found",
-				"invalidRouteType", routeType,
-				"resourceName", target.GetName(),
-				"resourceNamespace", target.GetNamespace())
+	for key, value := range targetAnnotations {
+		if value == "true" {
+			routeType, valid := routing.IsValidRouteType(key)
+			if valid {
+				validRouteTypes = append(validRouteTypes, routeType)
+			} else {
+				r.log.Info("Invalid route type found",
+					"invalidRouteType", routeType,
+					"resourceName", target.GetName(),
+					"resourceNamespace", target.GetNamespace())
+			}
 		}
 	}
 
