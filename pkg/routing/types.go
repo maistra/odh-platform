@@ -1,8 +1,9 @@
 package routing
 
 import (
-	"slices"
+	"strings"
 
+	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -18,8 +19,20 @@ func AllRouteTypes() []RouteType {
 	return []RouteType{PublicRoute, ExternalRoute}
 }
 
-func IsValidRouteType(routeType RouteType) bool {
-	return slices.Contains(AllRouteTypes(), routeType)
+func IsValidRouteType(annotationKey string) (RouteType, bool) {
+	if !strings.HasPrefix(annotationKey, annotations.RoutingExportModePrefix) {
+		return "", false
+	}
+
+	routeType := RouteType(strings.TrimPrefix(annotationKey, annotations.RoutingExportModePrefix))
+
+	for _, validType := range AllRouteTypes() {
+		if routeType == validType {
+			return routeType, true
+		}
+	}
+
+	return routeType, false
 }
 
 func UnusedRouteTypes(exportModes []RouteType) []RouteType {
