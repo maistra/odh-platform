@@ -8,7 +8,6 @@ import (
 
 	"github.com/go-logr/logr"
 	platformctrl "github.com/opendatahub-io/odh-platform/controllers"
-
 	"github.com/opendatahub-io/odh-platform/pkg/platform"
 	"github.com/opendatahub-io/odh-platform/pkg/routing"
 	"github.com/opendatahub-io/odh-platform/pkg/unstruct"
