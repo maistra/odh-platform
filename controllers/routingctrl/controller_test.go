@@ -546,7 +546,8 @@ func hasNoAddressAnnotations(component *unstructured.Unstructured) func(g Gomega
 
 func routeExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
-		g.Expect(exposedSvc.Spec.Ports).ToNot(HaveLen(0))
+		g.Expect(exposedSvc.Spec.Ports).ToNot(BeEmpty())
+
 		for _, exposedPort := range exposedSvc.Spec.Ports {
 			svcRoute := &openshiftroutev1.Route{}
 			if errGet := envTest.Get(ctx, types.NamespacedName{
@@ -566,7 +567,8 @@ func routeExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx context.Conte
 
 func publicSvcExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
-		g.Expect(exposedSvc.Spec.Ports).ToNot(HaveLen(0))
+		g.Expect(exposedSvc.Spec.Ports).ToNot(BeEmpty())
+
 		for _, exposedPort := range exposedSvc.Spec.Ports {
 			publicSvc := &corev1.Service{}
 			if errGet := envTest.Get(ctx, types.NamespacedName{
@@ -587,13 +589,15 @@ func publicSvcExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx context.C
 				HaveKeyWithValue(routingConfiguration.IngressSelectorLabel, routingConfiguration.IngressSelectorValue),
 			)
 		}
+
 		return nil
 	}
 }
 
 func publicGatewayExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
-		g.Expect(exposedSvc.Spec.Ports).ToNot(HaveLen(0))
+		g.Expect(exposedSvc.Spec.Ports).ToNot(BeEmpty())
+
 		for _, exposedPort := range exposedSvc.Spec.Ports {
 			publicGateway := &v1beta1.Gateway{}
 			if errGet := envTest.Get(ctx, types.NamespacedName{
@@ -613,6 +617,7 @@ func publicGatewayExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx conte
 				),
 			)
 		}
+
 		return nil
 	}
 }
@@ -620,7 +625,9 @@ func publicGatewayExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx conte
 func publicVirtualSvcExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
 		publicVS := &v1beta1.VirtualService{}
-		g.Expect(exposedSvc.Spec.Ports).ToNot(HaveLen(0))
+
+		g.Expect(exposedSvc.Spec.Ports).ToNot(BeEmpty())
+
 		for _, exposedPort := range exposedSvc.Spec.Ports {
 			if errGet := envTest.Get(ctx, types.NamespacedName{
 				Name:      exposedSvc.Name + "-" + exposedPort.Name + "-" + exposedSvc.Namespace,
@@ -639,13 +646,15 @@ func publicVirtualSvcExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx co
 			g.Expect(publicVS).To(BeAttachedToGateways("mesh", exposedSvc.Name+"-"+exposedPort.Name+"-"+exposedSvc.Namespace))
 			g.Expect(publicVS).To(RouteToHost(exposedSvc.Name+"."+exposedSvc.Namespace+".svc.cluster.local", uint32(exposedPort.TargetPort.IntVal)))
 		}
+
 		return nil
 	}
 }
 
 func destinationRuleExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
-		g.Expect(exposedSvc.Spec.Ports).ToNot(HaveLen(0))
+		g.Expect(exposedSvc.Spec.Ports).ToNot(BeEmpty())
+
 		for _, exposedPort := range exposedSvc.Spec.Ports {
 			destinationRule := &v1beta1.DestinationRule{}
 			if errGet := envTest.Get(ctx, types.NamespacedName{
@@ -662,13 +671,15 @@ func destinationRuleExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx con
 			)
 			g.Expect(destinationRule.Spec.GetTrafficPolicy().GetTls().GetMode()).To(Equal(istionetworkingv1beta1.ClientTLSSettings_DISABLE))
 		}
+
 		return nil
 	}
 }
 
 func ingressVirtualServiceExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
-		g.Expect(exposedSvc.Spec.Ports).ToNot(HaveLen(0))
+		g.Expect(exposedSvc.Spec.Ports).ToNot(BeEmpty())
+
 		for _, exposedPort := range exposedSvc.Spec.Ports {
 			routerVS := &v1beta1.VirtualService{}
 			if errGet := envTest.Get(ctx, types.NamespacedName{
@@ -682,6 +693,7 @@ func ingressVirtualServiceExistsFor(exposedSvc *corev1.Service) func(g Gomega, c
 			g.Expect(routerVS).To(BeAttachedToGateways(routingConfiguration.IngressService))
 			g.Expect(routerVS).To(RouteToHost(exposedSvc.Name+"."+exposedSvc.Namespace+".svc.cluster.local", uint32(exposedPort.TargetPort.IntValue())))
 		}
+
 		return nil
 	}
 }
