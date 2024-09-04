@@ -25,7 +25,6 @@ import (
 	authorinov1beta2 "github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/opendatahub-io/odh-platform/pkg/schema"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -44,7 +43,7 @@ func NewStaticTemplateLoader() *staticTemplateLoader {
 	return &staticTemplateLoader{}
 }
 
-func (s *staticTemplateLoader) Load(_ context.Context, authType AuthType, key types.NamespacedName, templateData map[string]any) (authorinov1beta2.AuthConfig, error) {
+func (s *staticTemplateLoader) Load(ctx context.Context, authType AuthType, templateData map[string]any) (authorinov1beta2.AuthConfig, error) {
 	authConfig := authorinov1beta2.AuthConfig{}
 
 	templateContent := authConfigTemplateAnonymous
@@ -97,9 +96,9 @@ func NewConfigMapTemplateLoader(cli client.Client, fallback AuthConfigTemplateLo
 
 // TODO: check "authconfig-template" CM in key.Namespace to see if there is a "spec" to use, construct a AuthConfig object
 // https://issues.redhat.com/browse/RHOAIENG-847
-func (c *configMapTemplateLoader) Load(ctx context.Context, authType AuthType, key types.NamespacedName, templateData map[string]any) (authorinov1beta2.AuthConfig, error) {
+func (c *configMapTemplateLoader) Load(ctx context.Context, authType AuthType, templateData map[string]any) (authorinov1beta2.AuthConfig, error) {
 	// else
-	ac, err := c.fallback.Load(ctx, authType, key, templateData)
+	ac, err := c.fallback.Load(ctx, authType, templateData)
 	if err != nil {
 		return authorinov1beta2.AuthConfig{}, fmt.Errorf("could not load from fallback: %w", err)
 	}

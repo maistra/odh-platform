@@ -5,7 +5,6 @@ import (
 
 	"github.com/kuadrant/authorino/api/v1beta2"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // ProviderConfig holds the configuration for the authorization component as defined by the platform.
@@ -37,5 +36,5 @@ type AuthTypeDetector interface {
 //   - Namespace / Resource name
 //   - Loader source
 type AuthConfigTemplateLoader interface {
-	Load(ctx context.Context, authType AuthType, key types.NamespacedName, templateData map[string]any) (v1beta2.AuthConfig, error)
+	Load(ctx context.Context, authType AuthType, templateData map[string]any) (v1beta2.AuthConfig, error)
 }
