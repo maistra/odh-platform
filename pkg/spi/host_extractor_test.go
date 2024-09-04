@@ -14,8 +14,8 @@ var _ = Describe("Host extraction", test.Unit(), func() {
 		// given
 		extractor := spi.NewPathExpressionExtractor([]string{"status.url"})
 		target := unstructured.Unstructured{
-			Object: map[string]interface{}{
-				"status": map[string]interface{}{
+			Object: map[string]any{
+				"status": map[string]any{
 					"url": "http://test.com",
 				},
 			},
@@ -33,7 +33,7 @@ var _ = Describe("Host extraction", test.Unit(), func() {
 		// given
 		extractor := spi.NewPathExpressionExtractor([]string{"status.url"})
 		target := unstructured.Unstructured{
-			Object: map[string]interface{}{},
+			Object: map[string]any{},
 		}
 		Expect(unstructured.SetNestedStringSlice(target.Object, []string{"test.com", "test2.com"}, "status", "url")).To(Succeed())
 
@@ -50,7 +50,7 @@ var _ = Describe("Host extraction", test.Unit(), func() {
 		// given
 		extractor := spi.NewPathExpressionExtractor([]string{"status.url"})
 		target := unstructured.Unstructured{
-			Object: map[string]interface{}{},
+			Object: map[string]any{},
 		}
 		Expect(unstructured.SetNestedStringSlice(target.Object, []string{"test.com", "http://test.com", "https://test.com"}, "status", "url")).To(Succeed())
 

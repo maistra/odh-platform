@@ -118,7 +118,12 @@ func (r *Controller) createAuthConfigTemplate(ctx context.Context, target *unstr
 		return authorinov1beta2.AuthConfig{}, fmt.Errorf("could not detect authtype: %w", err)
 	}
 
-	templ, err := r.templateLoader.Load(ctx, authType, types.NamespacedName{Namespace: target.GetNamespace(), Name: target.GetName()})
+	templateData := map[string]any{
+		"Namespace": target.GetNamespace(),
+		"Audiences": r.config.Audiences,
+	}
+
+	templ, err := r.templateLoader.Load(ctx, authType, types.NamespacedName{Namespace: target.GetNamespace(), Name: target.GetName()}, templateData)
 	if err != nil {
 		return authorinov1beta2.AuthConfig{}, fmt.Errorf("could not load template %s: %w", authType, err)
 	}

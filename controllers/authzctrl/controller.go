@@ -41,7 +41,7 @@ func New(cli client.Client, log logr.Logger,
 		hostExtractor: spi.UnifiedHostExtractor(
 			spi.NewPathExpressionExtractor(protectedResource.HostPaths),
 			spi.NewAnnotationHostExtractor(";", metadata.Keys(annotations.RoutingAddressesExternal(""), annotations.RoutingAddressesPublic(""))...)),
-		templateLoader: authorization.NewConfigMapTemplateLoader(cli, authorization.NewStaticTemplateLoader(config.Audiences)),
+		templateLoader: authorization.NewConfigMapTemplateLoader(cli, authorization.NewStaticTemplateLoader()),
 	}
 }
 
@@ -120,8 +120,11 @@ func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *Controller) Activate() {
+var _ platformctrl.Activable[authorization.ProviderConfig] = &Controller{}
+
+func (r *Controller) Activate(config authorization.ProviderConfig) {
 	r.active = true
+	r.config = config
 }
 
 func (r *Controller) Deactivate() {
