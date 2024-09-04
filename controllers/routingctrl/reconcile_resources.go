@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/opendatahub-io/odh-platform/pkg/cluster"
 	"github.com/opendatahub-io/odh-platform/pkg/config"
@@ -124,24 +123,26 @@ func (r *Controller) ensureResourceHasFinalizer(ctx context.Context, target *uns
 	return nil
 }
 
+// extractExportModes retrieves the enabled export modes from the target's annotations.
 func (r *Controller) extractExportModes(target *unstructured.Unstructured) []routing.RouteType {
-	exportModes, exportModeFound := target.GetAnnotations()[annotations.RoutingExportMode("").Key()]
-	if !exportModeFound {
+	targetAnnotations := target.GetAnnotations()
+	if targetAnnotations == nil {
 		return nil
 	}
 
-	exportModesSplit := strings.Split(exportModes, ";")
-	validRouteTypes := make([]routing.RouteType, 0, len(exportModesSplit))
+	validRouteTypes := make([]routing.RouteType, 0)
 
-	for _, exportMode := range exportModesSplit {
-		routeType := routing.RouteType(strings.TrimSpace(exportMode))
-		if routing.IsValidRouteType(routeType) {
-			validRouteTypes = append(validRouteTypes, routeType)
-		} else {
-			r.log.Info("Invalid route type found",
-				"invalidRouteType", routeType,
-				"resourceName", target.GetName(),
-				"resourceNamespace", target.GetNamespace())
+	for key, value := range targetAnnotations {
+		if value == "true" {
+			routeType, valid := routing.IsValidRouteType(key)
+			if valid {
+				validRouteTypes = append(validRouteTypes, routeType)
+			} else {
+				r.log.Info("Invalid route type found",
+					"invalidRouteType", routeType,
+					"resourceName", target.GetName(),
+					"resourceNamespace", target.GetNamespace())
+			}
 		}
 	}
 
