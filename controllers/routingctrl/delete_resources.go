@@ -6,6 +6,7 @@ import (
 
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/labels"
 	"github.com/opendatahub-io/odh-platform/pkg/routing"
+	"github.com/opendatahub-io/odh-platform/pkg/unstruct"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -88,10 +89,13 @@ func (r *Controller) deleteOwnedResources(ctx context.Context,
 // removeFinalizer is called after a successful cleanup, it removes the finalizer from the resource in the cluster.
 func removeFinalizer(ctx context.Context, cli client.Client, sourceRes *unstructured.Unstructured) error {
 	if controllerutil.ContainsFinalizer(sourceRes, finalizerName) {
-		controllerutil.RemoveFinalizer(sourceRes, finalizerName)
+		if err := unstruct.PatchWithRetry(ctx, cli, sourceRes, func() error {
+			controllerutil.RemoveFinalizer(sourceRes, finalizerName)
 
-		if err := cli.Update(ctx, sourceRes); err != nil {
-			return fmt.Errorf("failed to remove finalizer: %w", err)
+			return nil
+		}); err != nil {
+			return fmt.Errorf("failed to remove finalizer from %s (in %s): %w",
+				sourceRes.GroupVersionKind().String(), sourceRes.GetNamespace(), err)
 		}
 	}
 

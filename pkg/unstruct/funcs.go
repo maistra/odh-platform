@@ -64,38 +64,13 @@ func IsMarkedForDeletion(target *unstructured.Unstructured) bool {
 	return !target.GetDeletionTimestamp().IsZero()
 }
 
-// Patch updates the specified Kubernetes resource by applying changes from the provided target object.
-// In case of conflicts, it will retry using default strategy.
-func PatchMutate(ctx context.Context, cli client.Client, target *unstructured.Unstructured, mutate controllerutil.MutateFn) error {
+// PatchWithRetry applies changes to the specified resource using the provided mutate function.
+// It uses a retry mechanism to handle potential conflicts during the update process.
+func PatchWithRetry(ctx context.Context, cli client.Client, target *unstructured.Unstructured, mutate controllerutil.MutateFn) error {
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		_, err := controllerutil.CreateOrPatch(ctx, cli, target, mutate)
-		return err
-	})
 
-	if err != nil {
-		return fmt.Errorf("failed to patchmutate resource metadata with retry: %w", err)
-	}
-
-	return nil
-}
-
-// Patch updates the specified Kubernetes resource by applying changes from the provided target object.
-// In case of conflicts, it will retry using default strategy.
-func Patch(ctx context.Context, cli client.Client, target *unstructured.Unstructured) error {
-	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		currentRes := &unstructured.Unstructured{}
-		currentRes.SetGroupVersionKind(target.GroupVersionKind())
-
-		if err := cli.Get(ctx, client.ObjectKeyFromObject(target), currentRes); err != nil {
-			return err //nolint:wrapcheck // Return unwrapped error for retry logic
-		}
-
-		patch := client.MergeFrom(target)
-		if errPatch := cli.Patch(ctx, currentRes, patch); errPatch != nil {
-			return errPatch //nolint:wrapcheck // Return unwrapped error for retry logic
-		}
-
-		return nil
+		return err //nolint:wrapcheck // Return unwrapped error per RetryOnConflict godoc
 	})
 
 	if err != nil {

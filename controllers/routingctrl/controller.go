@@ -98,8 +98,6 @@ func (r *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		errs = append(errs, reconciler(ctx, sourceRes))
 	}
 
-	errs = append(errs, unstruct.Patch(ctx, r.Client, sourceRes))
-
 	return ctrl.Result{}, errors.Join(errs...)
 }
 
