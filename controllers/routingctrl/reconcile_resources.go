@@ -146,11 +146,6 @@ func (r *Controller) extractExportModes(target *unstructured.Unstructured) []rou
 			routeType, valid := routing.IsValidRouteType(key)
 			if valid {
 				validRouteTypes = append(validRouteTypes, routeType)
-			} else {
-				r.log.Info("Invalid route type found",
-					"invalidRouteType", routeType,
-					"resourceName", target.GetName(),
-					"resourceNamespace", target.GetNamespace())
 			}
 		}
 	}
