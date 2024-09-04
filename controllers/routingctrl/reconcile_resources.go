@@ -27,7 +27,7 @@ func (r *Controller) createRoutingResources(ctx context.Context, target *unstruc
 		return r.propagateHostsToWatchedCR(ctx, target, nil, nil)
 	}
 
-	r.log.Info("Reconciling resources for target", "target", target)
+	r.log.Info("reconciling resources for target", "target", target)
 
 	renderedSelectors, errLables := config.ResolveSelectors(r.component.ServiceSelector, target)
 	if errLables != nil {

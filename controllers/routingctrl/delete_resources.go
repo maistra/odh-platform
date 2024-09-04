@@ -32,12 +32,12 @@ func (r *Controller) removeUnusedRoutingResources(ctx context.Context, target *u
 func (r *Controller) handleResourceDeletion(ctx context.Context, sourceRes *unstructured.Unstructured) error {
 	exportModes := r.extractExportModes(sourceRes)
 	if len(exportModes) == 0 {
-		r.log.Info("No export modes found, skipping deletion logic", "sourceRes", sourceRes)
+		r.log.Info("no export modes found, skipping deletion logic", "sourceRes", sourceRes)
 
 		return nil
 	}
 
-	r.log.Info("Handling deletion of dependent resources", "sourceRes", sourceRes)
+	r.log.Info("handling deletion of dependent resources", "sourceRes", sourceRes)
 
 	gvks := routingResourceGVKs(exportModes...)
 
