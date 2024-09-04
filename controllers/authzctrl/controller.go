@@ -21,6 +21,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 const name = "authorization"
@@ -115,8 +116,8 @@ func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
 				Kind:       r.protectedResource.ResourceReference.Kind,
 			},
 		}, builder.OnlyMetadata).
-		Owns(&authorinov1beta2.AuthConfig{}).
-		Owns(&istiosecurityv1beta1.AuthorizationPolicy{}).
+		Owns(&authorinov1beta2.AuthConfig{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Owns(&istiosecurityv1beta1.AuthorizationPolicy{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }
 
