@@ -123,7 +123,7 @@ func (r *Controller) createAuthConfigTemplate(ctx context.Context, target *unstr
 		"Audiences": r.config.Audiences,
 	}
 
-	templ, err := r.templateLoader.Load(ctx, authType, templateData)
+	templ, err := r.templateLoader.Load(ctx, authType, types.NamespacedName{Namespace: target.GetNamespace(), Name: target.GetName()}, templateData)
 	if err != nil {
 		return authorinov1beta2.AuthConfig{}, fmt.Errorf("could not load template %s: %w", authType, err)
 	}
