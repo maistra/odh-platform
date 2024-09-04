@@ -73,13 +73,25 @@ type ExposedServiceConfig struct {
 	Domain string
 }
 
-func NewExposedServiceConfig(svc *corev1.Service, config IngressConfig, domain string) *ExposedServiceConfig {
+func (t ExposedServiceConfig) ExternalHost() string {
+	return t.PublicServiceName + "." + t.Domain
+}
+
+func (t ExposedServiceConfig) PublicHosts() []string {
+	return []string{
+		t.PublicServiceName + "." + t.IngressConfig.GatewayNamespace,
+		t.PublicServiceName + "." + t.IngressConfig.GatewayNamespace + ".svc",
+		t.PublicServiceName + "." + t.IngressConfig.GatewayNamespace + ".svc.cluster.local",
+	}
+}
+
+func NewExposedServiceConfig(svc *corev1.Service, svcPort corev1.ServicePort, config IngressConfig, domain string) *ExposedServiceConfig {
 	return &ExposedServiceConfig{
 		IngressConfig:     config,
-		PublicServiceName: svc.GetName() + "-" + svc.GetNamespace(),
+		PublicServiceName: svc.GetName() + "-" + svcPort.Name + "-" + svc.GetNamespace(),
 		ServiceName:       svc.GetName(),
 		ServiceNamespace:  svc.GetNamespace(),
-		ServiceTargetPort: svc.Spec.Ports[0].TargetPort.String(),
+		ServiceTargetPort: svcPort.TargetPort.String(),
 		Domain:            domain,
 	}
 }

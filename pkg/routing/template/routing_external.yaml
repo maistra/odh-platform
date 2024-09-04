@@ -7,7 +7,7 @@ spec:
   to:
     kind: Service
     name: {{ .IngressService }}
-  host: {{ .PublicServiceName }}.{{ .Domain }}
+  host: {{ .ExternalHost }}
   port:
     targetPort: https
   tls:
@@ -23,7 +23,7 @@ spec:
   gateways:
   - {{ .IngressService }} # name of wildcard Gateway
   hosts:
-  - {{ .PublicServiceName}}.{{ .Domain }} # hostname on the Route
+  - {{ .ExternalHost }} # hostname on the Route
   http:
   - name: {{ .PublicServiceName }}-ingress
     route:

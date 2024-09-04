@@ -22,6 +22,16 @@ var _ = Describe("Resource functions", test.Unit(), func() {
 			IngressSelectorValue: "rhoai-gateway",
 			IngressService:       "rhoai-router-ingress",
 		}
+		httpPort := corev1.ServicePort{
+			Name:        "http-api",
+			Port:        80,
+			AppProtocol: ptr.To("http"),
+		}
+		grpcPort := corev1.ServicePort{
+			Name:        "grpc-api",
+			Port:        90,
+			AppProtocol: ptr.To("grpc"),
+		}
 
 		data := routing.NewExposedServiceConfig(&corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
@@ -30,14 +40,12 @@ var _ = Describe("Resource functions", test.Unit(), func() {
 			},
 			Spec: corev1.ServiceSpec{
 				Ports: []corev1.ServicePort{
-					{
-						Name:        "http-api",
-						Port:        80,
-						AppProtocol: ptr.To("http"),
-					},
+					httpPort,
+					grpcPort,
 				},
 			},
-		}, config, "app-crc.testing")
+		},
+			httpPort, config, "app-crc.testing")
 
 		It("should load public resources", func() {
 			// given
