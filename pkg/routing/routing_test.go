@@ -71,7 +71,7 @@ var _ = Describe("Resource functions", test.Unit(), func() {
 			// given
 			extractor := spi.NewAnnotationHostExtractor(";", "A", "B")
 			target := unstructured.Unstructured{
-				Object: map[string]interface{}{},
+				Object: map[string]any{},
 			}
 			target.SetAnnotations(map[string]string{
 				"A": "a.com;a2.com",

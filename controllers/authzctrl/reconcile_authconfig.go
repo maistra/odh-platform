@@ -118,7 +118,7 @@ func (r *Controller) createAuthConfigTemplate(ctx context.Context, target *unstr
 		return authorinov1beta2.AuthConfig{}, fmt.Errorf("could not detect authtype: %w", err)
 	}
 
-	templateData := map[string]interface{}{
+	templateData := map[string]any{
 		"Namespace": target.GetNamespace(),
 		"Audiences": r.config.Audiences,
 	}

@@ -37,5 +37,5 @@ type AuthTypeDetector interface {
 //   - Namespace / Resource name
 //   - Loader source
 type AuthConfigTemplateLoader interface {
-	Load(ctx context.Context, authType AuthType, key types.NamespacedName, templateData map[string]interface{}) (v1beta2.AuthConfig, error)
+	Load(ctx context.Context, authType AuthType, key types.NamespacedName, templateData map[string]any) (v1beta2.AuthConfig, error)
 }
