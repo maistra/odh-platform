@@ -180,7 +180,7 @@ $(LOCALBIN)/yq:
 	$(call header,"Installing $(notdir $@)")
 	GOBIN=$(LOCALBIN) go install github.com/mikefarah/yq/v4@$(YQ_VERSION)
 
-LINT_VERSION=v1.59.1
+LINT_VERSION=v1.60.3
 $(LOCALBIN)/golangci-lint:
 	$(call header,"Installing $(notdir $@)")
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(LOCALBIN) $(LINT_VERSION)
