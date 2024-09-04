@@ -10,6 +10,7 @@ import (
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func Apply(ctx context.Context, cli client.Client, objects []*unstructured.Unstructured, metaOptions ...metadata.Option) error {
@@ -65,6 +66,21 @@ func IsMarkedForDeletion(target *unstructured.Unstructured) bool {
 
 // Patch updates the specified Kubernetes resource by applying changes from the provided target object.
 // In case of conflicts, it will retry using default strategy.
+func PatchMutate(ctx context.Context, cli client.Client, target *unstructured.Unstructured, mutate controllerutil.MutateFn) error {
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		_, err := controllerutil.CreateOrPatch(ctx, cli, target, mutate)
+		return err
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to patchmutate resource metadata with retry: %w", err)
+	}
+
+	return nil
+}
+
+// Patch updates the specified Kubernetes resource by applying changes from the provided target object.
+// In case of conflicts, it will retry using default strategy.
 func Patch(ctx context.Context, cli client.Client, target *unstructured.Unstructured) error {
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		currentRes := &unstructured.Unstructured{}
@@ -74,8 +90,8 @@ func Patch(ctx context.Context, cli client.Client, target *unstructured.Unstruct
 			return err //nolint:wrapcheck // Return unwrapped error for retry logic
 		}
 
-		patch := client.MergeFrom(currentRes)
-		if errPatch := cli.Patch(ctx, target, patch); errPatch != nil {
+		patch := client.MergeFrom(target)
+		if errPatch := cli.Patch(ctx, currentRes, patch); errPatch != nil {
 			return errPatch //nolint:wrapcheck // Return unwrapped error for retry logic
 		}
 

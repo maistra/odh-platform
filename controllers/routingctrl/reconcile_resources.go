@@ -121,12 +121,14 @@ func (r *Controller) propagateHostsToWatchedCR(target *unstructured.Unstructured
 }
 
 func (r *Controller) ensureResourceHasFinalizer(ctx context.Context, target *unstructured.Unstructured) error {
-	if controllerutil.AddFinalizer(target, finalizerName) {
-		if err := unstruct.Patch(ctx, r.Client, target); err != nil {
+	if !controllerutil.ContainsFinalizer(target, finalizerName) {
+		if err := unstruct.PatchMutate(ctx, r.Client, target, func() error {
+			controllerutil.AddFinalizer(target, finalizerName)
+			return nil
+		}); err != nil {
 			return fmt.Errorf("failed to patch finalizer to resource %s/%s: %w", target.GetNamespace(), target.GetName(), err)
 		}
 	}
-
 	return nil
 }
 
