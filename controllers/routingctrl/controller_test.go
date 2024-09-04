@@ -6,7 +6,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/opendatahub-io/odh-platform/pkg/metadata"
 	"github.com/opendatahub-io/odh-platform/pkg/metadata/annotations"
 	"github.com/opendatahub-io/odh-platform/test"
 	. "github.com/opendatahub-io/odh-platform/test/matchers"
@@ -88,8 +87,8 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		It("should have external routing resources created", func(ctx context.Context) {
 			// given
 			// required annotation for watched custom resource:
-			// 	routing.opendatahub.io/export-mode: "external"
-			component, createErr := createComponentRequiringPlatformRouting(ctx, "exported-test-component", "external", appNs.Name)
+			// routing.opendatahub.io/export-mode-external: "true"
+			component, createErr := createComponentRequiringPlatformRouting(ctx, "exported-test-component", appNs.Name, annotations.ExternalMode())
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
@@ -105,8 +104,8 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		It("should have new hosts propagated back to watched resource", func(ctx context.Context) {
 			// given
 			// required annotation for watched custom resource:
-			// 	routing.opendatahub.io/export-mode: "external"
-			component, createErr := createComponentRequiringPlatformRouting(ctx, "exported-test-component", "external", appNs.Name)
+			// routing.opendatahub.io/export-mode-external: "true"
+			component, createErr := createComponentRequiringPlatformRouting(ctx, "exported-test-component", appNs.Name, annotations.ExternalMode())
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
@@ -127,7 +126,8 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 					annotations.RoutingAddressesPublic("").Key(),
 				), "public services are not expected to be defined in this mode")
 
-				externalAddressesAnnotation := annotations.RoutingAddressesExternal(fmt.Sprintf("%s-%s.%s", svc.Name, svc.Namespace, domain))
+				externalAddressesAnnotation := annotations.RoutingAddressesExternal(
+					fmt.Sprintf("%[1]s-http-%[2]s.%[3]s"+";"+"%[1]s-grpc-%[2]s.%[3]s", svc.Name, svc.Namespace, domain))
 
 				g.Expect(updatedComponent.GetAnnotations()).To(HaveKeyWithValue(
 					externalAddressesAnnotation.Key(), externalAddressesAnnotation.Value(),
@@ -148,8 +148,8 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		It("should have routing resources for out-of-mesh access created", func(ctx context.Context) {
 			// given
 			// required annotation for watched custom resource:
-			// 	routing.opendatahub.io/export-mode: "public"
-			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-test-component", "public", appNs.Name)
+			// routing.opendatahub.io/export-mode-public: "true"
+			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-test-component", appNs.Name, annotations.PublicMode())
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
@@ -167,8 +167,8 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		It("should have new hosts propagated back to watched resource by the controller", func(ctx context.Context) {
 			// given
 			// required annotation for watched custom resource:
-			// 	routing.opendatahub.io/export-mode: "public"
-			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-test-component", "public", appNs.Name)
+			// routing.opendatahub.io/export-mode-public: "true"
+			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-test-component", appNs.Name, annotations.PublicMode())
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
@@ -191,7 +191,8 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 					), "public services are not expected to be defined in this mode")
 
 				publicAddressAnnotation := annotations.RoutingAddressesPublic(
-					fmt.Sprintf("%[1]s-%[2]s.%[3]s;%[1]s-%[2]s.%[3]s.svc;%[1]s-%[2]s.%[3]s.svc.cluster.local",
+					fmt.Sprintf("%[1]s-http-%[2]s.%[3]s;%[1]s-http-%[2]s.%[3]s.svc;%[1]s-http-%[2]s.%[3]s.svc.cluster.local;"+
+						"%[1]s-grpc-%[2]s.%[3]s;%[1]s-grpc-%[2]s.%[3]s.svc;%[1]s-grpc-%[2]s.%[3]s.svc.cluster.local",
 						svc.Name, svc.Namespace, routingConfiguration.GatewayNamespace),
 				)
 
@@ -214,8 +215,10 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		It("should have both external and cluster-local resources created", func(ctx context.Context) {
 			// given
 			// required annotation for watched custom resource:
-			// 	routing.opendatahub.io/export-mode: "public;external"
-			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-test-component", "public;external", appNs.Name)
+			// routing.opendatahub.io/export-mode-external: "true"
+			// routing.opendatahub.io/export-mode-public: "true"
+			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-test-component",
+				appNs.Name, annotations.ExternalMode(), annotations.PublicMode())
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
@@ -235,10 +238,12 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 					return errGet
 				}
 
-				externalAddressAnnotation := annotations.RoutingAddressesExternal(fmt.Sprintf("%s-%s.%s", svc.Name, svc.Namespace, domain))
+				externalAddressAnnotation := annotations.RoutingAddressesExternal(
+					fmt.Sprintf("%[1]s-http-%[2]s.%[3]s"+";"+"%[1]s-grpc-%[2]s.%[3]s", svc.Name, svc.Namespace, domain))
 
 				publicAddrAnnotation := annotations.RoutingAddressesPublic(
-					fmt.Sprintf("%[1]s-%[2]s.%[3]s;%[1]s-%[2]s.%[3]s.svc;%[1]s-%[2]s.%[3]s.svc.cluster.local",
+					fmt.Sprintf("%[1]s-http-%[2]s.%[3]s;%[1]s-http-%[2]s.%[3]s.svc;%[1]s-http-%[2]s.%[3]s.svc.cluster.local;"+
+						"%[1]s-grpc-%[2]s.%[3]s;%[1]s-grpc-%[2]s.%[3]s.svc;%[1]s-grpc-%[2]s.%[3]s.svc.cluster.local",
 						svc.Name, svc.Namespace, routingConfiguration.GatewayNamespace,
 					),
 				)
@@ -270,9 +275,10 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		It("should remove the routing resources when both public;external", func(ctx context.Context) {
 			// given
 			// required annotation for watched custom resource:
-			// 	routing.opendatahub.io/export-mode: "public;external"
+			// routing.opendatahub.io/export-mode-external: "true"
+			// routing.opendatahub.io/export-mode-public: "true"
 			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-test-component",
-				"public;external", appNs.Name)
+				appNs.Name, annotations.ExternalMode(), annotations.PublicMode())
 			Expect(createErr).ToNot(HaveOccurred())
 			toRemove = append(toRemove, component)
 
@@ -311,9 +317,10 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		It("should remove all created routing resources", func(ctx context.Context) {
 			// given
 			// required annotation for watched custom resource:
-			// 	routing.opendatahub.io/export-mode: "public;external"
+			// routing.opendatahub.io/export-mode-external: "true"
+			// routing.opendatahub.io/export-mode-public: "true"
 			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-remove-annotation",
-				"public;external", appNs.Name)
+				appNs.Name, annotations.ExternalMode(), annotations.PublicMode())
 			Expect(createErr).ToNot(HaveOccurred())
 
 			// required labels for the exported service:
@@ -327,8 +334,8 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			publicResourcesShouldExist(ctx, svc)
 
 			// when
-			By("removing the export annotation", func() {
-				setExportMode(ctx, component, remove)
+			By("removing the export annotations", func() {
+				setExportModes(ctx, component, removeExternal, removePublic)
 			})
 
 			// then
@@ -348,9 +355,10 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		It("should remove all routing resources from removed", func(ctx context.Context) {
 			// given
 			// required annotation for watched custom resource:
-			// 	routing.opendatahub.io/export-mode: "public;external"
+			// routing.opendatahub.io/export-mode-external: "true"
+			// routing.opendatahub.io/export-mode-public: "true"
 			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-change-annotation",
-				"public;external", appNs.Name)
+				appNs.Name, annotations.ExternalMode(), annotations.PublicMode())
 			Expect(createErr).ToNot(HaveOccurred())
 
 			// required labels for the exported service:
@@ -364,7 +372,7 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			publicResourcesShouldExist(ctx, svc)
 
 			By("removing external from the export modes", func() {
-				setExportMode(ctx, component, "public")
+				setExportModes(ctx, component, enablePublic, disableExternal)
 			})
 
 			// then
@@ -383,7 +391,8 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 					), "public services are not expected to be defined in this mode")
 
 				publicAddressAnnotation := annotations.RoutingAddressesPublic(
-					fmt.Sprintf("%[1]s-%[2]s.%[3]s;%[1]s-%[2]s.%[3]s.svc;%[1]s-%[2]s.%[3]s.svc.cluster.local",
+					fmt.Sprintf("%[1]s-http-%[2]s.%[3]s;%[1]s-http-%[2]s.%[3]s.svc;%[1]s-http-%[2]s.%[3]s.svc.cluster.local;"+
+						"%[1]s-grpc-%[2]s.%[3]s;%[1]s-grpc-%[2]s.%[3]s.svc;%[1]s-grpc-%[2]s.%[3]s.svc.cluster.local",
 						svc.Name, svc.Namespace, routingConfiguration.GatewayNamespace),
 				)
 
@@ -402,9 +411,10 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 		It("should remove all routing resources when the unsupported mode is used", func(ctx context.Context) {
 			// given
 			// required annotation for watched custom resource:
-			// 	routing.opendatahub.io/export-mode: "public;external"
+			// routing.opendatahub.io/export-mode-external: "true"
+			// routing.opendatahub.io/export-mode-public: "true"
 			component, createErr := createComponentRequiringPlatformRouting(ctx, "public-and-external-changed-to-non-existing",
-				"public;external", appNs.Name)
+				appNs.Name, annotations.ExternalMode(), annotations.PublicMode())
 			Expect(createErr).ToNot(HaveOccurred())
 
 			// required labels for the exported service:
@@ -417,8 +427,8 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 			externalResourcesShouldExist(ctx, svc)
 			publicResourcesShouldExist(ctx, svc)
 
-			By("removing external from the export modes", func() {
-				setExportMode(ctx, component, "not-supported-mode")
+			By("setting a non-supported mode", func() {
+				setExportModes(ctx, component, enableNonSupportedMode, removePublic, removeExternal)
 			})
 
 			// then
@@ -434,36 +444,6 @@ var _ = Describe("Platform routing setup for the component", test.EnvTest(), fun
 	})
 
 })
-
-type exportMode string
-
-var remove = exportMode("--blank--")
-
-func (m exportMode) ApplyToMeta(obj metav1.Object) {
-	annos := obj.GetAnnotations()
-	key := annotations.RoutingExportMode("").Key()
-
-	switch m {
-	default:
-		annos[key] = string(m)
-	case remove:
-		delete(annos, key)
-	}
-
-	obj.SetAnnotations(annos)
-}
-
-func setExportMode(ctx context.Context, component *unstructured.Unstructured, mode exportMode) {
-	errGetComponent := envTest.Client.Get(ctx, client.ObjectKey{
-		Namespace: component.GetNamespace(),
-		Name:      component.GetName(),
-	}, component)
-	Expect(errGetComponent).ToNot(HaveOccurred())
-
-	metadata.ApplyMetaOptions(component, mode)
-
-	Expect(envTest.Client.Update(ctx, component)).To(Succeed())
-}
 
 func externalResourcesShouldExist(ctx context.Context, svc *corev1.Service) {
 	Eventually(routeExistsFor(svc)).
@@ -564,18 +544,22 @@ func hasNoAddressAnnotations(component *unstructured.Unstructured) func(g Gomega
 	}
 }
 
-func routeExistsFor(exportedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
+func routeExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
-		svcRoute := &openshiftroutev1.Route{}
-		if errGet := envTest.Get(ctx, types.NamespacedName{
-			Name:      exportedSvc.Name + "-" + exportedSvc.Namespace + "-route",
-			Namespace: routingConfiguration.GatewayNamespace,
-		}, svcRoute); errGet != nil {
-			return errGet
-		}
+		g.Expect(exposedSvc.Spec.Ports).ToNot(BeEmpty())
 
-		g.Expect(svcRoute).To(BeAttachedToService(routingConfiguration.IngressService))
-		g.Expect(svcRoute).To(HaveHost(exportedSvc.Name + "-" + exportedSvc.Namespace + "." + domain))
+		for _, exposedPort := range exposedSvc.Spec.Ports {
+			svcRoute := &openshiftroutev1.Route{}
+			if errGet := envTest.Get(ctx, types.NamespacedName{
+				Name:      exposedSvc.Name + "-" + exposedPort.Name + "-" + exposedSvc.Namespace + "-route",
+				Namespace: routingConfiguration.GatewayNamespace,
+			}, svcRoute); errGet != nil {
+				return errGet
+			}
+
+			g.Expect(svcRoute).To(BeAttachedToService(routingConfiguration.IngressService))
+			g.Expect(svcRoute).To(HaveHost(exposedSvc.Name + "-" + exposedPort.Name + "-" + exposedSvc.Namespace + "." + domain))
+		}
 
 		return nil
 	}
@@ -583,24 +567,28 @@ func routeExistsFor(exportedSvc *corev1.Service) func(g Gomega, ctx context.Cont
 
 func publicSvcExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
-		publicSvc := &corev1.Service{}
-		if errGet := envTest.Get(ctx, types.NamespacedName{
-			Name:      exposedSvc.Name + "-" + exposedSvc.Namespace,
-			Namespace: routingConfiguration.GatewayNamespace,
-		}, publicSvc); errGet != nil {
-			return errGet
+		g.Expect(exposedSvc.Spec.Ports).ToNot(BeEmpty())
+
+		for _, exposedPort := range exposedSvc.Spec.Ports {
+			publicSvc := &corev1.Service{}
+			if errGet := envTest.Get(ctx, types.NamespacedName{
+				Name:      exposedSvc.Name + "-" + exposedPort.Name + "-" + exposedSvc.Namespace,
+				Namespace: routingConfiguration.GatewayNamespace,
+			}, publicSvc); errGet != nil {
+				return errGet
+			}
+
+			g.Expect(publicSvc.GetAnnotations()).To(
+				HaveKeyWithValue(
+					"service.beta.openshift.io/serving-cert-secret-name",
+					exposedSvc.Name+"-"+exposedPort.Name+"-"+exposedSvc.Namespace+"-certs",
+				),
+			)
+
+			g.Expect(publicSvc.Spec.Selector).To(
+				HaveKeyWithValue(routingConfiguration.IngressSelectorLabel, routingConfiguration.IngressSelectorValue),
+			)
 		}
-
-		g.Expect(publicSvc.GetAnnotations()).To(
-			HaveKeyWithValue(
-				"service.beta.openshift.io/serving-cert-secret-name",
-				exposedSvc.Name+"-"+exposedSvc.Namespace+"-certs",
-			),
-		)
-
-		g.Expect(publicSvc.Spec.Selector).To(
-			HaveKeyWithValue(routingConfiguration.IngressSelectorLabel, routingConfiguration.IngressSelectorValue),
-		)
 
 		return nil
 	}
@@ -608,23 +596,27 @@ func publicSvcExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx context.C
 
 func publicGatewayExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
-		publicGateway := &v1beta1.Gateway{}
-		if errGet := envTest.Get(ctx, types.NamespacedName{
-			Name:      exposedSvc.Name + "-" + exposedSvc.Namespace,
-			Namespace: routingConfiguration.GatewayNamespace,
-		}, publicGateway); errGet != nil {
-			return errGet
-		}
+		g.Expect(exposedSvc.Spec.Ports).ToNot(BeEmpty())
 
-		g.Expect(publicGateway.Spec.GetSelector()).To(HaveKeyWithValue(routingConfiguration.IngressSelectorLabel, routingConfiguration.IngressSelectorValue))
-		// limitation: only checks first element of []*Server slice
-		g.Expect(publicGateway).To(
-			HaveHosts(
-				exposedSvc.Name+"-"+exposedSvc.Namespace+"."+routingConfiguration.GatewayNamespace,
-				exposedSvc.Name+"-"+exposedSvc.Namespace+"."+routingConfiguration.GatewayNamespace+".svc",
-				exposedSvc.Name+"-"+exposedSvc.Namespace+"."+routingConfiguration.GatewayNamespace+".svc.cluster.local",
-			),
-		)
+		for _, exposedPort := range exposedSvc.Spec.Ports {
+			publicGateway := &v1beta1.Gateway{}
+			if errGet := envTest.Get(ctx, types.NamespacedName{
+				Name:      exposedSvc.Name + "-" + exposedPort.Name + "-" + exposedSvc.Namespace,
+				Namespace: routingConfiguration.GatewayNamespace,
+			}, publicGateway); errGet != nil {
+				return errGet
+			}
+
+			g.Expect(publicGateway.Spec.GetSelector()).To(HaveKeyWithValue(routingConfiguration.IngressSelectorLabel, routingConfiguration.IngressSelectorValue))
+			// limitation: only checks first element of []*Server slice
+			g.Expect(publicGateway).To(
+				HaveHosts(
+					exposedSvc.Name+"-"+exposedPort.Name+"-"+exposedSvc.Namespace+"."+routingConfiguration.GatewayNamespace,
+					exposedSvc.Name+"-"+exposedPort.Name+"-"+exposedSvc.Namespace+"."+routingConfiguration.GatewayNamespace+".svc",
+					exposedSvc.Name+"-"+exposedPort.Name+"-"+exposedSvc.Namespace+"."+routingConfiguration.GatewayNamespace+".svc.cluster.local",
+				),
+			)
+		}
 
 		return nil
 	}
@@ -633,22 +625,27 @@ func publicGatewayExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx conte
 func publicVirtualSvcExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
 		publicVS := &v1beta1.VirtualService{}
-		if errGet := envTest.Get(ctx, types.NamespacedName{
-			Name:      exposedSvc.Name + "-" + exposedSvc.Namespace,
-			Namespace: routingConfiguration.GatewayNamespace,
-		}, publicVS); errGet != nil {
-			return errGet
-		}
 
-		g.Expect(publicVS).To(
-			HaveHosts(
-				exposedSvc.Name+"-"+exposedSvc.Namespace+"."+routingConfiguration.GatewayNamespace,
-				exposedSvc.Name+"-"+exposedSvc.Namespace+"."+routingConfiguration.GatewayNamespace+".svc",
-				exposedSvc.Name+"-"+exposedSvc.Namespace+"."+routingConfiguration.GatewayNamespace+".svc.cluster.local",
-			),
-		)
-		g.Expect(publicVS).To(BeAttachedToGateways("mesh", exposedSvc.Name+"-"+exposedSvc.Namespace))
-		g.Expect(publicVS).To(RouteToHost(exposedSvc.Name+"."+exposedSvc.Namespace+".svc.cluster.local", 8000))
+		g.Expect(exposedSvc.Spec.Ports).ToNot(BeEmpty())
+
+		for _, exposedPort := range exposedSvc.Spec.Ports {
+			if errGet := envTest.Get(ctx, types.NamespacedName{
+				Name:      exposedSvc.Name + "-" + exposedPort.Name + "-" + exposedSvc.Namespace,
+				Namespace: routingConfiguration.GatewayNamespace,
+			}, publicVS); errGet != nil {
+				return errGet
+			}
+
+			g.Expect(publicVS).To(
+				HaveHosts(
+					exposedSvc.Name+"-"+exposedPort.Name+"-"+exposedSvc.Namespace+"."+routingConfiguration.GatewayNamespace,
+					exposedSvc.Name+"-"+exposedPort.Name+"-"+exposedSvc.Namespace+"."+routingConfiguration.GatewayNamespace+".svc",
+					exposedSvc.Name+"-"+exposedPort.Name+"-"+exposedSvc.Namespace+"."+routingConfiguration.GatewayNamespace+".svc.cluster.local",
+				),
+			)
+			g.Expect(publicVS).To(BeAttachedToGateways("mesh", exposedSvc.Name+"-"+exposedPort.Name+"-"+exposedSvc.Namespace))
+			g.Expect(publicVS).To(RouteToHost(exposedSvc.Name+"."+exposedSvc.Namespace+".svc.cluster.local", uint32(exposedPort.TargetPort.IntVal)))
+		}
 
 		return nil
 	}
@@ -656,38 +653,46 @@ func publicVirtualSvcExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx co
 
 func destinationRuleExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
-		destinationRule := &v1beta1.DestinationRule{}
-		if errGet := envTest.Get(ctx, types.NamespacedName{
-			Name:      exposedSvc.Name + "-" + exposedSvc.Namespace,
-			Namespace: routingConfiguration.GatewayNamespace,
-		}, destinationRule); errGet != nil {
-			return errGet
-		}
+		g.Expect(exposedSvc.Spec.Ports).ToNot(BeEmpty())
 
-		g.Expect(destinationRule).To(
-			HaveHost(
-				exposedSvc.Name + "-" + exposedSvc.Namespace + "." + routingConfiguration.GatewayNamespace + ".svc.cluster.local",
-			),
-		)
-		g.Expect(destinationRule.Spec.GetTrafficPolicy().GetTls().GetMode()).To(Equal(istionetworkingv1beta1.ClientTLSSettings_DISABLE))
+		for _, exposedPort := range exposedSvc.Spec.Ports {
+			destinationRule := &v1beta1.DestinationRule{}
+			if errGet := envTest.Get(ctx, types.NamespacedName{
+				Name:      exposedSvc.Name + "-" + exposedPort.Name + "-" + exposedSvc.Namespace,
+				Namespace: routingConfiguration.GatewayNamespace,
+			}, destinationRule); errGet != nil {
+				return errGet
+			}
+
+			g.Expect(destinationRule).To(
+				HaveHost(
+					exposedSvc.Name + "-" + exposedPort.Name + "-" + exposedSvc.Namespace + "." + routingConfiguration.GatewayNamespace + ".svc.cluster.local",
+				),
+			)
+			g.Expect(destinationRule.Spec.GetTrafficPolicy().GetTls().GetMode()).To(Equal(istionetworkingv1beta1.ClientTLSSettings_DISABLE))
+		}
 
 		return nil
 	}
 }
 
-func ingressVirtualServiceExistsFor(exportedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
+func ingressVirtualServiceExistsFor(exposedSvc *corev1.Service) func(g Gomega, ctx context.Context) error {
 	return func(g Gomega, ctx context.Context) error {
-		routerVS := &v1beta1.VirtualService{}
-		if errGet := envTest.Get(ctx, types.NamespacedName{
-			Name:      exportedSvc.Name + "-" + exportedSvc.Namespace + "-ingress",
-			Namespace: routingConfiguration.GatewayNamespace,
-		}, routerVS); errGet != nil {
-			return errGet
-		}
+		g.Expect(exposedSvc.Spec.Ports).ToNot(BeEmpty())
 
-		g.Expect(routerVS).To(HaveHost(exportedSvc.Name + "-" + exportedSvc.Namespace + "." + domain))
-		g.Expect(routerVS).To(BeAttachedToGateways(routingConfiguration.IngressService))
-		g.Expect(routerVS).To(RouteToHost(exportedSvc.Name+"."+exportedSvc.Namespace+".svc.cluster.local", 8000))
+		for _, exposedPort := range exposedSvc.Spec.Ports {
+			routerVS := &v1beta1.VirtualService{}
+			if errGet := envTest.Get(ctx, types.NamespacedName{
+				Name:      exposedSvc.Name + "-" + exposedPort.Name + "-" + exposedSvc.Namespace + "-ingress",
+				Namespace: routingConfiguration.GatewayNamespace,
+			}, routerVS); errGet != nil {
+				return errGet
+			}
+
+			g.Expect(routerVS).To(HaveHost(exposedSvc.Name + "-" + exposedPort.Name + "-" + exposedSvc.Namespace + "." + domain))
+			g.Expect(routerVS).To(BeAttachedToGateways(routingConfiguration.IngressService))
+			g.Expect(routerVS).To(RouteToHost(exposedSvc.Name+"."+exposedSvc.Namespace+".svc.cluster.local", uint32(exposedPort.TargetPort.IntValue())))
+		}
 
 		return nil
 	}
@@ -716,6 +721,11 @@ func simpleSvcDeployment(ctx context.Context, nsName, svcName string) (*appsv1.D
 					Name:       "http",
 					Port:       8080,
 					TargetPort: intstr.FromInt32(8000),
+				},
+				{
+					Name:       "grpc",
+					Port:       9080,
+					TargetPort: intstr.FromInt32(9000),
 				},
 			},
 		},
