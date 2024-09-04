@@ -50,16 +50,20 @@ func (r *Controller) createRoutingResources(ctx context.Context, target *unstruc
 		return fmt.Errorf("could not get domain: %w", errDomain)
 	}
 
-	targetPublicHosts := []string{}
-	targetExternalHosts := []string{}
 	var errSvcExport []error
+
+	var targetPublicHosts []string
+
+	var targetExternalHosts []string
 
 	for i := range exportedServices {
 		servicePublicHosts, serviceExternalHosts, errExport := r.exportService(ctx, target, &exportedServices[i], domain)
 		if errExport != nil {
 			errSvcExport = append(errSvcExport, errExport)
+
 			continue
 		}
+
 		targetPublicHosts = append(targetPublicHosts, servicePublicHosts...)
 		targetExternalHosts = append(targetExternalHosts, serviceExternalHosts...)
 	}
@@ -71,11 +75,10 @@ func (r *Controller) createRoutingResources(ctx context.Context, target *unstruc
 	return r.propagateHostsToWatchedCR(ctx, target, targetPublicHosts, targetExternalHosts)
 }
 
-func (r *Controller) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) ([]string, []string, error) {
+//nolint:nonamedreturns //reason make up your mind, nonamedreturns vs gocritic
+func (r *Controller) exportService(ctx context.Context, target *unstructured.Unstructured,
+	exportedSvc *corev1.Service, domain string) (publicHosts, externalHosts []string, err error) {
 	exportModes := r.extractExportModes(target)
-
-	externalHosts := []string{}
-	publicHosts := []string{}
 
 	// To establish ownership for watched component
 	ownershipLabels := append(labels.AsOwner(target), labels.AppManagedBy("odh-routing-controller"))
