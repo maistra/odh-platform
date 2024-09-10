@@ -69,6 +69,13 @@ func (r *Controller) reconcileAuthPolicy(ctx context.Context, target *unstructur
 }
 
 func createAuthzPolicy(ports []string, workloadSelector map[string]string, providerName string, target *unstructured.Unstructured) *istiosecurityv1beta1.AuthorizationPolicy {
+	excludePaths := []string{ // TODO: part of AuthRule?
+		"/healthz",
+		"/debug/pprof/",
+		"/metrics",
+		"/wait-for-drain",
+	}
+
 	policy := &istiosecurityv1beta1.AuthorizationPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        target.GetName(),
@@ -91,23 +98,31 @@ func createAuthzPolicy(ports []string, workloadSelector map[string]string, provi
 		},
 	}
 
-	for _, port := range ports {
+	if len(ports) == 0 {
 		rule := v1beta1.Rule{
 			To: []*v1beta1.Rule_To{
 				{
 					Operation: &v1beta1.Operation{
-						Ports: []string{port},
-						NotPaths: []string{ // TODO: part of AuthRule?
-							"/healthz",
-							"/debug/pprof/",
-							"/metrics",
-							"/wait-for-drain",
-						},
+						NotPaths: excludePaths,
 					},
 				},
 			},
 		}
 		policy.Spec.Rules = append(policy.Spec.Rules, &rule)
+	} else {
+		for _, port := range ports {
+			rule := v1beta1.Rule{
+				To: []*v1beta1.Rule_To{
+					{
+						Operation: &v1beta1.Operation{
+							Ports:    []string{port},
+							NotPaths: excludePaths,
+						},
+					},
+				},
+			}
+			policy.Spec.Rules = append(policy.Spec.Rules, &rule)
+		}
 	}
 
 	metadata.ApplyMetaOptions(policy, labels.StandardLabelsFrom(target)...)

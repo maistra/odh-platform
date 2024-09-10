@@ -23,15 +23,11 @@ func (r *Controller) createRoutingResources(ctx context.Context, target *unstruc
 
 	if len(exportModes) == 0 {
 		r.log.Info("No export mode found for target")
-		metadata.ApplyMetaOptions(target,
-			annotations.Remove(annotations.RoutingAddressesExternal("")),
-			annotations.Remove(annotations.RoutingAddressesPublic("")),
-		)
 
-		return nil
+		return r.propagateHostsToWatchedCR(ctx, target, nil, nil)
 	}
 
-	r.log.Info("Reconciling resources for target", "target", target)
+	r.log.Info("reconciling resources for target", "target", target)
 
 	renderedSelectors, errLables := config.ResolveSelectors(r.component.ServiceSelector, target)
 	if errLables != nil {
@@ -56,20 +52,33 @@ func (r *Controller) createRoutingResources(ctx context.Context, target *unstruc
 
 	var errSvcExport []error
 
+	var targetPublicHosts []string
+
+	var targetExternalHosts []string
+
 	for i := range exportedServices {
-		if errExport := r.exportService(ctx, target, &exportedServices[i], domain); errExport != nil {
+		servicePublicHosts, serviceExternalHosts, errExport := r.exportService(ctx, target, &exportedServices[i], domain)
+		if errExport != nil {
 			errSvcExport = append(errSvcExport, errExport)
+
+			continue
 		}
+
+		targetPublicHosts = append(targetPublicHosts, servicePublicHosts...)
+		targetExternalHosts = append(targetExternalHosts, serviceExternalHosts...)
 	}
 
-	return errors.Join(errSvcExport...)
+	if errSvcExportCombined := errors.Join(errSvcExport...); errSvcExportCombined != nil {
+		return errSvcExportCombined
+	}
+
+	return r.propagateHostsToWatchedCR(ctx, target, targetPublicHosts, targetExternalHosts)
 }
 
-func (r *Controller) exportService(ctx context.Context, target *unstructured.Unstructured, exportedSvc *corev1.Service, domain string) error {
+//nolint:nonamedreturns //reason make up your mind, nonamedreturns vs gocritic
+func (r *Controller) exportService(ctx context.Context, target *unstructured.Unstructured,
+	exportedSvc *corev1.Service, domain string) (publicHosts, externalHosts []string, err error) {
 	exportModes := r.extractExportModes(target)
-
-	externalHosts := []string{}
-	publicHosts := []string{}
 
 	// To establish ownership for watched component
 	ownershipLabels := append(labels.AsOwner(target), labels.AppManagedBy("odh-routing-controller"))
@@ -80,12 +89,12 @@ func (r *Controller) exportService(ctx context.Context, target *unstructured.Uns
 		for _, exportMode := range exportModes {
 			resources, err := r.templateLoader.Load(templateData, exportMode)
 			if err != nil {
-				return fmt.Errorf("could not load templates for type %s: %w", exportMode, err)
+				return nil, nil, fmt.Errorf("could not load templates for type %s: %w", exportMode, err)
 			}
 
 			ownershipLabels = append(ownershipLabels, labels.ExportType(exportMode))
 			if errApply := unstruct.Apply(ctx, r.Client, resources, ownershipLabels...); errApply != nil {
-				return fmt.Errorf("could not apply routing resources for type %s: %w", exportMode, errApply)
+				return nil, nil, fmt.Errorf("could not apply routing resources for type %s: %w", exportMode, errApply)
 			}
 
 			switch exportMode {
@@ -97,33 +106,49 @@ func (r *Controller) exportService(ctx context.Context, target *unstructured.Uns
 		}
 	}
 
-	return r.propagateHostsToWatchedCR(target, publicHosts, externalHosts)
+	return publicHosts, externalHosts, nil
 }
 
-func (r *Controller) propagateHostsToWatchedCR(target *unstructured.Unstructured, publicHosts, externalHosts []string) error {
-	// Remove all existing routing addresses
-	metaOptions := []metadata.Option{
-		annotations.Remove(annotations.RoutingAddressesExternal("")),
-		annotations.Remove(annotations.RoutingAddressesPublic("")),
+func (r *Controller) propagateHostsToWatchedCR(ctx context.Context, target *unstructured.Unstructured, publicHosts, externalHosts []string) error {
+	errPatch := unstruct.PatchWithRetry(ctx, r.Client, target, r.updateAddressAnnotations(target, publicHosts, externalHosts))
+	if errPatch != nil {
+		return fmt.Errorf("failed to propagate hosts to watched CR %s/%s: %w", target.GetNamespace(), target.GetName(), errPatch)
 	}
-
-	if len(publicHosts) > 0 {
-		metaOptions = append(metaOptions, annotations.RoutingAddressesPublic(strings.Join(publicHosts, ";")))
-	}
-
-	if len(externalHosts) > 0 {
-		metaOptions = append(metaOptions, annotations.RoutingAddressesExternal(strings.Join(externalHosts, ";")))
-	}
-
-	metadata.ApplyMetaOptions(target, metaOptions...)
 
 	return nil
 }
 
+func (r *Controller) updateAddressAnnotations(target *unstructured.Unstructured, publicHosts, externalHosts []string) func() error {
+	return func() error {
+		// Remove all existing routing addresses
+		metaOptions := []metadata.Option{
+			annotations.Remove(annotations.RoutingAddressesExternal("")),
+			annotations.Remove(annotations.RoutingAddressesPublic("")),
+		}
+
+		if len(publicHosts) > 0 {
+			metaOptions = append(metaOptions, annotations.RoutingAddressesPublic(strings.Join(publicHosts, ";")))
+		}
+
+		if len(externalHosts) > 0 {
+			metaOptions = append(metaOptions, annotations.RoutingAddressesExternal(strings.Join(externalHosts, ";")))
+		}
+
+		metadata.ApplyMetaOptions(target, metaOptions...)
+
+		return nil
+	}
+}
+
 func (r *Controller) ensureResourceHasFinalizer(ctx context.Context, target *unstructured.Unstructured) error {
-	if controllerutil.AddFinalizer(target, finalizerName) {
-		if err := unstruct.Patch(ctx, r.Client, target); err != nil {
-			return fmt.Errorf("failed to patch finalizer to resource %s/%s: %w", target.GetNamespace(), target.GetName(), err)
+	if !controllerutil.ContainsFinalizer(target, finalizerName) {
+		if err := unstruct.PatchWithRetry(ctx, r.Client, target, func() error {
+			controllerutil.AddFinalizer(target, finalizerName)
+
+			return nil
+		}); err != nil {
+			return fmt.Errorf("failed to patch finalizer to %s (in %s): %w",
+				target.GroupVersionKind().String(), target.GetNamespace(), err)
 		}
 	}
 
@@ -144,11 +169,6 @@ func (r *Controller) extractExportModes(target *unstructured.Unstructured) []rou
 			routeType, valid := routing.IsValidRouteType(key)
 			if valid {
 				validRouteTypes = append(validRouteTypes, routeType)
-			} else {
-				r.log.Info("Invalid route type found",
-					"invalidRouteType", routeType,
-					"resourceName", target.GetName(),
-					"resourceNamespace", target.GetNamespace())
 			}
 		}
 	}

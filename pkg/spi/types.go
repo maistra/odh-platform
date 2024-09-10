@@ -94,7 +94,7 @@ func UnifiedHostExtractor(extractors ...HostExtractor) HostExtractor { //nolint:
 }
 
 func NewPathExpressionExtractor(paths []string) HostExtractor {
-	extractHosts := func(target *unstructured.Unstructured, splitPath []string) ([]string, error) {
+	extractHosts := func(target *unstructured.Unstructured, splitPath []string) ([]string, error) { //nolint:unparam //reason Part of HostExtractor interface
 		// extracting as string
 		if foundHost, found, err := unstructured.NestedString(target.Object, splitPath...); err == nil && found {
 			return []string{foundHost}, nil
@@ -105,7 +105,8 @@ func NewPathExpressionExtractor(paths []string) HostExtractor {
 			return foundHosts, nil
 		}
 
-		return nil, fmt.Errorf("neither string nor slice of strings found at path %v", splitPath)
+		// TODO: Nothing found yet, move on no error?
+		return []string{}, nil
 	}
 
 	return func(target *unstructured.Unstructured) ([]string, error) {

@@ -48,6 +48,11 @@ func (e *ExportedServiceNotFoundError) Error() string {
 	return fmt.Sprintf("no exported services found for target %s/%s (%s)", e.target.GetNamespace(), e.target.GetName(), e.target.GetObjectKind().GroupVersionKind().String())
 }
 
+func (e *ExportedServiceNotFoundError) Is(target error) bool {
+	_, ok := target.(*ExportedServiceNotFoundError)
+	return ok
+}
+
 func isExportedServiceNotFoundError(err error) bool {
 	return errors.Is(err, &ExportedServiceNotFoundError{})
 }
