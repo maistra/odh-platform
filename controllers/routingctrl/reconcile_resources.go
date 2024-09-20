@@ -23,12 +23,8 @@ func (r *Controller) createRoutingResources(ctx context.Context, target *unstruc
 
 	if len(exportModes) == 0 {
 		r.log.Info("No export mode found for target")
-		metadata.ApplyMetaOptions(target,
-			annotations.Remove(annotations.RoutingAddressesExternal("")),
-			annotations.Remove(annotations.RoutingAddressesPublic("")),
-		)
 
-		return nil
+		return r.propagateHostsToWatchedCR(ctx, target, nil, nil)
 	}
 
 	r.log.Info("Reconciling resources for target", "target", target)
@@ -97,33 +93,46 @@ func (r *Controller) exportService(ctx context.Context, target *unstructured.Uns
 		}
 	}
 
-	return r.propagateHostsToWatchedCR(target, publicHosts, externalHosts)
+	return r.propagateHostsToWatchedCR(ctx, target, publicHosts, externalHosts)
 }
 
-func (r *Controller) propagateHostsToWatchedCR(target *unstructured.Unstructured, publicHosts, externalHosts []string) error {
-	// Remove all existing routing addresses
-	metaOptions := []metadata.Option{
-		annotations.Remove(annotations.RoutingAddressesExternal("")),
-		annotations.Remove(annotations.RoutingAddressesPublic("")),
-	}
+func (r *Controller) propagateHostsToWatchedCR(ctx context.Context, target *unstructured.Unstructured, publicHosts, externalHosts []string) error {
+	err := unstruct.PatchWithRetry(ctx, r.Client, target, func() error {
+		// Remove all existing routing addresses
+		metaOptions := []metadata.Option{
+			annotations.Remove(annotations.RoutingAddressesExternal("")),
+			annotations.Remove(annotations.RoutingAddressesPublic("")),
+		}
 
-	if len(publicHosts) > 0 {
-		metaOptions = append(metaOptions, annotations.RoutingAddressesPublic(strings.Join(publicHosts, ";")))
-	}
+		if len(publicHosts) > 0 {
+			metaOptions = append(metaOptions, annotations.RoutingAddressesPublic(strings.Join(publicHosts, ";")))
+		}
 
-	if len(externalHosts) > 0 {
-		metaOptions = append(metaOptions, annotations.RoutingAddressesExternal(strings.Join(externalHosts, ";")))
-	}
+		if len(externalHosts) > 0 {
+			metaOptions = append(metaOptions, annotations.RoutingAddressesExternal(strings.Join(externalHosts, ";")))
+		}
 
-	metadata.ApplyMetaOptions(target, metaOptions...)
+		metadata.ApplyMetaOptions(target, metaOptions...)
+
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to propagate hosts to watched CR %s/%s: %w", target.GetNamespace(), target.GetName(), err)
+	}
 
 	return nil
 }
 
 func (r *Controller) ensureResourceHasFinalizer(ctx context.Context, target *unstructured.Unstructured) error {
-	if controllerutil.AddFinalizer(target, finalizerName) {
-		if err := unstruct.Patch(ctx, r.Client, target); err != nil {
-			return fmt.Errorf("failed to patch finalizer to resource %s/%s: %w", target.GetNamespace(), target.GetName(), err)
+	if !controllerutil.ContainsFinalizer(target, finalizerName) {
+		if err := unstruct.PatchWithRetry(ctx, r.Client, target, func() error {
+			controllerutil.AddFinalizer(target, finalizerName)
+
+			return nil
+		}); err != nil {
+			return fmt.Errorf("failed to add finalizer to %s (in %s): %w",
+				target.GroupVersionKind().String(), target.GetNamespace(), err)
 		}
 	}
 
