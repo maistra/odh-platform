@@ -98,11 +98,11 @@ func (r *Controller) exportService(ctx context.Context, target *unstructured.Uns
 
 func (r *Controller) propagateHostsToWatchedCR(ctx context.Context, target *unstructured.Unstructured, publicHosts, externalHosts []string) error {
 	err := unstruct.PatchWithRetry(ctx, r.Client, target, func() error {
-		// Always remove the annotations first
-		annotations.Remove(annotations.RoutingAddressesExternal(""))(target)
-		annotations.Remove(annotations.RoutingAddressesPublic(""))(target)
-
-		var metaOptions []metadata.Option
+		// Remove all existing routing addresses
+		metaOptions := []metadata.Option{
+			annotations.Remove(annotations.RoutingAddressesExternal("")),
+			annotations.Remove(annotations.RoutingAddressesPublic("")),
+		}
 
 		if len(publicHosts) > 0 {
 			metaOptions = append(metaOptions, annotations.RoutingAddressesPublic(strings.Join(publicHosts, ";")))
