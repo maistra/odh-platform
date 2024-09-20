@@ -131,7 +131,7 @@ func (r *Controller) ensureResourceHasFinalizer(ctx context.Context, target *uns
 
 			return nil
 		}); err != nil {
-			return fmt.Errorf("failed to patch finalizer to %s (in %s): %w",
+			return fmt.Errorf("failed to add finalizer to %s (in %s): %w",
 				target.GroupVersionKind().String(), target.GetNamespace(), err)
 		}
 	}
