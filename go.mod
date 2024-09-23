@@ -1,6 +1,7 @@
 module github.com/opendatahub-io/odh-platform
 
 go 1.21
+toolchain go1.22.5
 
 // Enforce versions to be aligned with ODH Operator,
 // as long as we are pulling this code as dependency.
@@ -22,7 +23,7 @@ require (
 	github.com/kuadrant/authorino v0.15.0
 	github.com/openshift/api v0.0.0-20230918194705-55e9a6dcc436 // pins to be aligned with ODH Operator (k8s and golang versions)
 	go.uber.org/zap v1.26.0
-	istio.io/api v1.20.2-0.20231213020515-8655fab91d5d
+	istio.io/api v1.23.2
 	istio.io/client-go v1.20.2
 	k8s.io/api v0.31.0
 	k8s.io/apiextensions-apiserver v0.31.0
